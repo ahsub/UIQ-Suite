@@ -1,8 +1,8 @@
 # Investment-Suite — Dachdokument
 
-**Version:** 1.0
+**Version:** 1.1
 **Stand:** 03.07.2026
-**Ablage:** `ahsub/ko-aggregator/docs/SUITE.md`
+**Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
 **Fortschreibung:** Claude, versioniert, analog den Modul-Strategiedokumenten.
 
@@ -94,15 +94,46 @@ Konsistenz wird **nicht** als Big-Bang-Redesign erzwungen, sondern in drei Welle
 
 ---
 
-## 4. Suite-Portal (Zielbild, P-Item)
+## 4. Prioritäten-Wirbelsäule (modulübergreifende Rangfolge)
+
+Die Suite hat mehr berechtigte Vorhaben als Kapazität. Diese Rangfolge gilt für jede Entwicklungs-Session und wird nur durch bewusste, hier dokumentierte Entscheidung geändert — nicht situativ.
+
+**Grundunterscheidung: Build-Kapazität vs. Denk-Kapazität.** Die Wirbelsäule rationiert das **Bauen** (Code, Deploys). Recherche-Gates, Support-Ticket-Auswertungen und Dokument-Fortschreibungen bleiben jederzeit erlaubt — sie sind billig, enthalten ohnehin Wartezeiten (Ticket-Antworten, BMF-Recherche) und zahlen beim späteren Bau sofort aus.
+
+| Rang | Modul | Modus | Regel |
+|---|---|---|---|
+| 1 | **UIQ Phase 0** | **Leitprojekt** | Absolute Build-Priorität. Track-Record-Uhr läuft (Tag 0 = 02.07.2026); Code-Arbeit hier schlägt alles. Dazu zählt ko-ai-Worker-Infrastruktur (Rate-Limiting, Logging) |
+| 2 | **Refundex** | Wartungsmodus | Bugfixes und Kleinstaufgaben (< ~1 h) jederzeit; keine neuen Großfeatures (inkl. QSt-Cockpit-Bau) bis UIQ Phase 1 erreicht. Recherche-Gates laufen weiter |
+| 3 | **Premium Options** | Geparkt | Kein Build bis definiertem Trigger (frühestens UIQ Phase 1); Ausnahme P1.1-Rename, falls Publikation vorgezogen würde. Gates (Multi-Leg-Steuer) laufen weiter |
+| 4 | **DepotIQ / Ruhestandsmodul** | Eingefroren | Build-Verbot bis UIQ Phase 3 (Launch). Nur Gate-Definition erlaubt |
+
+**Claude-Pflicht:** In jeder Session aktiv warnen, wenn Build-Arbeit vom Leitprojekt abdriftet („Wirbelsäulen-Hinweis").
+
+---
+
+## 5. Suite-SWOT (Meta-Ebene: die Strategie selbst)
+
+Kurzfassung der Meta-Analyse vom 03.07.2026 (Claude, cross-gecheckt mit Gemini — Konvergenz in allen Kernpunkten):
+
+**Stärken:** Track-Record-first mit laufender Uhr (wichtigste Einzelentscheidung); Reihenfolge-Disziplin (Nachweis → Gutachten → Kommerzialisierung); durchgängige Gate-Governance; Suite-Bundling auf identischer Zielgruppe; ehrliche Selbstdiagnose; realistische Marktgeografie (DACH → EN-Europa; USA Fernstufe).
+
+**Schwächen:** ① Frontbreite vs. Solo-Kapazität → mitigiert durch §4 Wirbelsäule; ② Track-Record-Statistik kann je Strategie×Regime-Zelle dünn bleiben → Mindest-n-Regel: Zellen unter Mindeststichprobe werden nicht veröffentlicht (No-Hallucination für Statistik); ③ Erfolgsdefinition unquantifiziert → harte Ziel-Abonnentenzahl vor Phase 2 festlegen (entscheidet über Datenlizenz-Tragfähigkeit); ④ SPOF-Personalfrage untermininiert → Testballon Mitgründung mit weichem Datum vor Phase-1-Ende.
+
+**Chancen:** Ruhestand/Aktivrente ab 2026 als Kapazitäts-Turbo exakt zur Track-Record-Reife (Zeitachsen konvergieren — Planungsgröße, kein Zufall); zeitlich uneinholbarer Track-Record-Burggraben; DepotIQ als LTV-Anker nach Launch; Investmentclub als validierter Beta-Pool.
+
+**Risiken:** ① Scope-Creep als Systemrisiko → Wirbelsäule + Claude-Warnpflicht; ② Track-Record kann Strategien falsifizieren → Rekalibrierung ist Feature des Plans, kein Scheitern; ③ yfinance-Ausfall vor Phase-2-Migration → Plan B light (UIQ-STRATEGIE v1.3, R-Register); ④ KI-Kosten-Skalierung unkalkuliert → Rate-Limiting im ko-ai Worker + Kosten/Nutzer als Phase-1-Metrik; ⑤ Datenlizenz-Fixkosten vs. Nischengröße → Break-even gegen Ziel-Abonnentenzahl (Schwäche ③) rechnen.
+
+---
+
+## 6. Suite-Portal (Zielbild, P-Item)
 
 Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mit Ein-Satz-Beschreibung, gemeinsames Design-Token-Set, ein EIC-Login-Konzept, und die Suite-Prinzipien (Belegkette, No-Hallucination, Datensouveränität) als öffentliches Qualitätsversprechen — sie sind das Verkaufsargument an die Zielgruppe, nicht nur Interna. Voraussetzung: K2-Bestandsaufnahme und Namens-/Domainfragen (siehe Refundex-Backlog) geklärt.
 
 ---
 
-## 5. Offene Suite-Entscheidungen (Backlog)
+## 7. Offene Suite-Entscheidungen (Backlog)
 
-1. **Heimat von `suite-core`** (tokens.css, prompts/, glossar.md): eigenes Repo vs. ko-modules-Erweiterung — Entscheidung bei K2.
+1. ✅ **ENTSCHIEDEN (03.07.2026):** Heimat von SUITE.md und künftig `suite-core` ist das Meta-Repo `ahsub/UIQ-Suite` (durch Inhaber angelegt). ko-aggregator/docs/SUITE.md wird Verweis-Stub.
 2. **Suite-Name nach außen** (das Portal braucht einen Titel) — zusammen mit der Refundex-Namensrecherche (DENIC/DPMA) behandeln.
 3. **DepotIQ-Gate** definieren, bevor Konzeptarbeit beginnt (u. a. Methodik-Recherche TWR vs. MWR mit Quellen).
 4. **Ruhestandsmodul-Gate:** StBerG-Abgrenzung ist hier Existenzfrage — vor jeder Zeile Konzept.
@@ -115,3 +146,4 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 | Version | Datum | Änderung |
 |---|---|---|
 | 1.0 | 03.07.2026 | Erstfassung: Zielbild 3+2 (inkl. DepotIQ und Ruhestandsmodul als Zukunftsprojekte hoher Prio), konsolidierte Grundgesetze, Konsistenz-Standards (Glossar, Regelwerk-Einheit, Prompt-Bibliothek, Design-System, K1–K3-Umsetzungspfad), Suite-Portal-Zielbild, offene Entscheidungen |
+| 1.1 | 03.07.2026 | Umzug ins Meta-Repo UIQ-Suite (Single Source, Entscheidung №1 ✓); §4 Prioritäten-Wirbelsäule (Build- vs. Denk-Kapazität, UIQ Phase 0 = Leitprojekt, Claude-Warnpflicht); §5 Suite-SWOT Meta-Ebene (Claude + Gemini-Cross-Check) |
