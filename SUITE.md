@@ -94,6 +94,33 @@ Konsistenz wird **nicht** als Big-Bang-Redesign erzwungen, sondern in drei Welle
 
 ---
 
+### 3.6 Web-Präsenz & Rechtsseiten (ein Auftritt nach außen)
+
+Die einzelnen App-Domains (underlyingiq.com, refundex-app, künftig Premium Options / GuidelineIQ) sind heute noch Insellösungen. Für die Außenwirkung braucht es ein einheitliches Präsentationsgerüst mit klarer Trennung von App und Web-Präsenz:
+
+- **Domain-Architektur:** Suite-Portal als Klammer (siehe §6, Titel offen), Apps unter Subdomains/Modulnamen. Konkrete Zuordnung Teil des K2-Konsolidierungs-Backlogs.
+- **Rechtsseiten (verbindlich für alle Modul-Auftritte):** Impressum (TMG §5), Datenschutzerklärung (DSGVO Art. 13/14, ergänzt um KI-Verarbeitungshinweise), Kontaktseite (Formular + direkter Kanal), FAQ je Modul (aus vorhandenen Bedienungsanleitungen und Support-Rückläufen destilliert). Eine gemeinsame Vorlagenstruktur, jeweils modulspezifisch ausgefüllt.
+- **Internationalisierung (i18n):** Suite-weit **DACH-first** (deutsch), englische Fassung als zweite Stufe pro Modul; keine Simultan-Pflege bis Rollout-Reife. Die Aufteilung pro Modul folgt dem Modul-i18n-Plan (UIQ: DACH → EN-Europa → USA optional; Refundex: DE-nur bis GST/QSt-Cockpit; PO: DE-nur bis Fall D2.a-Freigabe).
+- **Corporate Identity:** Ein Wortmarken-/Farbsystem für die Suite als Ganze; die vier Modul-Identitäten sind Varianten davon, keine Eigengewächse. Ableitung aus dem Design-Token-Set (§3.4).
+- **Content-Governance:** Kontakt, Impressum und Datenschutz haben genau **eine Quelle** je Rechtsträger — Änderungen dort werden per Include/Fetch in alle Modul-Auftritte gespiegelt, nicht parallel gepflegt.
+- **Öffentliche vs. geschlossene Bereiche:** Marketing-/Info-Seiten sind öffentlich; App-Zugang und Expert-Modi bleiben authentifiziert (EIC-PIN-Konzept). Die Trennung ist Architektur, keine URL-Konvention.
+- **Regel:** Neue öffentliche Seiten werden gegen dieses Kapitel gebaut; Abweichungen sind begründungspflichtig und wandern in den K2-Backlog.
+
+### 3.7 Timeframe des Design- und Web-Präsenz-Rollouts
+
+Corporate Design und Web-Präsenz sind **suite-übergreifend, nicht produktkritisch** und werden bewusst *nicht* in den v1.x-Monolithen zurückgebaut. Kopplung an ohnehin anstehende Migrationen minimiert Doppelarbeit und respektiert die Prioritäten-Wirbelsäule (§4).
+
+| Phase | Zeitfenster | Aktivität | Bewusst nicht |
+|---|---|---|---|
+| **D0 — Sammelbecken** | ab sofort bis UIQ h7-Reife (~14.07.2026) | Ideen, Farbkandidaten, FAQ-Rohentwürfe, Rechtsseiten-Muster kommen in dieses Kapitel und den K2-Backlog. Denk-Kapazität, keine Build-Kapazität. | Kein Design-Sprint, kein CSS-Refactor, kein neuer öffentlicher Auftritt. |
+| **D1 — Konzept** | nach erster hit30-Auswertung (ab ~Ende Juli / August 2026) | Design-Token-Set finalisieren (Bestandsaufnahme UIQ/Refundex/PO), Typografie-Skala, i18n-Struktur, Impressum/Datenschutz/Kontakt/FAQ als Konzept-Dokumente je Modul. | Noch keine breite Umsetzung; Modul-Auftritte laufen im Ist-Look weiter. |
+| **D2 — Rollout im Zuge UIQ v2.0** | Q4 2026, gekoppelt an Vite/React-Migration (STRATEGIE.md Phase 3) | Design-System als Component-Library implementiert; UIQ-Web-Präsenz + Rechtsseiten gehen mit v2.0 live. Effizient, weil die Component-Library ohnehin entsteht. | Kein Rollout in v1.x-Monolithen — bewusst nicht, weil doppelt gebaut. |
+| **D3 — Suite-weit** | 2027 | Refundex, Premium Options, GuidelineIQ ziehen huckepack aufs Design-System nach; Suite-Portal (§6) wird sichtbar. | Kein Selbstzweck-Redesign bestehender Module ohne anstehende inhaltliche Arbeit. |
+
+**Warnpflicht-Verankerung:** Corporate Design bleibt bis Phase D2 strikt Denk-Kapazität. Sollte ein Modul-Auftritt vor Q4 2026 unabweisbar werden (z. B. Refundex-Publikumsöffnung), wird das als bewusste Ausnahme in §7 dokumentiert — nicht situativ vorgezogen.
+
+---
+
 ## 4. Prioritäten-Wirbelsäule (modulübergreifende Rangfolge)
 
 Die Suite hat mehr berechtigte Vorhaben als Kapazität. Diese Rangfolge gilt für jede Entwicklungs-Session und wird nur durch bewusste, hier dokumentierte Entscheidung geändert — nicht situativ.
@@ -138,6 +165,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 3. **DepotIQ-Gate** definieren, bevor Konzeptarbeit beginnt (u. a. Methodik-Recherche TWR vs. MWR mit Quellen).
 4. **Ruhestandsmodul-Gate:** StBerG-Abgrenzung ist hier Existenzfrage — vor jeder Zeile Konzept.
 5. Verlinkung dieses Dokuments aus den drei Modul-STRATEGIEs — bei deren jeweils nächster Fortschreibung (kein Extra-Push).
+6. **Corporate Design & Web-Präsenz (§3.6/§3.7):** Sammelbecken offen ab 06.07.2026; erste Bestandsaufnahme (UIQ/Refundex/PO-Tokens, existierende Rechtsseiten-Bausteine, FAQ-Fragmente) im Zuge der D1-Konzeptphase (Ende Juli / August 2026). Bis dahin: Ideen und Referenzen hier sammeln, nicht bauen.
 
 ---
 
@@ -147,3 +175,4 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 |---|---|---|
 | 1.0 | 03.07.2026 | Erstfassung: Zielbild 3+2 (inkl. DepotIQ und Ruhestandsmodul als Zukunftsprojekte hoher Prio), konsolidierte Grundgesetze, Konsistenz-Standards (Glossar, Regelwerk-Einheit, Prompt-Bibliothek, Design-System, K1–K3-Umsetzungspfad), Suite-Portal-Zielbild, offene Entscheidungen |
 | 1.1 | 03.07.2026 | Umzug ins Meta-Repo UIQ-Suite (Single Source, Entscheidung №1 ✓); §4 Prioritäten-Wirbelsäule (Build- vs. Denk-Kapazität, UIQ Phase 0 = Leitprojekt, Claude-Warnpflicht); §5 Suite-SWOT Meta-Ebene (Claude + Gemini-Cross-Check) |
+| 1.2 | 06.07.2026 | §3.6 Web-Präsenz & Rechtsseiten (Domain-Architektur, Impressum/Datenschutz/Kontakt/FAQ, i18n-Suite-Regel DACH-first, Corporate Identity, Content-Governance mit Single-Source-Prinzip) + §3.7 Timeframe Design/Web-Rollout in vier Phasen D0–D3 (D0 Sammelbecken sofort, D2 Rollout gekoppelt an UIQ v2.0 Q4 2026 — bewusste Effizienz-Kopplung, keine Doppelarbeit im v1.x-Monolithen). Backlog-Punkt №6 ergänzt. |
