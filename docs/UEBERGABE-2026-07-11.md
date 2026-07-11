@@ -170,7 +170,39 @@ SUITE.md Backlog-Punkt №13 dokumentiert:
 
 ---
 
-*Ende Übergabeprotokoll 11.07.2026. Ein sehr produktiver Tag — von der Präsentation über
-sechs abgeschlossene Pareto-Punkte bis zum verifizierten ETF-Holdings-Proof-of-Concept.
-Nächste Session: neuer Chat, neuer PAT. Vorschlag für den Einstieg: RS-Rating (Backlog №14,
-hoch priorisiert) oder weitere Sektor-Holdings-Dateien, je nachdem was Axel vorbereitet hat.*
+---
+
+## 6. NACHTRAG (spätabends, nach Session-Abschluss): Konkurrenzanalyse Deepvue/Trendspider
+
+Auf Axels Wunsch (Präsentations-Feedback-Punkt d) noch am selben Abend per Browser
+recherchiert: deepvue.com + trendspider.com gesichtet, plus Deepvues **eigene**
+Vergleichstabelle ("How Deepvue Compares 2026" gegen TradingView/MarketSurge/TC2000/
+Finviz/TrendSpider, als HTML-Upload von Axel).
+
+**Belegte Kernfunde:**
+- **Deepvue hat null Optionsanalyse** — in der eigenen Vergleichstabelle steht bei
+  "Options analytics" ein "—" für Deepvue (TradingView ✓, Finviz "Best-in-class").
+- **Deepvue hat keine Backtesting-Engine** (Trendspiders Alleinstellungsmerkmal:
+  Strategy Tester, 50J Historie, 30K Candles).
+- Deepvue ist aktuell **100% US-Aktien** — Crypto/Forex/Futures/Int'l alle "on roadmap".
+- Die proprietären **1-99-Ratings (RS/EPS/Composite)** haben laut Tabelle nur Deepvue
+  und MarketSurge nativ — TradingView/Finviz/Trendspider nicht ("Build-your-own").
+  → Bestätigt die RS-Rating-Priorisierung (№14) unabhängig.
+- Keiner der fünf Player unterstützt europäische KO-Zertifikate.
+
+**Strategische Schlussfolgerung (mit Axel besprochen):** UIQ konkurriert nicht auf
+Datenbreite/Charting/Mobile — aber die Kombination *Optionsstrategie-Timing +
+IBD/Minervini-Ratings + KO-Zertifikate in einem Tool* ist eine echte, unbesetzte
+Marktlücke, die keiner der fünf großen Player abdeckt.
+
+**Konsequenz → neuer Backlog-Punkt №15 (SUITE.md v2.1):** IV-Rank/Percentile pro
+Einzeltitel — wichtigste Wheel/CSP/CC-Timing-Kennzahl, fehlt Deepvue komplett.
+Priorisiert **direkt nach RS-Rating (№14)**. Datenquellen-Frage (IBKR-Optionsketten
+vs. yfinance) vor Bau zu klären; IV-Rank-Methodik aus Axels Options-Screener v3.4
+als Vorarbeit vorhanden. Weitere Ideen niedrigerer Priorität im Backlog-Text:
+Sektor-Rang-Historie (baut auf heutigem RS-Widget auf), Strategie-Ampel als
+"kuratierte Presets" positionieren, Track Record als Differenzierer (ab ~16.07.
+beweisbar — keiner der fünf Player wirbt mit verifiziertem Ex-post-Track-Record).
+
+*Damit endgültig Feierabend — 11.07.2026 war ein voller Erfolg auf ganzer Linie.*
+
