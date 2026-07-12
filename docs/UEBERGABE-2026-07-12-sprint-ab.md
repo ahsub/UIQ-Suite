@@ -177,6 +177,16 @@ Behauptung.
    Stooq/Tiingo empfohlen, nicht umgesetzt), unbesetzte Nische
    (Options-Timing + Minervini + KO-Zertifikate) als größte Stärke.
 
+7. **`daily_market_snapshot`-Cache (SWOT-Punkt S5, Beta-Blocker) — wird
+   13.07.2026 von Axel selbst implementiert, NICHT von einer Claude-Session
+   aufgreifen.** Architektur-Hinweis für Konsistenz: sollte sich als
+   weiterer Layer-Aufruf in `main()` einreihen (analog `reg_vp_layer`/
+   `cluster_layer` von heute — try/import/`run()`/except-Fallback), vor dem
+   finalen KV-Push. Owner triggert alle Tier-1-API-Calls, Ergebnis in KV,
+   Beta-Tester lesen nur aus KV. **Falls eine künftige Session dies im
+   Backlog vorfindet und der Cache bereits existiert: erst prüfen ob Axels
+   Implementierung schon läuft, bevor irgendetwas daran verändert wird.**
+
 ---
 
 ## Technische Referenzen für Folge-Sessions
