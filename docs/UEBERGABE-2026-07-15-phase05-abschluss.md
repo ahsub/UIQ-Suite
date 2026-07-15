@@ -231,6 +231,47 @@ Session** — nicht in Phase-0.5-Sprint mit hineingezogen.
    Bestaetigung). Bei naechster Gelegenheit: Hard-Refresh + Durchklicken der
    Panels empfehlenswert, bevor mit neuen Features weitergemacht wird.
 
+---
+
+## NACHTRAG (15.07.2026, Abend) — zwei kritische Bugs per Browser-Konsole gefunden
+
+Axel hat noch vor dem Schlafengehen v348 im echten Browser getestet (genau
+die in Punkt 5 oben empfohlene Verifikation) und ZWEI Fehler gefunden, die
+beide aus der heutigen Session stammen und von den node-basierten Tests
+NICHT gefangen wurden:
+
+1. **`Uncaught ReferenceError: switchToPanel is not defined`** — in
+   `renderGateWidget()` (Arbeitspaket D) wurde eine nicht-existente Funktion
+   `switchToPanel()` aufgerufen statt der tatsaechlich existierenden
+   `showPanel()`. Betraf ALLE 8 klickbaren Strategie-Ampel-Chips (Value +
+   die 7 aus AP D) — jeder Klick loeste den Fehler aus statt zu navigieren.
+
+2. **`Uncaught SyntaxError: Export 'getFocus' is not defined in module`**
+   (ko-strategies.js) — beim Entfernen von `getFocus()`/`getLabelList()` im
+   heutigen Dead-Code-Audit wurde nur die `const`-Definition entfernt, NICHT
+   die `export {...}`-Zeile am Dateiende, die diese Namen weiterhin
+   auflistete. Das ist im Browser (ES-Modul-Kontext) ein FATALER Ladefehler
+   beim Modul-Parse — betraf vermutlich saemtliche KI-Strategie-Buttons quer
+   durchs Interface.
+
+**Beide behoben, Commits:** axel-scanner `2653aec` (v349), ko-modules
+`6b69795`.
+
+**Wichtige Lektion fuer kuenftige Sessions:** `node --check` reicht NICHT
+aus, um ES-Modul-Export-Fehler (`export {...}`-Statements) zuverlaessig zu
+pruefen — Node behandelt `.js`-Dateien standardmaessig als CommonJS und
+prueft `export`-Syntax nicht wie ein echter Browser-Modul-Loader. Bei
+Aenderungen an `<script type="module">`-Dateien (aktuell: `ko-strategies.js`,
+evtl. andere) kuenftig zusaetzlich pruefen: `node --input-type=module -e "$(cat datei.js)"`
+oder eine `.mjs`-Kopie mit `node --check`. Reines `node --check` auf der
+`.js`-Datei haette diesen Fehler nicht gefangen (wurde in dieser Session
+faelschlich als ausreichend behandelt).
+
+**Positiv zu vermerken:** Genau der in Punkt 5 oben empfohlene Schritt
+("Hard-Refresh + Durchklicken der Panels") hat beide Bugs sofort sichtbar
+gemacht — die Empfehlung war richtig, und Axel hat sie noch am selben Abend
+befolgt, bevor Schaden im laufenden Betrieb entstehen konnte.
+
 ## Strategische Entscheidungen dieser Session (zur Erinnerung)
 
 - **Watchdog-PAT ≠ Session-PAT** — unabhaengige Credentials, nicht verwechseln.
