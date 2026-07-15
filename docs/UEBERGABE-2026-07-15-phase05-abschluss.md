@@ -272,6 +272,52 @@ faelschlich als ausreichend behandelt).
 gemacht — die Empfehlung war richtig, und Axel hat sie noch am selben Abend
 befolgt, bevor Schaden im laufenden Betrieb entstehen konnte.
 
+---
+
+## NACHTRAG 2 (15.07.2026, Abend) — dritter Bug: KI-Optionsverfallsdatum falsch berechnet
+
+Axel hat beim Testen einen ATM-CSP-Kandidaten (EIC-Modus, Alpha Desk/Deep-Dive)
+geprüft und einen inhaltlichen (nicht nur technischen) Fehler gefunden:
+KI-Ausgabe zeigte "3. Aug 2026 (~30 DTE)" — vom tatsächlichen Erstellungs-
+datum (15.07.2026) aus sind es aber nur ~19 Tage, UND der 3.8.2026 ist ein
+Montag, kein regulärer US-Options-Verfallstag (die liegen freitags).
+
+**Root Cause:** Im gesamten Prompt-Kontext (`marktkontext`-String, der an
+alle KI-Strategie-Analysen übergeben wird) fehlte JEDES Datums-Anker — kein
+"heutiges Datum", keine Zeitangabe irgendeiner Art. Die KI musste "heute"
+implizit aus ihrem eigenen, veralteten Trainingswissen raten. Genau dasselbe
+Grundmuster wie die vielen Datenlücken-Bugs dieser Woche: KI bekommt
+unvollständigen Kontext, kompensiert mit einem Bestem-Wissen-Rateversuch,
+der objektiv falsch ist.
+
+**Fix (axel-scanner v350, ko-modules@b7a9e52):** Neue Funktion
+`calc3rdFridayExpiration(targetDte)` berechnet das ECHTE Ziel-Verfallsdatum
+vollständig client-seitig (findet den tatsächlichen 3. Freitag des
+nächstliegenden Monats, wählt den Kandidaten mit geringstem Abstand zum
+DTE-Ziel) — die KI muss dieses Datum nicht mehr selbst berechnen, sondern
+bekommt es fertig im Prompt. "Heutiges Datum" wird jetzt zusätzlich in
+ALLEN drei KI-Prompt-Kontexten übergeben (Watchlist-Top-Performer,
+Options-Desk-Strategie-Buttons, Value-Strategie), unabhängig vom
+Options-Bezug — hilft generell gegen jede Form von Datums-Verwirrung.
+`ko-strategies.js`s atmna-Prompt-Text wurde angepasst, damit die KI das
+bereitgestellte Datum tatsächlich VERWENDET statt es zu ignorieren und
+trotzdem eigenständig zu rechnen.
+
+Funktional getestet mit fixiertem Testdatum (15.07.2026 → korrekt
+21.08.2026, verifizierter Freitag, 37 DTE). **Nicht im echten Browser mit
+einem echten KI-Call verifiziert** — die nächste tatsächliche ATM-CSP-
+Analyse sollte geprüft werden, ob das Datum jetzt korrekt übernommen wird
+(nicht nur ignoriert/weiterhin selbst berechnet).
+
+**Wiederkehrendes Muster, das für kommende Sessions relevant bleibt:** Jede
+Aufgabe, die objektiv berechenbar ist (Datum, Datumsarithmetik, Preis-
+Rundung, Score-Vergleiche), sollte möglichst NICHT der KI überlassen werden
+— sondern client-/server-seitig berechnet und der KI als fertiger Wert im
+Prompt übergeben. Die KI ist gut in Interpretation und Sprache, schlecht in
+harter Arithmetik ohne Anker. Diese Session hat das mehrfach bestätigt
+(PCR-Feldpfad, Fear&Greed-Race-Condition heute Vormittag, jetzt das
+Verfallsdatum).
+
 ## Strategische Entscheidungen dieser Session (zur Erinnerung)
 
 - **Watchdog-PAT ≠ Session-PAT** — unabhaengige Credentials, nicht verwechseln.
