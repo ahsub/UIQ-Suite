@@ -106,6 +106,46 @@ Nutzung) die Marge auf, statt sie zu vergrößern.
 
 ---
 
+## 4a. BYOK vs. All-Inclusive — zwei Preismodelle, kein Entweder-Oder
+
+**Ausgangslage (17.07.2026):** UIQ nutzt bereits heute "Bring Your Own Key"
+(BYOK) — jeder Nutzer hinterlegt seinen eigenen Anthropic-API-Key im
+Einstellungs-Tab. UIQ trägt aktuell KEINE KI-Token-Kosten für andere Nutzer.
+Das ist kein zukünftiges Konzept, sondern der Status quo.
+
+**Die eigentliche Entscheidung:** Soll BYOK das dauerhafte, einzige
+Geschäftsmodell bleiben (reine Plattform-Miete), oder wird zusätzlich ein
+All-Inclusive-Modell mit eingepreisten KI-Kontingenten angeboten?
+
+**Abwägung:**
+
+| | BYOK (reine Plattform-Miete) | All-Inclusive (Kontingent im Preis) |
+|---|---|---|
+| Kostenrisiko für UIQ | Keins — variable KI-Kosten aus Block B entfallen komplett | Trägt Block B, muss im Preis eingepreist sein |
+| Preisgestaltung | Einfach — reine Fixgebühr, nutzungsunabhängig | Komplexer — muss Nutzungsschwankungen abfedern |
+| Zugangshürde für Nutzer | **Hoch** — eigenes Anthropic-Konto, Kreditkarte, Guthaben, technisches Verständnis von "Tokens"/Rate Limits nötig | **Niedrig** — zahlt einen Betrag, alles läuft transparent im Hintergrund |
+| Passt zur Zielgruppe (Freunde/Verwandte, "Bauch-Empfehlung"-Sucher) | Schlecht — genau diese Zielgruppe scheitert eher an der Hürde | Gut — kein technisches Vorwissen nötig |
+| Passt zu technisch versierten Beta-Testern | Gut — wer bereits einen API-Key hat (z.B. für Claude Code), hat keine Hürde | Neutral |
+
+**Empfehlung: Hybrid-Modell, kein Entweder-Oder.**
+
+- **BYOK-Tarif** (niedrigerer Plattform-Preis, nur Marktdaten-/Infrastruktur-
+  Kosten gedeckt) — für technisch versierte Nutzer, bestehende Beta-Tester,
+  preissensible Nutzer die bereits einen API-Key haben
+- **All-Inclusive-Tarif** (höherer Preis, deckt Block A + Block B) — für
+  die eigentliche Zielgruppe (Freunde/Verwandte ohne technischen Hintergrund,
+  die eine "mittelbare Empfehlungsinstanz auf wissenschaftlich fundierter
+  Basis" suchen, siehe Chat-Protokoll 17.07.2026) — genau diese Zielgruppe
+  ist die, für die BYOK die größte Hürde darstellt
+
+Diese Zweiteilung löst gleichzeitig zwei Probleme: sie hält das Kostenrisiko
+für preissensible/technische Nutzer niedrig UND macht das Produkt für die
+eigentlich intendierte Zielgruppe (nicht-technische Freunde/Verwandte)
+zugänglich, ohne dass UIQ das volle KI-Kostenrisiko für ALLE Nutzer tragen
+muss.
+
+---
+
 ## 5. Finanzierungswege — rechtliche Einordnung
 
 | Weg | Charakter | Regulatorischer Aufwand |
