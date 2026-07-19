@@ -41,6 +41,7 @@ Die Suite bildet den vollständigen Lebenszyklus eines selbstentscheidenden Priv
 6. **Datensouveränität.** Browser-first; Depot- und Steuerdaten verlassen den Rechner des Nutzers nicht. Kein Suite-Server hält Nutzerdaten.
 7. **Belegkette.** Jeder ausgewiesene Wert ist rückführbar auf Datenzeile, Modul und Rechts-/Datenquelle.
 8. **Governance-Muster.** Jedes Modul führt `docs/STRATEGIE.md` + `docs/ROADMAP.md` (versioniert, Fortschreibung Claude), Entscheidungen laufen durch den Vier-Fragen-Filter (Belegkette / 80-20 / ES6-Modularität / Compliance). Deploy nach Zwei-Vorgänge-Prinzip: GitHub = Quellcode, Cloudflare-Pages-Zip = Publikation.
+9. **Debug-Protokoll (Laufzeit-Bugs).** Bei jedem Laufzeit-Bug gilt zwingend: **IMMER zuerst Konsolen-Check, dann Code anfassen. Kein Fix ohne bewiesene Root Cause.** Weder Claude noch Axel tippen Code-Änderungen ins Blaue — erst das Symptom im Browser-/Aggregator-Log sichern, dann gezielt fixen. Herleitung: Strategie-Ampel-Farb-Diskrepanz (v354–v364, 4 Fehlversuche) — die korrekte Root-Cause (`ko:regimeChanged` nicht dispatched nach `calcStrategyGates()`) war erst nach explizitem Console-Diagnostic sichtbar.
 
 ---
 
