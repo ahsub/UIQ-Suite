@@ -159,3 +159,31 @@ market_context gebaut — 19 Faktoren | risk_level: high | caution: treasury_str
 - **ko-modules:** v1.3.1 (ko-indicators-loader.js), v2.2.0 (ko-indicators.json)
 - **ko-aggregator:** v5.12.4 (letzter Stand 19.07.2026)
 - **Track Record:** läuft seit 02.07.2026
+
+---
+
+## Block 5: MCM-Parität Aggregator/Client (Konzept, Sprint morgen)
+
+**Problem:** `build_server_market_context()` berechnet nur 5/9 MCM-Faktoren.
+4 fehlen: `ndx_breadth`, `intermarket_score`, `treasury_stress`, `bull_indicator`.
+→ KV-Snapshot hat `downgrades: []` obwohl Client 3 Downgrades berechnet.
+→ KI-Text im MB zeigt momentum/swing grün, Live-Ampel rot.
+
+**Root Cause:** Diese 4 Werte kommen client-seitig aus `loadIntermarket()` / 
+`calcBullIndicator()` — hatten bisher kein Server-Äquivalent (bewusst als Backlog 
+dokumentiert in `build_server_market_context()` Docstring).
+
+**Alle Daten liegen bereits im Aggregator vor:**
+- `hist_data`: SPY, QQQ, HYG, TLT, NDX-Titel
+- `market["iosMarket"]`: IOS-Market-Score
+- `market["fearGreed"]`: Fear&Greed
+- `market["moveIndex"]`: MOVE-Index
+- `market["snapshot"]`: Gold, Copper, Yields
+
+**Sprint-Plan morgen (vor ko-prompts-registry):**
+1. JS-Funktionen exakt lesen (loadIntermarket, calcTreasuryStress, calcBullIndicator)
+2. Python-Ports implementieren (4 neue Funktionen)
+3. `build_server_market_context()` erweitern
+4. Aggregator v5.13.0 deployen + manuellen Run verifizieren
+
+**Konzept-Dokument:** `docs/MCM-PARITAET-KONZEPT.md`
