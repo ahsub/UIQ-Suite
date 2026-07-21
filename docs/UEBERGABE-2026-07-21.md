@@ -157,3 +157,48 @@ SUITE.md:                   v3.0    (Commit 40bc7c96)
 - PAT nach Session löschen: Einstellungen → Developer Settings → Personal access tokens
 - IWV-Update: erste August-Session nicht vergessen
 
+
+---
+
+## BLOCK 5: KIMI SCORING-ANALYSE — DESTILLAT (Nachtrag, ~17:00 UTC)
+
+KIMI analysierte UIQ-Scoring-System vollständig. Ausführliche Analyse mit Pseudocode und mathematischen Formulierungen (Bayes'scher Update-Mechanismus, Regime-Modifikatoren, VCP-Completeness-Index).
+
+### Sofort verwertbar (P0 für nächste Session)
+
+**1. CC-Scoring von CSP differenzieren** — echter Design-Fehler, beide Strategien nutzen aktuell `score_options_covered_call()` mit identischer Logik. KIMI-Analyse bestätigt: fundamental verschiedene Risikoprofile.
+
+CC-spezifische Anpassungen (Pseudocode bereit):
+- RSI-Optimum: 60-75 statt 45-55 (CC toleriert moderate Überhitzung, CSP will Überverkauf)
+- HVP Sweet Spot: 40-75 statt 30-65 (CC profitiert von etwas höherer IV)
+- Fib-Logik: RETRACEMENT bevorzugen (Bestandsmanagement), nicht EXTENSION (Einstieg)
+- Neues Gate: Kurs 0.95-1.15 × EMA50 (CC braucht weder Crash noch Explosion)
+- Regime: Side +25 > Bull +20 (Seitwärts = idealer CC-Kontext)
+
+**2. VCP: Volumen-Contraction speichern** — heute durch Alpha-Desk-Tests bestätigt (KI sagt "MACD/Volumen fehlen"). KIMI-Analyse: VCP ohne Volumen-Bestätigung ist "nur ein schönes Chartbild".
+
+Konkrete Ergänzungen in `calc_vcp()`:
+- `vcpVolContraction`: Volumen während letzter Contraction / 20T-Durchschnitt (<0.6 = stark getrocknet → +15 Pts)
+- `vcpBreakoutVol`: volRatio am letzten Bar (>2.0× = bestätigt → +15 Pts, >1.5× → +10, >1.2× → +5)
+- Neue Maximalpunktzahl ~125 → Score bleibt auf 100 skaliert, LB-Schwelle prüfen
+
+**3. Breakout: Tightness-Metrik** (P1, nach Backlog-Review):
+- %Range der letzten 5-10 Tage < 3-5% = Mark Minervinis "Tightness"-Konzept
+- Berechenbar aus vorhandenen `high/low`-Zeitreihen in `calc_vcp()`
+- Ziel: +10 Pts für enge Konsolidierung vor Ausbruch
+
+### Für späteren Zeitpunkt (nicht jetzt)
+
+- Regime-abhängige Gate-Toleranzen → nach 60 Tagen Track Record (September)
+- Meta-Layer Konvergenz-Scoring → Phase 3
+- Bayes'scher Update-Mechanismus → frühestens nach 100 abgeschlossenen Trades mit Exit-Datum + Return-%
+
+### Track-Record-Voraussetzung für Bayes
+
+Track-Record-Layer (läuft seit 02.07.2026) muss für Bayes später folgende Felder pro Trade enthalten:
+- `exit_date` (noch nicht implementiert — nur Entry-Snapshot)
+- `return_pct` (berechnet aus Entry/Exit)
+- `active_metrics_at_entry` (welche Score-Gates waren beim Entry erfüllt)
+
+Das ist eine Backlog-Aufgabe für Phase 1 / September.
+
