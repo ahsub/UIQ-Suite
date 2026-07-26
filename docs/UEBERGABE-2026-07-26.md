@@ -195,7 +195,14 @@ versionierter, stabiler Vertrag (`v: 3` im Header) verfügbar, falls
 | 🟡 | **Lesepfad `market-snapshot-latest`** — Browser-Test steht aus | ungeklärt |
 | 🟡 | **`tr_backup.py` gegen `market-*`** — läuft erst Samstag | ungetestet |
 | 🟢 | `TR_BACKUP_FORCE`-Input im Workflow → Backup jederzeit testbar | Idee |
-| 🟢 | Ping-Keys `marketping`/`market_ping`/`market-ping` im KV aufräumen | Kosmetik |
+| 🟡 | **Verwaiste KV-Keys löschen** (siehe unten) | offen |
+
+**Orphans im KV nach dem Schema-Rückbau — manuell im CF-Dashboard löschen:**
+`market-snapshot-latest`, `market-snapshot-2026-07-24`, `marketping`,
+`market_ping`, `market-ping`. Sie werden von nichts mehr geschrieben oder
+gelesen, tauchen aber im Samstags-Backup auf, solange sie existieren
+(Prefix `market:` greift bei ihnen allerdings **nicht** — sie landen also
+auch nicht im Backup). Reine Aufräumarbeit, kein Funktionsrisiko.
 
 ### Zum Lesepfad
 
@@ -250,13 +257,35 @@ mit Doppelpunkten.
 Doppelpunkt→Bindestrich) waren Lösungen für ein Problem, das es nie gab.
 Der KV-Write hat **nie** versagt.
 
-**Schema-Entscheidung:** `market-*` bleibt bei Bindestrichen. Ein Rückbau
-auf `market:snapshot:*` würde drei Dateien und einen weiteren Lauf kosten,
-bei null Gewinn. Die Abweichung vom `tr:`-Schema ist **historisch, nicht
-technisch begründet** — das gehört so in `SUITE.md`.
+**Schema-Entscheidung — REVIDIERT am selben Tag (Run #156, 20:00 UTC):**
 
-Das URL-Encoding (`quote()`) in `push_to_cloudflare_kv()` und `tr_backup.py`
-bleibt ebenfalls drin: unnötig, aber korrekt und harmlos.
+Zunächst sollte `market-*` bei Bindestrichen bleiben („Rückbau lohnt nicht").
+Das war falsch begründet. Der Rückbau auf `market:snapshot:*` wurde
+durchgeführt, weil:
+
+1. Der Snapshot hatte **noch keine Consumer** — die CapTrader-App nutzt
+   `master_market_data`. Das Zeitfenster war offen und wird nie billiger.
+2. Eine spätere Umbenennung hätte einen **stillen Fehlermodus** erzeugt:
+   `push_to_cloudflare_kv()` löscht keine alten Keys. Consumer auf dem alten
+   Namen bekämen den letzten Snapshot vor der Umbenennung — dauerhaft
+   eingefroren, ohne 404, ohne Warnung. Für eine Trading-App der
+   unangenehmste denkbare Fehler.
+3. Eine dokumentierte Inkonsistenz bleibt eine Inkonsistenz. Der Anlass war
+   ein Denkfehler, kein Designgedanke.
+
+**Wichtige Präzisierung zum Beweis:** Der Ping-Test in #154 testete
+`marketping`/`market_ping`/`market-ping` — **keiner davon enthält
+Doppelpunkte**. Was Doppelpunkte belegt, ist `tr_layer.py`: `_kv_url()`
+(Z.50-53) baut die URL **ohne jedes Encoding** und schreibt/liest damit seit
+Wochen `tr:snap:*`, `tr:eval:*`, `tr:index`, `tr:stats`.
+
+Deshalb wurde `push_to_cloudflare_kv()` exakt auf dieses Verhalten
+zurückgesetzt — **URL-Encoding entfernt**, ebenso in `tr_backup.py`. Eine
+`%3A`-Kodierung wäre eine ungetestete Abweichung vom bewiesenen Pfad gewesen.
+
+Ebenfalls bereinigt: das Prefix-Tupel in `tr_backup.py` war durch die
+Diagnose-Commits auf `("tr:", "market", "marketping", "market_")` angewachsen
+→ zurück auf `("tr:", "market:")`.
 
 ### 6.3 Grundgesetz 9 (Konsolen-Check) gilt auch für Aggregator-Läufe
 
@@ -304,6 +333,8 @@ filtert direkt auf Präfixe wie `[MARKET]` oder `[TR]`.
 | `abd93b03`–`66ee2cd2` | 09:11–10:16 | Diagnose-Logging + Ping-Keys |
 | `332d6c2b` | 11:05 | **`tr_layer.py`: exitDate + Flag-Reihenfolge** ⭐ |
 | `11ee8926` | 11:28 | **Schema v3 — Options-Feldset** |
+| `e633f269` | 20:00 | **Key-Schema zurück auf `market:snapshot:*`** + Encoding raus ⭐ |
+| `8cdf4cba` | 20:00 | `tr_backup.py` Prefix `("tr:", "market:")`, Encoding raus |
 
 ### `ahsub/axel-scanner`
 
@@ -313,6 +344,7 @@ filtert direkt auf Präfixe wie `[MARKET]` oder `[TR]`.
 | `d1fcc81e` | 08:09 | **36 KV-Felder in `kvToScannerState()`** ⭐ |
 | `bfdce748` | 08:38 | Version-Tag → `20260726-v403` |
 | `cd247a72` | 09:00 | Bridge auf `market-snapshot-*` |
+| `3e02eef0` | 20:00 | **Bridge zurück auf `market:snapshot:*` — v404** |
 
 > **Hinweis:** In `ko-aggregator` gab es um 14:27–14:32 drei Commits zu
 > `src/components/koAggregatorBridge.js` (angelegt, geändert, gelöscht).
@@ -353,7 +385,7 @@ wertvoller als die Ticker-Ebene.
 Nachtlauf Montag 03:37 UTC. Im Log zu prüfen:
 
 ```
-[MARKET] ✅ market-snapshot-{tday} + market-snapshot-latest — 700 Ticker, 40 Felder/Ticker
+[MARKET] ✅ market:snapshot:{tday} + market:snapshot:latest — 700 Ticker, 40 Felder/Ticker
 ```
 
 - **40 Felder** (nicht 25) → Schema v3 ist live
