@@ -1,4 +1,4 @@
-# ÜBERGABE 2026-08-01 — UIQ Suite Session
+# ÜBERGABE 2026-08-01 (final) — UIQ Suite Session
 
 ## ⚠️ UEBERGABE-HEADER-REGEL
 Alle Angaben in diesem Protokoll sind **unverified** bis zur eigenständigen
@@ -11,43 +11,55 @@ Bestätigung in der nächsten Session. Claude muss proaktiv fragen:
 
 | Komponente | Stand | SHA |
 |---|---|---|
-| **Frontend** | **v419** | `5cf9104afa` |
+| **Frontend** | **v420** | `da8289e3be` |
 | ko-trackrecord.js | bugfix (export entfernt) | `ac331b8f7b` |
-| ko-prompts.js | v2.5.0 (unverändert) | `84611613` |
-| SUITE.md | v3.1 (unverändert) | `3f54638fd2` |
-| GHA letzter Run | #167 — ✅ success | 29.07.2026 15:31 UTC |
-| Aggregator | v5.x (unverändert) | `427f9295df` |
+| ko-prompts.js | v2.5.0 | `84611613` |
+| **SUITE.md** | **v3.2** | `d74325c19f` |
+| **Aggregator** | **v5.20.0** | `bb569023d9` |
+| GHA letzter Run | #174 — ✅ success | 01.08.2026 06:15 UTC |
 | IWV Holdings | 24.07.2026 | `d63d29e9b5` |
 
 ---
 
-## Heutige Session — Was wurde gebaut (alle Commits verifiziert)
+## Session 01.08.2026 — vollständige Commit-Liste
 
-### axel-scanner (3 Commits)
-- `665ab4556f` — **v417**: DE-Modus Erweiterung
-  - TRADEGATE_MAP: +18 verifizierte Einträge (BRKB→BRY, KO→CCC3, PG→PGG,
-    PM→PM1, C→CIT, CSCO→CSC0, T→RHAT, TMUS→T1MU, CMCSA→CBC3, SPGI→SPG1,
-    BX→BXD, ABNB→AB9, LULU→LUL, BIIB→BII, MO→PHM1, WM→WM2, CI→CI1, GD→GD1)
-  - TG-Premarket Preset: `Object.keys(TRADEGATE_MAP)` → feste `TG_PRESET_IWV100`
-    (100 Titel nach IWV-Gewichtung Stand 24.07.2026)
-  - Stocks ohne Map-Eintrag nutzen US-Ticker+.F-Fallback (UNH.F, LIN.F etc.)
-  - Duplikate in alter Map bereinigt (AMZN, TSLA, PYPL standen doppelt)
-- `f2afbbcebc` — **v418**: CDN-Hash ko-trackrecord `a3d667c9`→`ac331b8f`
+### axel-scanner (5 Commits)
+- `665ab4556f` — **v417**: DE-Modus: TRADEGATE_MAP +18, TG-Preset IWV Top-100
+- `f2afbbcebc` — **v418**: ko-trackrecord CDN-Hash `a3d667c9`→`ac331b8f`
 - `5cf9104afa` — **v419**: autoSyncOnStart 401 Fix
+- `da8289e3be` — **v420**: updateScoreDivergenceDisplay TypeError Fix
 
 ### ko-modules (1 Commit)
-- `ac331b8f7b` — **ko-trackrecord.js bugfix**: nacktes `export { TrackRecord }`
-  entfernt — war inkompatibel mit klassischem `<script>`-Tag (kein `type="module"`)
-  → `Uncaught SyntaxError: Unexpected token 'export'`
+- `ac331b8f7b` — ko-trackrecord.js: `export{}` entfernt (SyntaxError fix)
+
+### ko-aggregator (1 Commit)
+- `bb569023d9` — **v5.20.0**: net_liquidity MCM-Parität geschlossen
+
+### UIQ-Suite (2 Commits)
+- `e59333706d` — UEBERGABE-2026-08-01.md (Zwischen-Protokoll)
+- `d74325c19f` — SUITE.md v3.2
 
 ---
 
-## Bugfixes diese Session
+## Was wurde gebaut
 
+### Feature: DE-Modus Erweiterung (v417)
+- TRADEGATE_MAP: +18 verifizierte Einträge
+- TG-Premarket Preset: IWV Top-100 statt nur TRADEGATE_MAP-Keys
+- Live verifiziert im Browser: `getTradegateSym('KO')` → CCC3 ✅ etc.
+
+### Feature: MCM-Parität vollständig (aggregator v5.20.0)
+- `net_liquidity` als letzter fehlender Faktor ergänzt
+- `_MCM_SIGNAL_RULES["net_liquidity"]`: caution wenn trend_4w ≤ 0
+- `build_server_market_context()`: liest `fredMacro.net_liquidity.trend_4w`
+- Alle 10 Kern-Faktoren + 3 Calendar jetzt Server↔Client-parität
+
+### Bugfixes (v418–v420)
 | Bug | Root-Cause | Fix |
 |---|---|---|
-| `SyntaxError: Unexpected token 'export'` in ko-trackrecord.js | `export { TrackRecord }` am Dateiende — nur in ES-Modulen erlaubt, nicht in klassischen `<script>`-Tags | Zeile entfernt; `window.TrackRecord`-Fallback war bereits korrekt |
-| `GET /sync/status 401` beim App-Start | `autoSyncOnStart()` rief `/sync/status` ohne `X-UIQ-Token`-Header auf; kein `hasToken()`-Guard | `if (!KoSync.hasToken()) return;` + `{ headers: KoSync._headers() }` ergänzt |
+| SyntaxError ko-trackrecord | `export{}` im classic `<script>` | Zeile entfernt |
+| 401 autoSyncOnStart | kein Auth-Header + kein hasToken()-Guard | `_headers()` + Guard |
+| TypeError updateScoreDivergenceDisplay | `divs.slice()` self-reference | vollständiger Pfad |
 
 ---
 
@@ -57,39 +69,44 @@ Bestätigung in der nächsten Session. Claude muss proaktiv fragen:
 |---|---|
 | ko-trackrecord.js | `ac331b8f` |
 | ko-prompts.js | `84611613` |
-| ko-strategies.js | `5dc8356088` (unverändert) |
-| ko-indicators-loader.js | v1.4.0 (unverändert) |
+| ko-strategies.js | `5dc8356088` |
+| ko-indicators-loader.js | v1.4.0 |
 
 ---
 
 ## Backlog-Status nach dieser Session
 
 ### ✅ Heute erledigt
-| Was | |
+| # | Was |
 |---|---|
-| DE-Modus P1: TRADEGATE_MAP Erweiterung + IWV Top-100 Preset | v417 |
-| Bugfix ko-trackrecord SyntaxError | v418 |
-| Bugfix autoSyncOnStart 401 | v419 |
+| #25 | DE-Modus: TRADEGATE_MAP +18 + IWV Top-100 Preset |
+| #17 | MCM-Parität vollständig (net_liquidity als letztes Puzzlestück) |
+| — | 3 Bugfixes (v418–v420) |
 
 ### ⏳ Nächste Sprints (Prio-Reihenfolge)
 | Prio | Was |
 |---|---|
-| 🟡 P1 | **DE-Modus Verifikation**: neue TRADEGATE_MAP Symbole im Live-Test prüfen (KO→CCC3.F, CSCO→CSC0.F, BRKB→BRY.F) — beim nächsten TG-Fenster (08–22 Uhr MEZ) |
-| 🟡 P2 | **MCM-Parität**: `build_server_market_context()` 4 fehlende Faktoren |
-| 🟡 P3 | **Track-Record Phase C**: h30-Daten ab 01.08. auswertbar — Matrix im EIC prüfen |
+| 🟡 P1 | **Track-Record Phase C live prüfen** — EIC-Modus → Track-Record-Tab öffnen, tr:stats Matrix prüfen (h30-Daten ab 01.08. vorhanden?) |
+| 🟡 P2 | **vix/vix_term/mse_regime KV-Datenlücken** — Client-MCM zeigt 7/10 Kern (fehlend: vix,vix_term,mse_regime); erhöht dataQuality auf 10/10 |
 | 🟡 P3 | Strategie-Ampel-Reihenfolge (#13a) + CC als 12. Slot |
 | ⏳ | OpenBB IV-Rank (#15) — erst ab 12.08. |
 
+### 📋 Neu identifiziert (noch kein Backlog-Item)
+- `[sendMacroState] Breadth null` — Timing-Problem, `_nasdaqBreadthData`
+  beim ersten Aufruf noch nicht geladen; kein kritischer Bug
+
 ---
 
-## Offene Verifikationsaufgabe (für nächste TG-Session)
-Die 18 neuen TRADEGATE_MAP-Einträge wurden aus institutionellem Wissen
-abgeleitet — **nicht live verifiziert** (Yahoo Finance + Tradegate blockieren
-Server-Side-Fetch). Beim nächsten Tradegate-Scan bitte 2–3 stichprobenartig
-im TV-Chart kontrollieren:
-- KO → CCC3 (Coca-Cola auf Tradegate)
-- CSCO → CSC0 (Cisco, Null nicht O)
-- BRKB → BRY (Berkshire B)
+## Technische Hinweise
+
+### TRADEGATE_MAP Verifikation
+18 neue Einträge aus institutionellem Wissen — live verifiziert:
+KO→CCC3 ✅, CSCO→CSC0 ✅, BRKB→BRY ✅, PG→PGG ✅, T→RHAT ✅
+Bei nächstem TG-Scan weiter stichprobenartig prüfen.
+
+### MCM Console-Log Erwartung (nach v5.20.0 nächster GHA-Lauf)
+`net_liquidity` sollte nicht mehr als `caution`-Flag ohne Server-Pendant erscheinen.
+dataQuality bleibt bei 7/10 bis vix/vix_term/mse_regime-Lücken geschlossen werden.
 
 ---
 
