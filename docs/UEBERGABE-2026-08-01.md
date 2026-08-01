@@ -1,4 +1,4 @@
-# ÜBERGABE 2026-08-01 (final) — UIQ Suite Session
+# ÜBERGABE 2026-08-01 (FINAL) — UIQ Suite Session
 
 ## ⚠️ UEBERGABE-HEADER-REGEL
 Alle Angaben in diesem Protokoll sind **unverified** bis zur eigenständigen
@@ -11,8 +11,8 @@ Bestätigung in der nächsten Session. Claude muss proaktiv fragen:
 
 | Komponente | Stand | SHA |
 |---|---|---|
-| **Frontend** | **v420** | `da8289e3be` |
-| ko-trackrecord.js | bugfix (export entfernt) | `ac331b8f7b` |
+| **Frontend** | **v422** | `1d4b7c453c` |
+| ko-trackrecord.js | v1.0.2 | `e4f9329721` |
 | ko-prompts.js | v2.5.0 | `84611613` |
 | **SUITE.md** | **v3.2** | `d74325c19f` |
 | **Aggregator** | **v5.20.0** | `bb569023d9` |
@@ -21,45 +21,28 @@ Bestätigung in der nächsten Session. Claude muss proaktiv fragen:
 
 ---
 
-## Session 01.08.2026 — vollständige Commit-Liste
+## Vollständige Commit-Liste heute
 
-### axel-scanner (5 Commits)
-- `665ab4556f` — **v417**: DE-Modus: TRADEGATE_MAP +18, TG-Preset IWV Top-100
-- `f2afbbcebc` — **v418**: ko-trackrecord CDN-Hash `a3d667c9`→`ac331b8f`
-- `5cf9104afa` — **v419**: autoSyncOnStart 401 Fix
-- `da8289e3be` — **v420**: updateScoreDivergenceDisplay TypeError Fix
+### axel-scanner (6 Commits)
+- `665ab4556f` — v417: DE-Modus TRADEGATE_MAP +18, IWV Top-100 Preset
+- `f2afbbcebc` — v418: ko-trackrecord CDN-Hash a3d667c9→ac331b8f
+- `5cf9104afa` — v419: autoSyncOnStart 401 Fix
+- `da8289e3be` — v420: updateScoreDivergenceDisplay TypeError Fix
+- `7ee922c602` — v421: TrackRecord 401 Fix (/sync/ + X-UIQ-Token)
+- `1d4b7c453c` — v422: TrackRecord CORS Fix (Cache-Control aus Headers)
 
-### ko-modules (1 Commit)
-- `ac331b8f7b` — ko-trackrecord.js: `export{}` entfernt (SyntaxError fix)
+### ko-modules (3 Commits)
+- `ac331b8f7b` — ko-trackrecord.js v1.0.0: export{} SyntaxError behoben
+- `5491c2b379` — ko-trackrecord.js v1.0.1: /sync/ + X-UIQ-Token
+- `e4f9329721` — ko-trackrecord.js v1.0.2: Cache-Control CORS-Fix
 
 ### ko-aggregator (1 Commit)
-- `bb569023d9` — **v5.20.0**: net_liquidity MCM-Parität geschlossen
+- `bb569023d9` — v5.20.0: net_liquidity MCM-Parität geschlossen
 
-### UIQ-Suite (2 Commits)
+### UIQ-Suite (3 Commits)
 - `e59333706d` — UEBERGABE-2026-08-01.md (Zwischen-Protokoll)
 - `d74325c19f` — SUITE.md v3.2
-
----
-
-## Was wurde gebaut
-
-### Feature: DE-Modus Erweiterung (v417)
-- TRADEGATE_MAP: +18 verifizierte Einträge
-- TG-Premarket Preset: IWV Top-100 statt nur TRADEGATE_MAP-Keys
-- Live verifiziert im Browser: `getTradegateSym('KO')` → CCC3 ✅ etc.
-
-### Feature: MCM-Parität vollständig (aggregator v5.20.0)
-- `net_liquidity` als letzter fehlender Faktor ergänzt
-- `_MCM_SIGNAL_RULES["net_liquidity"]`: caution wenn trend_4w ≤ 0
-- `build_server_market_context()`: liest `fredMacro.net_liquidity.trend_4w`
-- Alle 10 Kern-Faktoren + 3 Calendar jetzt Server↔Client-parität
-
-### Bugfixes (v418–v420)
-| Bug | Root-Cause | Fix |
-|---|---|---|
-| SyntaxError ko-trackrecord | `export{}` im classic `<script>` | Zeile entfernt |
-| 401 autoSyncOnStart | kein Auth-Header + kein hasToken()-Guard | `_headers()` + Guard |
-| TypeError updateScoreDivergenceDisplay | `divs.slice()` self-reference | vollständiger Pfad |
+- (dieses Protokoll)
 
 ---
 
@@ -67,46 +50,66 @@ Bestätigung in der nächsten Session. Claude muss proaktiv fragen:
 
 | Modul | Hash |
 |---|---|
-| ko-trackrecord.js | `ac331b8f` |
+| ko-trackrecord.js | `e4f93297` |
 | ko-prompts.js | `84611613` |
 | ko-strategies.js | `5dc8356088` |
-| ko-indicators-loader.js | v1.4.0 |
+| ko-indicators-loader.js | v1.4.0 (unverändert) |
 
 ---
 
-## Backlog-Status nach dieser Session
+## Bugfixes dieser Session (5 Stück)
 
-### ✅ Heute erledigt
-| # | Was |
-|---|---|
-| #25 | DE-Modus: TRADEGATE_MAP +18 + IWV Top-100 Preset |
-| #17 | MCM-Parität vollständig (net_liquidity als letztes Puzzlestück) |
-| — | 3 Bugfixes (v418–v420) |
-
-### ⏳ Nächste Sprints (Prio-Reihenfolge)
-| Prio | Was |
-|---|---|
-| 🟡 P1 | **Track-Record Phase C live prüfen** — EIC-Modus → Track-Record-Tab öffnen, tr:stats Matrix prüfen (h30-Daten ab 01.08. vorhanden?) |
-| 🟡 P2 | **vix/vix_term/mse_regime KV-Datenlücken** — Client-MCM zeigt 7/10 Kern (fehlend: vix,vix_term,mse_regime); erhöht dataQuality auf 10/10 |
-| 🟡 P3 | Strategie-Ampel-Reihenfolge (#13a) + CC als 12. Slot |
-| ⏳ | OpenBB IV-Rank (#15) — erst ab 12.08. |
-
-### 📋 Neu identifiziert (noch kein Backlog-Item)
-- `[sendMacroState] Breadth null` — Timing-Problem, `_nasdaqBreadthData`
-  beim ersten Aufruf noch nicht geladen; kein kritischer Bug
+| v | Bug | Root-Cause | Fix |
+|---|---|---|---|
+| v418 | ko-trackrecord SyntaxError | `export{}` in classic `<script>` | Zeile entfernt |
+| v419 | autoSyncOnStart 401 | kein Auth-Header + kein hasToken()-Guard | `_headers()` + Guard |
+| v420 | updateScoreDivergenceDisplay TypeError | `divs.slice()` self-reference | vollständiger Pfad |
+| v421 | TrackRecord 401 | `/public/tr:stats` kein Auth | `/sync/` + Token |
+| v422 | TrackRecord CORS | `Cache-Control`-Header → Preflight | Header entfernt |
 
 ---
 
-## Technische Hinweise
+## Features dieser Session
 
-### TRADEGATE_MAP Verifikation
-18 neue Einträge aus institutionellem Wissen — live verifiziert:
-KO→CCC3 ✅, CSCO→CSC0 ✅, BRKB→BRY ✅, PG→PGG ✅, T→RHAT ✅
-Bei nächstem TG-Scan weiter stichprobenartig prüfen.
+### DE-Modus (v417) ✅ verifiziert
+- TRADEGATE_MAP +18 Einträge (live getestet: KO→CCC3, CSCO→CSC0, BRKB→BRY, PG→PGG, T→RHAT ✅)
+- TG-Premarket Preset: IWV Top-100 statt nur TRADEGATE_MAP-Keys
 
-### MCM Console-Log Erwartung (nach v5.20.0 nächster GHA-Lauf)
-`net_liquidity` sollte nicht mehr als `caution`-Flag ohne Server-Pendant erscheinen.
-dataQuality bleibt bei 7/10 bis vix/vix_term/mse_regime-Lücken geschlossen werden.
+### MCM-Parität vollständig (aggregator v5.20.0)
+- `net_liquidity` als letzter fehlender Faktor: caution wenn trend_4w ≤ 0
+- Alle 10 Kern-Faktoren + 3 Calendar: Server↔Client parität
+
+---
+
+## Offene Punkte für nächste Session
+
+### P1 — Track-Record tr:stats Diagnose (WICHTIG)
+**Symptom:** Track-Record-Tab zeigt "HTTP 404" — `tr:stats` existiert nicht in KV.
+
+**Analyse:**
+- h7-Horizont wäre seit ~15.07. fällig (7 + 3 Buffer SPY-Bars)
+- Heute: ~21 Handelstage seit Tag 0 → h7 MUSS längst bewertet sein
+- `tr:stats` wird nur geschrieben wenn `changed` nicht leer in `run_evaluation()`
+- Wahrscheinlich: h7-Flags bereits auf `True` in `tr:index`, aber `tr:stats`
+  wurde beim damaligen Schreiben nie in KV gespeichert (KV-Fehler?)
+
+**Nächste Session — Diagnose-Schritte:**
+1. CF-Dashboard KV-Namespace öffnen → prüfen ob `tr:eval:2026-07-11` (o.ä.) existiert
+2. Falls `tr:eval:*` vorhanden aber kein `tr:stats`: `_aggregate_stats()` manuell
+   triggern oder `tr:index` resetten damit Evaluation nochmal läuft
+3. GHA-Log Run #174 auf TR-Zeilen prüfen (im CF-Dashboard Worker-Logs)
+
+### P2 — market_strip_snapshot 400 (CF-Dashboard)
+Worker-Allowlist kennt `market_strip_snapshot` nicht → 400.
+**Fix:** CF-Dashboard → ko-sync Worker → Key-Allowlist → `market_strip_snapshot` ergänzen.
+Kein Code-Change nötig. Home-Strip läuft über Live-Fallback, kein Blocker.
+
+### P3 — vix/vix_term/mse_regime KV-Datenlücken
+Client-MCM: dataQuality 7/10 (fehlend: vix, vix_term, mse_regime).
+Erhöht Qualität auf 10/10 — mittlerer Sprint.
+
+### P4 — Strategie-Ampel-Reihenfolge (#13a) + CC als 12. Slot
+Kosmetisch, kein eigener Sprint nötig.
 
 ---
 
