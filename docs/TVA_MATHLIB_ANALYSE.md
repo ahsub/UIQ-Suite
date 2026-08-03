@@ -176,3 +176,66 @@ def sigmoid_smooth(raw_score: float, k: float = 0.06) -> int:
 ---
 
 *TVA MathLibrary Analyse v1.0 · August 2026 · UIQ Suite*
+
+---
+
+## Erweiterung: ML-Methoden als Signal-Kalibrierung (August 2026)
+
+> Vollständige Konzeption: siehe `docs/ML_KONZEPT.md`
+
+### Strategische Grundentscheidung
+
+UIQ ist kein Aktien-Scanner, sondern ein **Decision Support System für rationale Investitionsentscheidungen**. Die DSS-Kette:
+
+```
+MARKT → Decision Engine → Strategie-Auswahl → Anlegerprofil
+      → Opportunity Engine → Trade Assistant → Positionsmanagement → Lernen & Optimieren
+```
+
+**Konsequenz für neue Methoden:** Jede Erweiterung — auch ML-Methoden — muss einen expliziten Platz in dieser Kette haben. Wenn nicht, kommt sie nicht ins Produkt.
+
+### Rolle der ML-Methoden in der DSS-Kette
+
+| Methode | DSS-Position | Funktion |
+|---|---|---|
+| Bayesian Network | Decision Engine | Entkorreliert UIQ-Felder, eliminiert Redundanz |
+| HMM (Markt-Makro) | Decision Engine → Strategie-Auswahl | Latenter Makrozustand als Regime-Prior |
+| NN (selektiv) | Lernen & Optimieren | Regime-Transition-Timing (nur wenn HMM Lücken zeigt) |
+
+### Warum BN zuerst — das Kernproblem
+
+UIQ hat derzeit ~30 Felder pro Ticker. Diese werden additiv kombiniert (Punkte-Summen). Das setzt voraus, dass alle Felder unabhängige Signale liefern — was nicht stimmt:
+
+- `trendScore` enthält ADX → `adx`-Feld ist nicht unabhängig
+- `confluenceScore` enthält `trendScore` → doppelte Gewichtung
+- `rsScore` korreliert mit `pctFromHigh52` in Trend-Phasen
+
+Ein Bayesian Network macht diese Abhängigkeiten explizit sichtbar und erlaubt eine datengetriebene Reduktion auf die wirklich unabhängigen Signale. **Ziel: Weniger Felder, bessere Entscheidungen.**
+
+### Umsetzungsplan (Phasen)
+
+**Phase 1 — BN-Analyse (sofort, kein Produktionscode)**
+- Input: `data/snapshots/` (Cross-Section: 711 Ticker × ~30 Felder)
+- Tools: `pgmpy` oder `bnlearn`, Jupyter Notebook offline
+- Output: DAG der UIQ-Felder + Redundanz-Report → fließt direkt in Score-Gewichtungen zurück
+- Zeitrahmen: sobald ~60 Snapshot-Tage vorliegen (ca. September 2026)
+
+**Phase 2 — MCM-HMM (ab Oktober 2026)**
+- Input: MCM-Zeitreihen (VIX, HY-Spread, Net Liquidity, Move Index, SKEW)
+- Modell: `hmmlearn`, 3–4 latente Zustände, läuft im GHA-Workflow
+- Output: neues MCM-Feld `mcmRegime` als Wahrscheinlichkeitsvektor
+- Voraussetzung: ≥90 Tage Snapshot-History (Mindestbedingung für stabile HMM-Schätzung)
+
+**Phase 3 — Selektives NN (frühestens 2027, Go/No-Go nach Phase 2)**
+- Nur wenn Phase 2 nachweisbare Lücken im Regime-Timing zeigt
+- Kleines LSTM (2 Layer, 32 Units) auf MCM-Zeitreihen
+- Trainiert auf Regime-Labels aus Phase 2, nicht auf Returns
+- Kein End-to-End-Training auf Kursbewegungen
+
+### Caveat: Datenbasis
+
+Track-Record-Start: 02.07.2026. Heute: ~32 Handelstage.
+- BN: ausreichend (Cross-Section, kein Zeitreihenproblem)
+- HMM: grenzwertig — braucht 3–5 Regime-Zyklen im Trainingsset
+- NN: zu wenig Daten, Overfitting-Risiko hoch
+
