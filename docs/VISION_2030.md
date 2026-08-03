@@ -1,9 +1,100 @@
 # VISION_2030.md — UIQ Produktvision
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Datum:** 03.08.2026  
 **Autor:** Dr. Axel Hildebrand  
 **Status:** Strategisches Leitdokument — verbindlich für Architekturentscheidungen  
+
+---
+
+## Die Mission (unveränderlich)
+
+> **UIQ unterstützt Investoren dabei, in jeder Marktphase die zu ihrer persönlichen Situation passende Investmentstrategie zu finden und vermeidbare Fehler zu reduzieren – nicht indem es Entscheidungen ersetzt, sondern indem es den Entscheidungsprozess verbessert.**
+
+Dieser Satz enthält alles. UIQ ist nicht:
+- ein Aktien-Finder
+- ein Rendite-Maximierer
+- ein Signal-Generator
+
+UIQ ist ein **Fehler-Reduzierer**. Das klingt unspektakulär. Es ist es nicht.
+
+Warren Buffett: *"Regel 1: Verliere kein Geld. Regel 2: Vergiss Regel 1 nicht."*
+
+Zuerst die großen, vermeidbaren Fehler reduzieren — dann erst nach zusätzlicher Rendite suchen. Genau das tut UIQ.
+
+---
+
+## Die Design-Regel (fast heilig)
+
+Jede neue Funktion muss genau eine dieser drei Fragen beantworten:
+
+**1. Hilft sie, den Markt besser zu verstehen?**  
+**2. Hilft sie, die richtige Strategie auszuwählen?**  
+**3. Hilft sie, Fehler zu vermeiden?**
+
+Wenn keine dieser drei Fragen mit Ja beantwortet werden kann: nicht programmieren.
+
+---
+
+## Warum jedes bestehende UIQ-Feature existiert
+
+Die Mission erklärt rückwirkend alles:
+
+| Feature | Grund |
+|---|---|
+| Market Regimes | Nicht jede Strategie funktioniert immer — Regime-Fehler sind die teuersten |
+| Dark Pools | Institutionelle reagieren früher — wer folgt, vermeidet Späteinsteiger-Fehler |
+| Breadth | Indizes zeigen manchmal Stärke, während die Mehrheit schwächelt |
+| Kalender | FOMC und CPI verändern Risiken — wer es ignoriert, zahlt Prämie ins Unbekannte |
+| Strategy Gates | Gute Strategien im falschen Umfeld liefern schlechte Ergebnisse |
+| Deep Dive | Nicht jedes Underlying hat dieselbe Qualität — Titelauswahl ist nicht trivial |
+| Distribution Days | Institutionelles Verkaufen erkennbar, bevor der Index es zeigt |
+| Track Record | Ohne Lernen aus vergangenen Entscheidungen kein System — nur Spekulation |
+
+Alles folgt derselben Logik. Kein Feature ist Selbstzweck.
+
+---
+
+## Die UIQ Decision Pyramid
+
+UIQ ist kein Scanner. UIQ ist kein Chart-Tool. UIQ ist ein **vollständiger Investmentprozess** in sieben Ebenen.
+
+```
+        ╔═══════════════════════════════╗
+        ║    Ebene 1 · MARKT            ║  ← Ist der Markt heute gesund?
+        ╠═══════════════════════════════╣
+        ║    Ebene 2 · STRATEGIE        ║  ← Welche Strategien passen heute?
+        ╠═══════════════════════════════╣
+        ║    Ebene 3 · INVESTOR         ║  ← Welche Strategie passt zu mir?
+        ╠═══════════════════════════════╣
+        ║    Ebene 4 · UNDERLYING       ║  ← Welche Titel erfüllen die Bedingungen?
+        ╠═══════════════════════════════╣
+        ║    Ebene 5 · TRADE            ║  ← Wie steige ich ein?
+        ╠═══════════════════════════════╣
+        ║    Ebene 6 · MANAGEMENT       ║  ← Wie verhalte ich mich, wenn sich
+        ║                               ║    der Markt ändert?
+        ╠═══════════════════════════════╣
+        ║    Ebene 7 · LERNEN           ║  ← War die Entscheidung richtig?
+        ╚═══════════════════════════════╝
+```
+
+**Die Fehler-Hierarchie der Pyramide:**
+
+Fehler auf Ebene 1 propagieren durch alle sechs weiteren Ebenen. Ein Regime-Fehler ist der teuerste Fehler. Ein Einstiegs-Fehler (Ebene 5) ist isoliert und reversibel. Die Pyramide lehrt intuitiv: **oben ist wichtiger als unten.**
+
+Das ist auch die Antwort auf "Warum zuerst den Markt verstehen?" — weil ein Fehler hier alle nachgelagerten Entscheidungen vergiftet.
+
+**UIQ-Abdeckung heute und morgen:**
+
+| Ebene | Frage | UIQ heute | UIQ 2030 |
+|---|---|---|---|
+| 1 · Markt | Ist der Markt gesund? | ✅ MSE, MCM, DCE geplant | DCE v1.0 |
+| 2 · Strategie | Welche Strategien passen? | ✅ Strategy Router, Gates | DCE-gesteuertes Gate |
+| 3 · Investor | Welche passt zu mir? | ⬜ fehlt | Investor Profile Engine |
+| 4 · Underlying | Welche Titel? | ✅ Leaderboards, Deep Dive | Personalisiert nach Profil |
+| 5 · Trade | Wie einsteigen? | 🔶 Entry-Engine (Basis) | Trade Assistant |
+| 6 · Management | Wie reagieren? | 🔶 Strategy Gates | Options Doctor, PortfolioIQ |
+| 7 · Lernen | War es richtig? | 🔶 Track Record (Phase A) | DepotIQ, vollst. Feedback-Loop |
 
 ---
 
@@ -247,3 +338,4 @@ Die Diagnose (MIE) ist dieselbe. Die Befundsicherheit (DCE) ist dieselbe. Die Th
 
 *VISION_2030.md v1.0 · 03.08.2026 · Dr. Axel Hildebrand*  
 *Nächste Revision: nach DCE v1.0 Implementierung (Q1 2027)*
+
