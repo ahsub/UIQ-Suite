@@ -10,7 +10,17 @@
 
 ## 0. UIQ-Leitprinzip (verbindlich, schlägt alle anderen Abschnitte)
 
-> **UIQ ist ein diagnostisches Entscheidungssystem, das Marktzustand, Anlegerprofil und Handelsstrategien miteinander verbindet, um Investoren dabei zu helfen, bessere und risikoärmere Entscheidungen zu treffen.**
+### Die Mission
+
+> **UIQ unterstützt Investoren dabei, in jeder Marktphase die zu ihrer persönlichen Situation passende Investmentstrategie zu finden und vermeidbare Fehler zu reduzieren – nicht indem es Entscheidungen ersetzt, sondern indem es den Entscheidungsprozess verbessert.**
+
+UIQ ist kein Aktien-Finder, kein Rendite-Maximierer, kein Signal-Generator. UIQ ist ein **Fehler-Reduzierer**. Zuerst die großen, vermeidbaren Fehler reduzieren — dann erst nach zusätzlicher Rendite suchen.
+
+> *"Regel 1: Verliere kein Geld. Regel 2: Vergiss Regel 1 nicht."* — Warren Buffett
+
+### Das diagnostische Entscheidungssystem
+
+> UIQ ist ein diagnostisches Entscheidungssystem, das Marktzustand, Anlegerprofil und Handelsstrategien miteinander verbindet, um Investoren dabei zu helfen, bessere und risikoärmere Entscheidungen zu treffen.
 
 UIQ entscheidet über drei Dinge — in dieser Reihenfolge:
 
@@ -20,22 +30,39 @@ UIQ entscheidet über drei Dinge — in dieser Reihenfolge:
 3. WAS gehandelt werden sollte.
 ```
 
-**Die Reihenfolge ist Architektur, nicht Konvention.** Gate 1 (Ob) ist ein echter Filter: wenn der Marktkontext gegen aktives Handeln spricht, werden Gate 2 und 3 nicht geöffnet. UIQ hat einen strukturellen Bias gegen sich selbst zu kämpfen — ein Scanner will immer Opportunitäten zeigen. Die stärkste Aussage, die UIQ machen kann, ist manchmal eine leere Liste.
+**Die Reihenfolge ist Architektur, nicht Konvention.** Gate 1 (Ob) ist ein echter Filter: wenn der Marktkontext gegen aktives Handeln spricht, werden Gate 2 und 3 nicht geöffnet. Die stärkste Aussage, die UIQ machen kann, ist manchmal eine leere Liste.
 
-**Der Maßstab für den Erfolg von UIQ:**
+### Die Design-Regel (fast heilig)
+
+Jede neue Funktion muss genau eine dieser drei Fragen beantworten:
+
+1. Hilft sie, **den Markt besser zu verstehen?**
+2. Hilft sie, **die richtige Strategie auszuwählen?**
+3. Hilft sie, **Fehler zu vermeiden?**
+
+Wenn keine dieser drei Fragen mit Ja beantwortet werden kann — kommt die Idee nicht ins Produkt, oder muss heraus.
+
+### Die UIQ Decision Pyramid
+
+UIQ ist ein vollständiger Investmentprozess in sieben Ebenen — kein Scanner, kein Chart-Tool:
+
+```
+Ebene 1 · MARKT        → Ist der Markt heute gesund?
+Ebene 2 · STRATEGIE    → Welche Strategien passen heute?
+Ebene 3 · INVESTOR     → Welche Strategie passt zu mir?
+Ebene 4 · UNDERLYING   → Welche Titel erfüllen die Bedingungen?
+Ebene 5 · TRADE        → Wie steige ich ein?
+Ebene 6 · MANAGEMENT   → Wie verhalte ich mich, wenn sich der Markt ändert?
+Ebene 7 · LERNEN       → War die Entscheidung richtig?
+```
+
+Fehler auf Ebene 1 propagieren durch alle sechs weiteren Ebenen. Oben ist wichtiger als unten.
+
+### Der Erfolgsmaßstab
 
 > *„UIQ hat mich nicht reich gemacht. Aber es hat mich mehrfach davor bewahrt, in den falschen Markt mit der falschen Strategie einzusteigen."*
 
-Das ist ein Schutz-Versprechen, kein Rendite-Versprechen. Es ist ehrlicher und — weil Verluste asymmetrisch schmerzen — langfristig wertvoller.
-
-**Der Filtertest für jede neue Idee (verbindlich):**
-
-Jede neue Methode, jeder neue Indikator, jedes neue Feature muss eine der drei Fragen beantworten:
-- Hilft es zu entscheiden, **ob** gehandelt werden sollte?
-- Hilft es zu entscheiden, **wie** gehandelt werden sollte?
-- Hilft es zu entscheiden, **was** gehandelt werden sollte?
-
-Wenn keine dieser drei Fragen mit Ja beantwortet werden kann — kommt die Idee nicht ins Produkt, oder muss heraus. UIQ wird nicht besser durch mehr Metriken. UIQ wird besser, wenn die Entscheidungsqualität steigt bei gleichzeitig reduzierter Komplexität.
+Das ist ein Schutz-Versprechen, kein Rendite-Versprechen.
 
 ---
 
