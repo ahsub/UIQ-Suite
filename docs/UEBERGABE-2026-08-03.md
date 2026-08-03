@@ -1,118 +1,85 @@
-# ÜBERGABE 2026-08-03 — UIQ Suite Session
+# ÜBERGABE 2026-08-03 — UIQ Suite Session (aktualisiert)
 
 ## ⚠️ UEBERGABE-HEADER-REGEL
-Alle Angaben in diesem Protokoll sind **unverified** bis zur eigenständigen
-Bestätigung in der nächsten Session. Claude muss proaktiv fragen:
-**"hast du das verifiziert oder übernommen?"**
+Alle Angaben sind **unverified** bis zur eigenständigen Bestätigung.
+Claude muss proaktiv fragen: **"hast du das verifiziert oder übernommen?"**
 
 ---
 
-## Verifizierbarer Stand (aus GitHub, 03.08.2026)
+## Verifizierbarer Stand (aus GitHub, 03.08.2026 18:20 UTC)
 
 | Komponente | Stand | SHA |
 |---|---|---|
 | **Aggregator** | **v5.25.0** | `f8fe35ee59` |
-| **Frontend** | **v408** (unverändert) | `6ee2f32bb1` |
+| **Frontend** | **v431** | `e0737644d5` |
 | **GHA Run** | #183 — ✅ success | 03.08.2026 11:36 UTC |
-| **SUITE.md** | v3.1 | `d70a28f3cb` |
-| **TVA_MATHLIB_ANALYSE.md** | ML-Abschnitt ergänzt | `7f0892c114` |
-| **ML_KONZEPT.md** | v1.0 (neu) | `9aeb210395` |
-| **VISION_2030.md** | v1.0 (neu) | `072fb019ab` |
+| **SUITE.md** | v3.2 | `298f1f3417` |
+| **ML_KONZEPT.md** | v1.0 | `9aeb210395` |
+| **VISION_2030.md** | v1.1 | `01b0e23bf8` |
+| **TVA_MATHLIB_ANALYSE.md** | ML-Abschnitt | `7f0892c114` |
 
 ---
 
-## Technische Commits heute
+## Aggregator v5.25.0 — Live-Daten (Run #183 verifiziert)
 
-### ko-aggregator (1 Commit)
-| SHA | Version | Was |
+| Feld | Coverage | Beispielwerte |
 |---|---|---|
-| `f8fe35ee59` | v5.25.0 | TVA Sprint A: trendScore, confluenceScore, sellProbability Sigmoid, AVWAP-Gate Minervini |
-
-### UIQ-Suite/docs (3 Commits)
-| SHA | Datei | Was |
-|---|---|---|
-| `7f0892c114` | TVA_MATHLIB_ANALYSE.md | ML-Konzept-Abschnitt + DSS-Kette ergänzt |
-| `9aeb210395` | ML_KONZEPT.md | Neu: BN/HMM/NN Phasenplan v1.0 |
-| `d70a28f3cb` | SUITE.md | v3.1: §0 DSS-Leitprinzip |
-| `072fb019ab` | VISION_2030.md | Neu: Drei-Engine-Architektur v1.0 |
+| `trendScore` | 711/711 | TSLA −34.4 / AMZN +14.5 / MSFT +26.1 |
+| `confluenceScore` | 711/711 | PSA 82 / AMZN 65 / AAPL 52 |
+| `adx`, `tvaRegime`, `chopIndex` | 711/711 | bereits seit v5.24.0 |
 
 ---
 
-## v5.25.0 — TVA Sprint A Details
+## Frontend v429–v431 — Commits heute
 
-### Neue Felder (alle 711/711 Ticker befüllt, Run #183 verifiziert)
-
-| Feld | Typ | Beschreibung |
+| Version | SHA | Was |
 |---|---|---|
-| `trendScore` | float −100..+100 | f_stdTrendScore: EMA-Stack (60%) + RSI (40%) × ADX-Konviktions-Multiplikator |
-| `confluenceScore` | int 0–100 | f_confluenceScore: 5 Faktoren à 20 Punkte (Trend/Momentum/Volumen/AVWAP/OB) |
-
-### Neue Funktionen
-- `calc_std_trend_score(price, ema20, ema50, ema200, rsi, adx)` → TVA f_stdTrendScore portiert
-- `calc_confluence_score(r)` → 5-Faktor Confluence (Trend+Momentum+Volumen+AVWAP+OB)
-- Sigmoid in `score_short_breakdown()` → f_sellProbability (k=0.06, analog Minervini)
-- Gate 9 in `score_long_minervini()` → distToAvwapPct als Support-Distanz (+15 in AVWAP-Zone)
-- `ema20v` jetzt in `process_ticker()` berechnet (war vorher nicht als Einzelwert verfügbar)
-
-### Validierte Live-Werte (Run #183)
-- trendScore: min=−41.7, max=+47.8, median=+9.2 (ADX-Dämpfung korrekt — Markt niedrig-direktional)
-- confluenceScore: min=0, max=82, median=41 — Top: PSA/F/STNG (82, AVWAP+OB-Confluence)
-- Coverage: 711/711 trendScore ✅, 711/711 confluenceScore ✅
+| v429 | `95e549368c` | trendScore-Badge (▲↗→↘▼) + confluenceScore-Badge (◈ ≥60) in Scanner-Cards. DeepDive TVA-Block +2 Felder. KI-Prompt erweitert. |
+| v430 | `5f8d2afaac` | Alpha-Desk Options-Card: TS + CS in Kandidaten-Zeile. eicCandidates-Push ergänzt. |
+| v431 | `e0737644d5` | **Bugfix:** Alpha-Desk lokaler `_kvToState`-Fallback hatte trendScore/confluenceScore nicht — jetzt ergänzt. Badges erscheinen jetzt auch in Master Shortlist Cards. |
 
 ---
 
-## Strategische Dokumente heute
+## Architektur-Befund (für späteren Aufräum-Sprint)
 
-### SUITE.md §0 — DSS-Leitprinzip (verbindlich, schlägt alle anderen Abschnitte)
-- UIQ ist ein diagnostisches Entscheidungssystem
-- Drei Fragen in Reihenfolge: **Ob → Wie → Was** (Gate-Architektur, kein Scanner-Bias)
-- Filtertest für jede neue Idee: Hilft es ob/wie/was zu entscheiden? Sonst: nicht ins Produkt
-- Erfolgsmaßstab: Schutz-Versprechen, nicht Rendite-Versprechen
+`kvToScannerState()` ist zweimal definiert (pos 496520 + 1063608 in index.html) — bekannter Scope-Isolation-Duplikat aus früheren Sessions. Zusätzlich existiert ein lokaler `_kvToState`-Fallback in `renderAlphaDashboard` (pos 1376325) der greifen kann wenn `kvToScannerState` im lokalen Scope nicht sichtbar ist. Alle drei sind nach v431 inhaltlich synchron. Konsolidierung auf eine Definition = eigener Aufräum-Sprint, nicht heute.
 
-### ML_KONZEPT.md v1.0
-- BN (Phase 1, Sept. 2026): Cross-Section-Analyse, Redundanz eliminieren, Score-Kalibrierung
-- HMM (Phase 2, Okt. 2026): MCM-Zeitreihen, `mcmHmmRegime` als neues KV-Feld
-- NN (Phase 3, Q1 2027): nur wenn HMM Lücken zeigt, LSTM(32) auf Regime-Labels
-- Datenbasis-Constraints: heute 32 Handelstage — BN sofort, HMM ab Okt., NN ab 2027
+---
 
-### VISION_2030.md v1.0 — Drei-Engine-Architektur
-Die wichtigste strategische Entscheidung dieser Session:
+## Strategische Dokumente heute (SUITE.md v3.2, VISION_2030.md v1.1)
 
-**Engine 1 — Market Intelligence Engine (MIE):** heute produktiv, im Wesentlichen fertig
-**Engine 2 — Decision Confidence Engine (DCE):** der fehlende Kern-Algorithmus
-- Konfidenzwert 0–100 mit 6 Dimensionen (Makro/Breadth/Vola/DarkPool/Sektoren/Kalender)
-- Jede Dimension: Score 0–5 Sterne + kurze Begründung (anti-Black-Box)
-- Handlungs-Gate: DCE < 50 → keine neuen Positionen empfohlen
-- Geplant: Q1 2027
+### UIQ-Mission (unveränderlich, §0 SUITE.md)
+> UIQ unterstützt Investoren dabei, in jeder Marktphase die zu ihrer persönlichen Situation passende Investmentstrategie zu finden und vermeidbare Fehler zu reduzieren – nicht indem es Entscheidungen ersetzt, sondern indem es den Entscheidungsprozess verbessert.
 
-**Engine 3 — Investor Profile Engine (IPE):** das personalisierende Herzstück
-- ~15 Fragen: Depotgröße, Ziel, Risiko, Optionserfahrung, Horizont, max. Drawdown
-- Gleiche Marktanalyse → unterschiedliche Handlungsempfehlungen je Profil
-- Investor A (35J, Wachstum): Momentum/Breakout
-- Investor B (66J, Cashflow, Wheel): CSP/CC/defensive Basiswerte
-- Geplant: Q2–Q3 2027
+### UIQ Decision Pyramid (7 Ebenen)
+Markt → Strategie → Investor → Underlying → Trade → Management → Lernen
 
-**Investment Coach:** KI-Gespräche auf vollem Drei-Engine-Kontext (2028)
+### Drei-Engine-Architektur
+- **MIE** (Market Intelligence Engine): heute produktiv
+- **DCE** (Decision Confidence Engine): der fehlende Kern-Algorithmus, Q1 2027
+- **IPE** (Investor Profile Engine): Personalisierung, Q2–Q3 2027
+
+### Design-Regel (fast heilig)
+Jede neue Funktion muss beantworten: Hilft sie den Markt zu verstehen / die Strategie zu wählen / Fehler zu vermeiden? Wenn nein: nicht bauen.
 
 ---
 
 ## Offene Punkte / Nächste Session
 
-### 🔴 Frontend ausstehend (v409)
-- `trendScore`-Badge in Ticker-Cards
-- `confluenceScore`-Anzeige (DeepDive oder Card-Header)
-- DCE-Konzept: kein Bau, aber UI-Skizze sinnvoll
+### 🔴 Sofort
+- **Badge-Validierung**: Hard-Refresh + AMZN in Master Shortlist prüfen (v431 Bugfix)
+- **kvToScannerState Duplikat**: Aufräum-Sprint (2× Definition → 1×)
 
-### 🟡 Mittelfristig
-- BN-Analyse: wartet auf ~60 Snapshot-Tage (ca. 01.09.2026)
-- DE-Modus: TG-Delta auch im DeepDive (`raw._tgDelta` bereits gesetzt)
-- OB-Detector: Bearish OB-Badge in Ticker-Cards
-- Track-Record Phase C: Papertrading Modus A+B
+### 🟡 Mittelfristig  
+- BN-Analyse: ab ~01.09.2026 (60 Snapshot-Tage)
+- DE-Modus: TG-Delta im DeepDive
+- OB-Detector: Bearish OB-Badge in Cards
+- Track-Record Phase C
 
 ### ⏳ Zeitgesteuert
-- IV-Rank: ab ~12.08.2026 (30 Archiv-Tage)
-- BN-Analyse: ab ~01.09.2026 (60 Snapshot-Tage)
-- MCM-HMM: ab ~01.10.2026 (90 MCM-Tage)
+- IV-Rank: ab ~12.08.2026
+- BN-Analyse: ab ~01.09.2026
+- MCM-HMM: ab ~01.10.2026
 
 ---
 
@@ -121,5 +88,5 @@ Nächste Fälligkeit: ~02.09.2026 (Stand 24.07.2026 noch gültig)
 
 ---
 
-*UIQ Suite Übergabe 03.08.2026 · Aggregator v5.25.0 · Frontend v408*
-*Strategischer Meilenstein: Drei-Engine-Architektur (MIE/DCE/IPE) konzipiert und dokumentiert*
+*UIQ Suite Übergabe 03.08.2026 · Aggregator v5.25.0 · Frontend v431*
+*Strategischer Meilenstein: Mission + Decision Pyramid + Drei-Engine-Architektur dokumentiert*
