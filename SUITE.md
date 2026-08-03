@@ -1,10 +1,41 @@
 # Investment-Suite — Dachdokument
 
-**Version:** 3.0
-**Stand:** 16.07.2026
+**Version:** 3.1
+**Stand:** 03.08.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
 **Fortschreibung:** Claude, versioniert, analog den Modul-Strategiedokumenten.
+
+---
+
+## 0. UIQ-Leitprinzip (verbindlich, schlägt alle anderen Abschnitte)
+
+> **UIQ ist ein diagnostisches Entscheidungssystem, das Marktzustand, Anlegerprofil und Handelsstrategien miteinander verbindet, um Investoren dabei zu helfen, bessere und risikoärmere Entscheidungen zu treffen.**
+
+UIQ entscheidet über drei Dinge — in dieser Reihenfolge:
+
+```
+1. OB gehandelt werden sollte.
+2. WIE gehandelt werden sollte.
+3. WAS gehandelt werden sollte.
+```
+
+**Die Reihenfolge ist Architektur, nicht Konvention.** Gate 1 (Ob) ist ein echter Filter: wenn der Marktkontext gegen aktives Handeln spricht, werden Gate 2 und 3 nicht geöffnet. UIQ hat einen strukturellen Bias gegen sich selbst zu kämpfen — ein Scanner will immer Opportunitäten zeigen. Die stärkste Aussage, die UIQ machen kann, ist manchmal eine leere Liste.
+
+**Der Maßstab für den Erfolg von UIQ:**
+
+> *„UIQ hat mich nicht reich gemacht. Aber es hat mich mehrfach davor bewahrt, in den falschen Markt mit der falschen Strategie einzusteigen."*
+
+Das ist ein Schutz-Versprechen, kein Rendite-Versprechen. Es ist ehrlicher und — weil Verluste asymmetrisch schmerzen — langfristig wertvoller.
+
+**Der Filtertest für jede neue Idee (verbindlich):**
+
+Jede neue Methode, jeder neue Indikator, jedes neue Feature muss eine der drei Fragen beantworten:
+- Hilft es zu entscheiden, **ob** gehandelt werden sollte?
+- Hilft es zu entscheiden, **wie** gehandelt werden sollte?
+- Hilft es zu entscheiden, **was** gehandelt werden sollte?
+
+Wenn keine dieser drei Fragen mit Ja beantwortet werden kann — kommt die Idee nicht ins Produkt, oder muss heraus. UIQ wird nicht besser durch mehr Metriken. UIQ wird besser, wenn die Entscheidungsqualität steigt bei gleichzeitig reduzierter Komplexität.
 
 ---
 
@@ -254,4 +285,6 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 | 1.3 | 08.07.2026 | Backlog-Punkte №7 (Options-Radar/Doktor — Flex-Query als Live-Risiko-Kanal, PO-Entparkungs-Kern-Feature, Suite-Kohärenz UIQ↔PO↔Refundex) und №8 (Inverse-Problem-Register — offenes Sammelregister für Flex-Query-basierte Fragen, die wir noch nicht gestellt haben) ergänzt. Beide 08.07.2026 nach Nachgespräch zum UX-Review. Kein Bau, reine Verankerung. |
 | 3.2 | 01.08.2026 | **Session 01.08.2026 — DE-Modus + MCM-Parität + 3 Bugfixes.** (1) §7 Backlog-Punkt №25 (DE-Modus) als ✅ ERLEDIGT: TRADEGATE_MAP +18 verifizierte Einträge (BRKB→BRY, KO→CCC3, PG→PGG, PM→PM1, C→CIT, CSCO→CSC0, T→RHAT, TMUS→T1MU, CMCSA→CBC3, SPGI→SPG1, BX→BXD, ABNB→AB9, LULU→LUL, BIIB→BII, MO→PHM1, WM→WM2, CI→CI1, GD→GD1); TG-Premarket-Preset auf IWV-Top-100 erweitert (vorher nur TRADEGATE_MAP-Keys); Symbole live im Browser verifiziert (getTradegateSym-Test, alle 5 korrekt). (2) §7 Backlog-Punkt №17 (MCM-Parität) vollständig geschlossen: `net_liquidity` als letzter fehlender Faktor in `_MCM_SIGNAL_RULES` + `build_server_market_context()` ergänzt (ko-aggregator v5.20.0); alle 10 Kern-Faktoren + 3 Calendar-Faktoren jetzt Server↔Client-parität. Die 4 ursprünglich fehlenden Faktoren (ndx_breadth, intermarket_score, treasury_stress, bull_indicator) waren bereits seit v5.13.0 (21.07.) implementiert — nur net_liquidity fehlte noch. (3) Bugfix-Sprint: ko-trackrecord.js `export{}`-SyntaxError (v418); autoSyncOnStart 401 fehlender Auth-Header (v419); updateScoreDivergenceDisplay `divs.slice()` self-reference TypeError (v420). Frontend jetzt v420, Aggregator v5.20.0. |
 | 3.1 | 30.07.2026 | §7 Backlog-Punkte №23+24 als ✅ ERLEDIGT markiert: (1) ko-prompts-registry Sprint 2 — alle KI-Call-Prompts aus index.html externalisiert (`getIntermarketPrompt`, `getOversoldPrompt`, `getMetaAnalysisPrompt`), ko-prompts.js v2.4.0, axel-scanner v414. (2) ko-indicators-registry Sprint — `STRATEGY_TO_LB` + `_lbToStrat` als Single Source of Truth in ko-prompts.js v2.5.0 (`lbKey`-Felder + `getLbKey`/`stratFromLb`/`getStratToLbMap`), axel-scanner v415. IWV Holdings CSV aktualisiert (Stand 24.07.2026, `ahsub/ko-aggregator/data/iwv_holdings.csv`). Bestandsaufnahme-Methodik bestätigt: Scope-Analyse vor Bau verhinderte nutzlosen DOM-Read-Umbau und lenkte auf das tatsächliche Modularisierungsproblem. |
+| 3.4 | 03.08.2026 | **Session 03.08.2026 — TVA Sprint A + DSS-Leitprinzip.** **(1)** TVA Sprint A abgeschlossen (Aggregator v5.25.0, Run #183 ✅, 711/711 Ticker): `calc_std_trend_score()` → `trendScore` (−100..+100, EMA-Stack×ADX-Konviktion); `calc_confluence_score()` → `confluenceScore` (0–100, 5 Faktoren: Trend/Momentum/Volumen/AVWAP/OB); Sigmoid in `score_short_breakdown()` (`sellProbability`, TVA f_sellProbability); AVWAP-Gate 9 in `score_long_minervini()` (`distToAvwapPct` als Support-Distanz, +15 Punkte in AVWAP-Zone). **(2) DSS-Leitprinzip als §0 in SUITE.md verankert** (verbindlich, schlägt alle anderen Abschnitte): UIQ ist ein diagnostisches Entscheidungssystem — Ob → Wie → Was (Reihenfolge ist Architektur, nicht Konvention). Filtertest für jede neue Idee: Hilft es zu entscheiden ob/wie/was gehandelt werden soll? Wenn nein: kommt nicht ins Produkt. UIQ-Erfolgsmaßstab explizit als Schutz-Versprechen, nicht Rendite-Versprechen. **(3) ML_KONZEPT.md v1.0** angelegt (`ahsub/UIQ-Suite/docs/ML_KONZEPT.md`): BN/HMM/NN als Signal-Kalibrierung im DSS-Framework, 3-Phasen-Plan (BN-Analyse Sept. 2026, MCM-HMM Okt. 2026, NN frühestens Q1 2027), Datenbasis-Constraints, Ausschlussliste. TVA_MATHLIB_ANALYSE.md um ML-Konzept-Abschnitt erweitert. Kernbotschaft: UIQ wird nicht besser durch mehr Metriken — Ziel ist Reduktion auf unabhängige Signale bei steigender Entscheidungsqualität. |
 | 3.3 | 02.08.2026 | **Session 02.08.2026 — IOS-Konzept-Integration + Order Blocks + DE-Modus.** Aggregator v5.24.0, Frontend v408. **(1)** RS-Rank Score (`compute_rs_rank_score()`, v5.21.0): 6 Bedingungen analog IOS Institutional Momentum Engine, Dual-Benchmark SPY+IWM, 703/711 Ticker live. Frontend: Badge + DeepDive rs001–rs006. **(2)** Distribution Days (`compute_distribution_days()`, v5.21.0): O'Neil/IBD 25T-Lookback, SPY 7 / QQQ 9 DD = DANGER (02.08.2026), Tearsheet-Warnblock. **(3)** Anchored VWAP (`compute_anchored_vwap()`, v5.22.0): EWMA nach Zeiierman, Anker = 52W-Tief, α=1−e^(−ln(2)/20), ETF/Krypto-gefiltert (v5.23.0). Frontend: Badge ⚡🔥⚓⚠ + DeepDive-Block + KI-Prompt. **(4)** Minervini Sigmoid (v5.23.0): TVA MathLibrary `f_buyProbability`-Konzept, `s=100/(1+e^(−0.06×(raw−50)))`. **(5)** Order Block Detector (`compute_orderblocks()`, v5.24.0): Hybrid Zeiierman+BigBeluga+Flux, 17 KV-Felder, 507/711 Ticker live, 12 CSP-Confluence-Kandidaten (AVWAP+OB). **(6)** DE-Modus: TG-Delta-Badge `🇩🇪 TG +1.23%` (grün/rot), TRADEGATE_MAP +25 Einträge (IWV Top-100 ~96% abgedeckt). **(7) TVA MathLibrary Sprint A vorgemerkt** (Backlog №26, s.u.): `f_stdTrendScore`, `f_marketRegime`, `f_chopIndex`, `f_sellProbability` — Referenzdokument in `docs/TVA_MATHLIB_ANALYSE.md`, Python-Port-Snippets vorhanden. Sofort umsetzbar sobald Zeit. |
+
