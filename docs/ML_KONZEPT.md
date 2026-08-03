@@ -243,5 +243,120 @@ calcDdPosition()         ←── NN (Phase 3)         → Sizing antizipiert T
 
 ---
 
-*ML_KONZEPT.md v1.0 · August 2026 · UIQ Suite*  
+## 8. Literaturbewertung — Bayesian Methods für UIQ
+
+Systematische Bewertung der gesichteten Referenzwerke nach UIQ-Relevanz (August 2026).
+Bewertungskriterien: Python-Ökosystem, Finanzmarkt-Bezug, Direkte Implementierbarkeit, Theoretische Tiefe.
+
+### ★★★★★ Pflichtlektüre — unmittelbar relevant
+
+**Sekerke, Matt: *Bayesian Risk Management: A Guide to Model Risk and Sequential Learning in Financial Markets* (Wiley, 2015)**
+
+Das wichtigste Buch für UIQ ML-Konzept. Behandelt sequenzielle Bayesianische Inferenz *spezifisch in Finanzmärkten* — nicht als abstraktes Lehrbuch, sondern als operatives Framework für Echtzeit-Entscheidungen unter strukturellen Brüchen.
+
+Direkte UIQ-Relevanz:
+- Kap. 1: *Models for Discontinuous Markets* — formalisiert unser Regime-Wechsel-Problem
+- Kap. 2: *Prior Knowledge, Parameter Uncertainty* — Prior-Wahl für BN-Kalibrierung
+- Kap. 4: *Sequential Bayesian Inference + Discounting* — löst das Datenbasis-Problem: kein Mindest-Trainingsset nötig, ältere Daten werden automatisch abgewertet. Das ist der formalisierte "Misstrauens-Faktor" aus unserem Konzept.
+- Kap. 5: *Dynamic Linear Models* — State-Space Basis für MCM-HMM (Phase 2)
+- Kap. 6: *Sequential Monte Carlo* — Alternative wenn HMM nichtlinear wird
+
+Kernzitat: *"Discounting reflects uncertainty about the degree of continuity between the past and the future, and prevents the accumulation of data from destroying model flexibility."*
+
+Lektüre-Timing: Kap. 1+2+4 vor Phase 1 (Sept. 2026), Kap. 5+6 vor Phase 2 (Okt. 2026)
+
+---
+
+### ★★★★☆ Pflichtlektüre — Implementierung
+
+**Candy, James V.: *Bayesian Signal Processing: Classical, Modern, and Particle Filtering Methods*, 2. Aufl. (Wiley, 2016)**
+
+631 Seiten, sehr mathematisch, aus der Ingenieurswissenschaft (Lawrence Livermore). Kein Python-Code, keine Finance-Beispiele — aber die technisch tiefste Behandlung der Algorithmen die UIQ Phase 2 und DCE braucht.
+
+Direkte UIQ-Relevanz:
+- Kap. 4: *State-Space Models* — Gauss-Markov State-Space, Äquivalenz zu Time Series → direkte Basis für MCM-HMM
+- Kap. 5: *Kalman Filter* — einfachste DCE-Implementierung: linearer Bayesianischer Prozessor auf MCM-Zeitreihen
+- **Kap. 9: *Discrete Hidden Markov Model Bayesian Processors*** — HMM Theorie, Forward-Backward Algorithmus, Viterbi. Das ist das Kern-Kapitel für Phase 2.
+- **Kap. 10: *Sequential Bayesian Detection*** — formale Theorie der Regime-Wechsel-Erkennung in Echtzeit (Wald's SPRT). Direkte Basis für DCE "Wie sicher bin ich?"
+- Kap. 7: *Particle Filters* — für Phase 3 wenn HMM nicht ausreicht
+
+Lektüre-Timing: Kap. 9+10 vor Phase 2 (Okt. 2026)
+
+---
+
+**Martin, Osvaldo & Park, Joon: *Bayesian Analysis with Python*, 3. Aufl. (Packt, 2024)**
+
+Das praktische Gegenstück zu Sekerke. PyMC + ArviZ als primäre Werkzeuge. Keine Finance-Beispiele, aber direkt auf UIQ-Implementierung anwendbar.
+
+Direkte UIQ-Relevanz:
+- Kap. 2: *Programming Probabilistically* — PyMC Grundlagen, direkte Implementierungsreferenz für Phase 1
+- Kap. 3: *Hierarchical Models* — für IPE (Investor Profile Engine): Investoren als Gruppen mit gemeinsamen Priors
+- **Kap. 7: *Mixture Models*** — Finite Mixture Models als HMM-Alternative: einfacher, robuster, liefert dasselbe (Regime-Wahrscheinlichkeiten) in ~30 Zeilen PyMC-Code
+- Kap. 8: *Gaussian Processes* — für DCE: Konfidenz-Intervalle über Zeit
+- Kap. 9: *BART* — für `confluenceScore`-Kalibrierung: nicht-lineare Indikator-Beziehungen
+- Kap. 10: *Inference Engines* — MCMC-Diagnostik, unverzichtbar für Konvergenz-Prüfung
+
+Lektüre-Timing: Kap. 2+7 vor Phase 1 (Sept. 2026)
+
+---
+
+### ★★★☆☆ Referenzwerk — theoretisches Nachschlagewerk
+
+**Zwanzig, Silvelyn & Ahmad, Rauf: *Bayesian Inference: Theory, Methods, Computations* (Chapman & Hall, 2024)**
+
+Akademisches Master-Lehrbuch. Sehr mathematisch (Theoreme, Beweise), in R. Kein direkter Finanz- oder Zeitreihen-Bezug.
+
+UIQ-Rolle: Nachschlagewerk für theoretische Fragen bei der BN-Kalibrierung. Wenn Prior-Wahl, Jeffreys Prior, Bayes Factors oder Conjugate Prior-Familien formal verstanden werden müssen — hier findet man die Antwort mit Beweis.
+
+Relevante Kapitel: Kap. 3 (Prior-Wahl), Kap. 4 (Decision Theory), Kap. 8 (Bayes Factors für Modellvergleich), Kap. 9 (MCMC).
+
+---
+
+### ★★☆☆☆ Begrenzt nützlich
+
+**Campesato, Oswald: *Python 3 for Machine Learning* (Mercury Learning, 2020)**
+
+Allgemeines Python/ML-Einführungsbuch. Kap. 6.7 (Naïve Bayes) und Kap. 7.9 (Markov Chains) vorhanden, aber auf Einsteiger-Niveau. Für UIQ nicht nötig — alle relevanten Inhalte sind in Martin/Park besser abgedeckt.
+
+---
+
+**Garnett, Roman: *Bayesian Optimization* (Cambridge University Press, 2023)**
+
+Behandelt ein anderes Problem: Optimierung teurer Zielfunktionen mit wenigen Auswertungen (Hyperparameter-Tuning). Für UIQ falsches Werkzeug — Marktdaten sind nicht "teuer" in diesem Sinne. Theoretisch interessant für spätere Score-Gewichtungs-Kalibrierung (Phase 3+), aber keine operative Priorität.
+
+---
+
+### ★☆☆☆☆ Nicht relevant für UIQ
+
+**Scheuch, Christoph et al.: *Tidy Finance with R* (Chapman & Hall, 2022)**
+
+Akademische empirische Finanzforschung (Fama-French, Beta-Schätzung, CRSP-Daten) in R. Falsches Ökosystem (R statt Python) und falsches Erkenntnisziel (institutionelle Forschung statt operative Echtzeit-Entscheidung). Für UIQ nicht relevant.
+
+---
+
+## 9. Lese-Roadmap für UIQ ML-Implementierung
+
+```
+SEPTEMBER 2026 — vor Phase 1 (BN-Analyse)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Sekerke   Kap. 1, 2, 4    Theorie: discontinuous markets, discounting
+Martin    Kap. 2, 7        Praxis: PyMC setup, Mixture Models
+Zwanzig   Kap. 3, 8        Referenz: Prior-Wahl, Bayes Factors
+
+OKTOBER 2026 — vor Phase 2 (MCM-HMM)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Sekerke   Kap. 4, 5, 6    Dynamic Linear Models, SMC
+Candy     Kap. 9           HMM: Forward-Backward, Viterbi
+Candy     Kap. 10          Sequential Detection → DCE Fundament
+
+Q1 2027 — vor Phase 3 (NN / selektiv)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Martin    Kap. 8, 9, 10    GP, BART, Inference Engines
+Candy     Kap. 7, 8        Particle Filters, Joint State/Parameter
+```
+
+---
+
+*ML_KONZEPT.md v1.1 · August 2026 · UIQ Suite*  
+*Literaturbewertung ergänzt: 6 Referenzwerke bewertet, Lese-Roadmap definiert*  
 *Nächste Revision: nach BN-Analyse September 2026*
