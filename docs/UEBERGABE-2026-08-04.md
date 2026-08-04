@@ -70,8 +70,7 @@ Claude muss proaktiv fragen: **"hast du das verifiziert oder übernommen?"**
 ---
 
 ## IWV Holdings
-**⚠️ FÄLLIG: August 2026** — letzte Aktualisierung 24.07.2026 (heute überfällig)
-→ iShares IWV → Holdings → CSV → `ahsub/ko-aggregator/data/iwv_holdings.csv`
+✅ Aktualisiert am 27.07.2026 — nächste Fälligkeit ~27.08.2026
 
 ---
 
