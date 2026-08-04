@@ -196,6 +196,248 @@ Integration: neuer Block in `market_aggregator.py` parallel zu `_calc_markov_reg
 
 ---
 
+## 4b. DCE — Interface-Definition und Pseudocode
+
+> *Externe Validierung (August 2026): "Die DCE ist bei Ihnen nicht nur ein weiteres Modell, sondern die Meta-Instanz."*
+
+### Terminologie-Klarstellung
+
+**MCM** in UIQ = **Market Context Module** (Daten-Aggregations-Schicht: VIX, HY-Spread, Net Liquidity, Move Index, SKEW).  
+**MCM** ≠ **MCMC** (Markov Chain Monte Carlo — das ist eine Sampling-Methode in PyMC).  
+Das MCM-HMM ist: Market-Context-Daten als Input → Hidden Markov Model als Regime-Detektor.
+
+### DCE als Schaltzentrale
+
+Die DCE nimmt die Outputs aller drei Phasen entgegen und produziert einen einzigen operativen Entscheid:
+
+```
+Phase 1 (BN)  ──→ P(Marktanstieg)        ──→
+Phase 2 (HMM) ──→ P(Regime_0..3)         ──→  DCE  ──→ confidence_score (0-1)
+Phase 3 (NN)  ──→ Regime-Transition-P    ──→         ──→ mode (GREEN/YELLOW/RED)
+CUSUM-Alarm   ──→ Strukturbruch-Flag     ──→         ──→ position_size (0.0-1.0)
+EVT-VaR       ──→ Extremrisiko-Schätzung ──→         ──→ direction (BUY/HOLD/SELL)
+```
+
+Die Methode `_calculate_confidence()` ist der Kern — hier laufen alle Signale zusammen:
+- **Konsistenz** der Modell-Outputs (hohe Streuung → niedrigeres Vertrauen)
+- **Sicherheitsabzüge** bei CUSUM-Alarm und hohem VaR
+- **Regime-Anpassung** (Crash-Modus: alle Modelle gedämpft)
+- **Discounting** (Sekerke): ältere Daten werden automatisch abgewertet
+
+### Pseudocode (Python, UIQ-adaptiert)
+
+```python
+import numpy as np
+import pandas as pd
+from scipy.stats import genpareto
+# Phase 2: from hmmlearn import hmm
+# Phase 1: import pymc as pm
+
+class DecisionConfidenceEngine:
+    """
+    UIQ DCE — Meta-Instanz über MIE, Phase 1-3 und Schutzmechanismen.
+    Input:  täglich MCM-Felder (VIX, HY-Spread, Net Liquidity, Move, SKEW)
+    Output: confidence_score, mode (GREEN/YELLOW/RED), position_size, direction
+    
+    Phasen-Integration:
+      Phase 1 (BN,  Sept. 2026): _get_bn_signal()   → P(Kursteigerung)
+      Phase 2 (HMM, Okt.  2026): _get_hmm_state()   → P(Regime_0..3)
+      Phase 3 (NN,  Q1    2027): _get_nn_signal()    → Transition-Timing
+    """
+    def __init__(self, config: dict):
+        self.bn_model     = None   # Phase 1: PyMC-Modell (BN)
+        self.hmm_model    = None   # Phase 2: hmmlearn.GaussianHMM
+        self.nn_model     = None   # Phase 3: LSTM(32), erst Q1 2027
+
+        self.confidence_score    = 0.5
+        self.current_regime      = 'UNKNOWN'  # BULL / BEAR / CRASH / RECOVERY
+        self.regime_probabilities = {}
+
+        self.volatility_buffer   = []
+        self.var_95              = 0.0
+
+        # Sekerke-Discounting: ältere Daten werden abgewertet
+        self.discount_factor  = config.get('discount_factor', 0.98)
+        self.cusum_threshold  = config.get('cusum_threshold', 3.0)
+
+    def update_daily(self, mcm_data: pd.Series) -> dict:
+        """
+        Täglicher Update-Cycle. mcm_data = MCM-Felder aus ko-aggregator.
+        Entspricht dem daily market_context aus ko-indicators-loader.js.
+        """
+        # 1. Phasen-Modelle abfragen
+        bn_signal  = self._get_bn_signal(mcm_data)  if self.bn_model  else 0.5
+        hmm_state, hmm_probs = self._get_hmm_state(mcm_data) if self.hmm_model else (0, {})
+        nn_signal  = self._get_nn_signal(mcm_data)  if self.nn_model  else 0.5
+
+        # 2. Regime bestimmen (Phase 2 Kern)
+        self.current_regime, self.regime_probabilities = \
+            self._determine_regime(hmm_state, hmm_probs)
+
+        # 3. Schutzmechanismen
+        cusum_alarm = self._check_cusum(mcm_data.get('vix', 15.0))
+        self.var_95 = self._calculate_evt_var(mcm_data.get('returns_history', []))
+
+        # 4. Confidence fusionieren (Meta-Intelligenz)
+        self.confidence_score = self._calculate_confidence(
+            bn_signal, hmm_probs, nn_signal, cusum_alarm, self.var_95
+        )
+
+        # 5. Operative Entscheidung
+        return self._derive_action(
+            consensus=np.mean([bn_signal, nn_signal]),
+            confidence=self.confidence_score,
+            var=self.var_95
+        )
+
+    # ── Phasen-Schnittstellen (Platzhalter bis Phase implementiert) ──────────
+
+    def _get_bn_signal(self, data) -> float:
+        """Phase 1: BN liefert P(Kursteigerung) aus Markt-Querschnittsdaten."""
+        # → PyMC posterior predictive auf BN-Feldern (rsScore, confluenceScore,
+        #   trendScore, adx, chopIndex, distToAvwapPct)
+        return 0.65  # Platzhalter
+
+    def _get_hmm_state(self, data) -> tuple[int, dict]:
+        """Phase 2: HMM liefert latenten Makrozustand aus MCM-Zeitreihen."""
+        # → GaussianHMM(n_components=4) auf VIX, HY-Spread, NetLiq, Move, SKEW
+        # → state: 0=Expansion, 1=Risk-Off, 2=Crash, 3=Transition
+        return 0, {0: 0.70, 1: 0.20, 2: 0.05, 3: 0.05}  # Platzhalter
+
+    def _get_nn_signal(self, data) -> float:
+        """Phase 3: LSTM(32) schätzt Regime-Transition 1-3 Tage früher."""
+        # → Erst aktivieren wenn Phase 2 Timing-Lücken zeigt (Go/No-Go Q1 2027)
+        return 0.5  # Neutral-Platzhalter
+
+    # ── Schutzmechanismen ────────────────────────────────────────────────────
+
+    def _check_cusum(self, new_vix: float) -> bool:
+        """CUSUM-Alarm: struktureller Bruch in VIX-Zeitreihe."""
+        self.volatility_buffer.append(new_vix)
+        if len(self.volatility_buffer) > 50:
+            self.volatility_buffer.pop(0)
+        if len(self.volatility_buffer) < 10:
+            return False
+        mean   = np.mean(self.volatility_buffer)
+        cumsum = np.sum([x - mean for x in self.volatility_buffer])
+        std    = np.std(self.volatility_buffer) or 1.0
+        return cumsum > self.cusum_threshold * std
+
+    def _calculate_evt_var(self, returns: list) -> float:
+        """EVT-basierter VaR (Extremwerttheorie, Generalized Pareto Distribution)."""
+        if len(returns) < 20:
+            return -0.05
+        arr       = np.array(returns)
+        threshold = np.percentile(arr, 5)
+        excess    = arr[arr < threshold] - threshold
+        if len(excess) > 3:
+            shape, loc, scale = genpareto.fit(-excess)
+            return threshold - genpareto.ppf(0.95, shape, loc=loc, scale=scale)
+        return np.percentile(arr, 1)
+
+    # ── Kern-Logik DCE ───────────────────────────────────────────────────────
+
+    def _determine_regime(self, state: int, probs: dict) -> tuple[str, dict]:
+        """HMM-Zustand → UIQ-Regime-Label."""
+        names = {0: 'EXPANSION', 1: 'RISK_OFF', 2: 'CRASH', 3: 'TRANSITION'}
+        regime = names.get(max(probs, key=probs.get), 'UNKNOWN') if probs else 'UNKNOWN'
+        return regime, probs
+
+    def _calculate_confidence(self, bn, hmm_probs, nn, alarm, var) -> float:
+        """
+        Sekerke-inspirierte Fusion: Konsistenz × (1 - Risiko) × Regime-Dämpfer.
+        
+        Konsistenz: niedrige Streuung der Modell-Outputs = hohes Vertrauen
+        Risiko:     CUSUM-Alarm (-30%), hoher VaR (-20%)
+        Regime:     CRASH dämpft alle Modelle auf 50%
+        """
+        signals     = [bn, nn] + list(hmm_probs.values())
+        consistency = max(0.0, 1.0 - np.std(signals))
+
+        risk_penalty = 0.0
+        if alarm:       risk_penalty += 0.30
+        if var < -0.03: risk_penalty += 0.20
+
+        if self.current_regime == 'CRASH':
+            consistency *= 0.50
+
+        return float(np.clip(consistency * (1.0 - risk_penalty), 0.0, 1.0))
+
+    def _derive_action(self, consensus: float, confidence: float, var: float) -> dict:
+        """
+        Ampel-Logik → operative Entscheidung.
+        Entspricht dem §0-Prinzip: Gate 1 (Ob) vor Gate 2 (Wie) vor Gate 3 (Was).
+        """
+        # Gate 1: Ob gehandelt werden soll
+        if   confidence < 0.30 or var < -0.05: mode = 'RED'
+        elif confidence < 0.60 or var < -0.02: mode = 'YELLOW'
+        else:                                   mode = 'GREEN'
+
+        # Gate 2: Wie (Positionsgröße)
+        size_factor = {
+            'GREEN':  1.0,
+            'YELLOW': 0.50,
+            'RED':    0.0
+        }[mode]
+        position_size = confidence * size_factor
+
+        # Gate 3: Was (Richtung — nur wenn Gate 1+2 offen)
+        if   consensus > 0.55 and mode != 'RED': direction = 'BUY'
+        elif consensus < 0.45 and mode != 'RED': direction = 'SELL'
+        else:                                     direction = 'HOLD'
+
+        return {
+            'mode':           mode,          # GREEN / YELLOW / RED
+            'confidence':     confidence,    # 0.0 – 1.0
+            'position_size':  position_size, # 0.0 – 1.0 (Anteil vom Max-Sizing)
+            'direction':      direction,     # BUY / HOLD / SELL
+            'regime':         self.current_regime,
+            'regime_probs':   self.regime_probabilities,
+            'var_95':         var,
+            'cusum_alarm':    bool(self.volatility_buffer and
+                                  self._check_cusum(self.volatility_buffer[-1])),
+        }
+```
+
+### Kalibrierings-Prioritäten
+
+Die wichtigsten Parameter die mit historischen Snapshot-Daten kalibriert werden müssen:
+
+| Parameter | Default | Kalibrierung via |
+|---|---|---|
+| `discount_factor` | 0.98 | Sekerke Kap. 4 — Backtest auf Regime-Wechseln |
+| `cusum_threshold` | 3.0 | VIX-Zeitreihe 2020–2026, Sensitivity-Analyse |
+| `risk_penalty` CUSUM | 0.30 | Walk-Forward auf Track-Record-Daten |
+| `risk_penalty` VaR | 0.20 | EVT-Kalibrierung auf Returns-Verteilung |
+| HMM `n_components` | 4 | BIC-Score-Vergleich (3 vs 4 vs 5 Zustände) |
+
+### Integration in UIQ ko-aggregator
+
+```python
+# In market_aggregator.py — täglich nach process_ticker():
+dce = DecisionConfidenceEngine(config={"discount_factor": 0.98})
+mcm_data = pd.Series({
+    "vix": market_context["vix"],
+    "hy_spread": market_context["hy_spread"],
+    "net_liquidity": market_context["net_liquidity"],
+    "returns_history": spy_returns_60d,
+})
+dce_output = dce.update_daily(mcm_data)
+# → dce_output["confidence"] → neues KV-Feld "dceConfidence"
+# → dce_output["mode"]       → neues KV-Feld "dceMode" (GREEN/YELLOW/RED)
+```
+
+### NN-Aktivierungsregel (Gate für Phase 3)
+
+Das NN (`_get_nn_signal`) wird **nicht** aktiviert bis:
+1. Phase 2 (HMM) ≥ 60 Tage Live-Betrieb hat
+2. Messbare Timing-Lücke im HMM nachgewiesen ist (≥ 2 Tage Verzug bei Regime-Wechsel)
+3. Explizite Go/No-Go-Entscheidung in dieser Codebase dokumentiert
+
+In unsicheren Phasen (DCE-Mode RED) bleibt das NN immer deaktiviert — interpretierbare Modelle (BN/HMM) übernehmen.
+
+---
+
 ## 5. Qualitätssicherung & Validierung
 
 ### Das "Misstrauens-Prinzip"
