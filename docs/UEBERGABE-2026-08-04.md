@@ -6,72 +6,54 @@ Claude muss proaktiv fragen: **"hast du das verifiziert oder übernommen?"**
 
 ---
 
-## Verifizierbarer Stand (GitHub, 04.08.2026 08:19 UTC)
+## Verifizierbarer Stand (GitHub, 04.08.2026 14:33 UTC)
 
 | Komponente | Stand | SHA |
 |---|---|---|
 | **Aggregator** | **v5.28.0** | `42f4dd750f` |
-| **Frontend** | **v439** | `90221248f8` |
-| **dce_layer.py** | **v1.1** | `d8e2792760` |
-| **test_dce_layer.py** | 34/34 ✅ | `c45c1b3279` |
-| **GHA Run** | #188 + #189 — ✅ success | 04.08.2026 |
+| **Frontend** | **v442** | `f3c1489bfe` |
+| **GHA Run** | #189 — ✅ success | 04.08.2026 |
 
 ---
 
-## Heutiger Sprint: Konsolidierung + DCE-Integration + DCE-Ampel
+## Frontend-Commits heute (v437–v442)
 
-### Frontend v437–v439
-
-| Version | SHA | Was |
-|---|---|---|
-| v437 | `1f3209712f` | State-Konverter Konsolidierung: kvToScannerState Duplikat → window-Referenz |
-| v438 | `5889b0c003` | DCE-Ampel in Alpha-Desk (weatherEl Badge + Warning-Banner + Morning Briefing) |
-| v439 | `90221248f8` | **BUGFIX**: window-Referenz war zirkulär → renderAlphaCards `.toFixed` Fehler. Zweite kvToScannerState wieder vollständige Kopie. |
-
-**Lektion State-Konverter:** window-Referenz funktioniert nur über `<script>`-Block-Grenzen. Im selben Block ist `window.fn === fn` immer true → zirkulär. TODO: echtes ko-module als gemeinsame Quelle.
-
-### Aggregator v5.28.0
-- `run_dce()` in `main()` nach `build_leaderboards()` eingebaut
-- SPY-Returns (60d, Dezimalwerte) für EVT-VaR
-- CUSUM-Buffer persistiert via `master["meta"]["dce_cusum_buffer"]`
-- `master["dce"]` im KV: confidence/mode/position_size/direction/warnings
-
-### DCE Live-Validierung ✅ (Screenshot 04.08.2026 08:19)
-- **Confidence: 70/100 · Mode: GREEN**
-- Badge in Alpha-Desk Market Weather Zeile sichtbar: `70%` grün
-- AMZN Badges: C-55 · ↗+12.2% · +16.6% · +15 · 61 (confluence/AVWAP/dist200/trendScore/rs)
-- Keine DCE-Warnings (ruhiges Marktumfeld, VIX 15.99)
-
-### DCE v1.1 Features (gestern)
-- BN/HMM-Integration (Platzhalter, abwärtskompatibel)
-- Divergenz-Detektor (BN vs HMM vs Makro-Regime)
-- 34 Unit-Tests, 34/34 grün
-- GHA: Tests laufen vor jedem Aggregator-Run
+| Version | Was |
+|---|---|
+| v437 | State-Konverter: kvToScannerState Duplikat → window-Referenz (zirkulär — Rollback in v439) |
+| v438 | DCE-Ampel: weatherEl Badge + Warning-Banner + Morning Briefing KI-Prompt |
+| v439 | **BUGFIX**: window-Referenz war zirkulär → vollständige Kopie wiederhergestellt |
+| v440 | DCE-Badge bgMap-Fix + DeepDive TVA-Block: KV-Felder nach processData() injiziert |
+| v441 | Debug try-catch in renderAlphaDashboard (Diagnose-Sprint) |
+| v442 | **BUGFIX Alpha-Desk leer nach Scanner-Tab**: DOM-ID-Konflikt — Alpha-Cards jetzt `alpha-card-{sym}` statt `card-{sym}` |
 
 ---
 
-## Strategische Dokumente (gestern)
+## Root Causes heute
 
-- **ML_KONZEPT.md v1.3**: DCE als Innovationskern, Research/Production-Gate,
-  Performance-Monitoring, Literaturbewertung (6 Werke), Lese-Roadmap
-- **LITERATUR.md v1.0**: UIQ Referenzbibliothek (8 Werke)
-- **VISION_2030.md v1.1**: Drei-Engine-Architektur, UIQ Decision Pyramid
-- **SUITE.md v3.2**: §0 UIQ-Mission + Design-Regel
+**v439:** window-Referenz auf eigene Funktion ist zirkulär (`window.fn === fn` im selben Script-Block).
+Lösung: vollständige zweite Kopie mit Sync-Kommentar. Echte Lösung: ko-module (TODO).
+
+**v442:** `getElementById('card-AMZN')` gibt bei Duplikaten das erste zurück — Scanner-Card,
+nicht Alpha-Desk-Card. Alpha-Desk blieb leer. Lösung: Prefix `alpha-card-{sym}`.
+
+---
+
+## Live-Validierung (Screenshot 04.08.2026 14:33)
+
+- Alpha Desk Master Shortlist: AMZN + MRK sichtbar ✅
+- AMZN Badges: C-55 · ↗+12.2% · +16.6% · +15 · 61 ✅
+- Keine Console-Fehler ✅
+- DCE-Badge in weatherEl: erscheint nach nächstem GHA-Run (dce-Feld noch nicht im KV)
 
 ---
 
 ## Nächste Session
 
-### 🟡 Nächste Sprints
-- **DCE-Badge Emoji** (kosmetisch): `70%` ohne 🟢 Emoji — kleiner Rendering-Fix
-- **DeepDive TVA-Block**: trendScore + confluenceScore (Code vorhanden v433, noch nicht live gerendert)
-- **State-Konverter echte Konsolidierung**: ko-module mit `uiq_to_display_state()` statt zwei synchrone Kopien
-- **DCE Kalibrierung**: Brier Score Monitoring aufsetzen (ab 30 Tagen Daten)
-
-### ⏳ Zeitgesteuert
-- IV-Rank: ab ~12.08.2026
-- BN-Analyse: ab ~01.09.2026 (60 Snapshot-Tage)
-- MCM-HMM: ab ~01.10.2026
+- DCE-Badge validieren (nächster GHA-Run → weatherEl Badge sichtbar)
+- DeepDive TVA-Block validieren (trendScore + confluenceScore im DeepDive)
+- State-Konverter echte Konsolidierung: ko-module (TODO, kein Dringlichkeit)
+- DCE Kalibrierung: Brier Score ab ~30 Tagen Daten (~01.09.2026)
 
 ---
 
@@ -80,5 +62,5 @@ Claude muss proaktiv fragen: **"hast du das verifiziert oder übernommen?"**
 
 ---
 
-*UIQ Suite Übergabe 04.08.2026 (Final) · Aggregator v5.28.0 · Frontend v439*
-*DCE live und validiert: 70/100 · GREEN · VIX 15.99 · ruhiges Marktumfeld*
+*UIQ Suite Übergabe 04.08.2026 (Final) · Aggregator v5.28.0 · Frontend v442*
+*Alpha-Desk stabil — DOM-ID-Konflikt behoben*
