@@ -16,19 +16,15 @@ Die vollständige DSS-Kette:
 ```
 MARKT
   ↓
-Decision Engine          ← BN + HMM setzen hier an
+Signal Engine            ← Market Intelligence Engine (MIE): MSE, MCM, Ticker-Scan
   ↓
-Strategie-Auswahl        ← Regime-Prior aus HMM fließt hier ein
+Opportunity Engine       ← Leaderboards, Strategy Router, Deep Dive
   ↓
-Anlegerprofil
+Decision Confidence Engine (DCE)   ← DER INNOVATIONSKERN
   ↓
-Opportunity Engine
+Trade Assistant          ← Entry, Sizing, Optionsstrategien
   ↓
-Trade Assistant
-  ↓
-Positionsmanagement
-  ↓
-Lernen & Optimieren      ← NN (selektiv) setzt hier an
+Portfolio / Positionsmanagement
 ```
 
 **Die Filterregel für jede neue Idee:**
@@ -36,6 +32,32 @@ Lernen & Optimieren      ← NN (selektiv) setzt hier an
 > Wenn eine neue Methode, ein neues Feature oder ein neuer Indikator keinen expliziten Platz in dieser DSS-Kette findet — kommt sie nicht ins Produkt, oder muss heraus.
 
 UIQ wird nicht besser durch mehr Metriken. UIQ wird besser, wenn die Entscheidungsqualität steigt bei gleichzeitig reduzierter Komplexität. Das ist das eigentliche Optimierungsziel.
+
+### Die DCE als Alleinstellungsmerkmal
+
+Die meisten Trading-Tools haben eine Signal Engine. Manche haben eine Opportunity Engine. Keine hat eine Instanz die sagt:
+
+> *"Ich habe heute 12 Signale aus 6 Quellen — und ich bin mir zu 42% sicher, dass sie zusammen eine belastbare Grundlage für eine Entscheidung bilden."*
+
+Das ist die DCE. Und das ist der eigentliche Innovationskern von UIQ.
+
+Die DCE ist nicht einfach ein weiteres Modul — sie ist der Ort, an dem aus vielen heterogenen Informationsquellen eine belastbare Entscheidung mit einem **quantifizierten Vertrauensmaß** entsteht. Andere Systeme geben Signale. UIQ gibt Entscheidungen — mit Konfidenz.
+
+```
+Market Data
+    ↓
+Signal Engine (MIE)          → "Was macht der Markt?"
+    ↓
+Opportunity Engine           → "Welche Titel / Strategien passen?"
+    ↓
+Decision Confidence Engine   → "Wie belastbar ist diese Einschätzung?"
+    ↓                          → confidence_score 0–100
+Trade Assistant              → "Wie und was konkret handeln?"
+    ↓
+Portfolio                    → "Wie entwickelt sich das Ergebnis?"
+```
+
+BN, HMM und NN sind dabei nicht der Kern — sie sind **Zulieferer der DCE**. Der Kern ist die Fähigkeit, heterogene Signale zu einem kalibrierten Vertrauensmaß zu fusionieren und daraus eine operative Entscheidung abzuleiten.
 
 ---
 
@@ -440,7 +462,78 @@ In unsicheren Phasen (DCE-Mode RED) bleibt das NN immer deaktiviert — interpre
 
 ## 5. Qualitätssicherung & Validierung
 
-### Das "Misstrauens-Prinzip"
+### 5a. Research / Production Separation (verbindlich)
+
+Kein Notebook erzeugt jemals Produktionsparameter direkt. Jede Änderung wird exportiert, versioniert und manuell freigegeben. Das ist das formale Äquivalent des "Arzt-Review-Gates" aus GuidelineIQ — kein Algorithmus-Output geht ohne menschliche Prüfung in den Produktionspfad.
+
+```
+┌─────────────────────────────────────────────┐
+│  RESEARCH LAYER                             │
+│  Jupyter Notebook · pgmpy · hmmlearn · PyMC │
+│  Explorative Analyse · Cross-Validation      │
+│  Output: neue Gewichtungen als JSON-Export   │
+└──────────────────────┬──────────────────────┘
+                       │
+              manuelle Prüfung
+              + Versionierung
+                       │
+┌──────────────────────▼──────────────────────┐
+│  VALIDATED MODEL                            │
+│  JSON-Parameter in /docs/model_params/      │
+│  Git-versioniert · Commit-Message mit       │
+│  Validierungsergebnis + Freigabe-Datum      │
+└──────────────────────┬──────────────────────┘
+                       │
+              manueller Import
+              in Produktionscode
+                       │
+┌──────────────────────▼──────────────────────┐
+│  PRODUCTION LAYER                           │
+│  market_aggregator.py · ko-aggregator GHA   │
+│  DecisionConfidenceEngine (live)            │
+│  Keine direkte Notebook-Abhängigkeit        │
+└─────────────────────────────────────────────┘
+```
+
+**Konkret für UIQ Phase 1 (BN-Analyse):**
+Das Jupyter-Notebook analysiert die Snapshot-Daten und produziert eine `confluence_weights.json` mit neuen Score-Gewichtungen. Diese wird geprüft, in `docs/model_params/` versioniert, und erst dann manuell in `calc_confluence_score()` übernommen — nie automatisch.
+
+**Warum diese Trennung kritisch ist:**
+Ein BN-Modell das auf 60 Tagen trainiert wurde kann auf Tag 61 nach einem Regime-Wechsel vollständig falsch liegen. Das Production Layer darf nie automatisch auf neue Modell-Outputs reagieren.
+
+---
+
+### 5b. Performance-Monitoring (Modell-Governance)
+
+Objektive Qualitätsmetriken für jede DCE-Komponente — ohne diese ist die DCE ein gut klingendes Number, kein verifizierbares System.
+
+| Modell / Komponente | Kennzahl | Schwellwert | Monitoring-Frequenz |
+|---|---|---|---|
+| **BN (Phase 1)** | Stabilität der Posterior-Gewichte | Δ < 10% zwischen Runs | monatlich |
+| **HMM (Phase 2)** | Regime Persistence (Ø Verweildauer) | ≥ 5 Handelstage | wöchentlich |
+| **DCE Confidence** | **Brier Score** | < 0.25 (gut), < 0.33 (akzeptabel) | monatlich |
+| **Ampel-Logik** | Precision / Recall je Mode | GREEN Precision ≥ 0.65 | monatlich |
+| **Position Sizing** | Max Drawdown in RED-Phasen | < 5% des Portfolios | täglich |
+| **Regime-Erkennung** | Timing-Lag bei Wechseln | ≤ 3 Handelstage | pro Ereignis |
+
+**Brier Score** ist die wichtigste Einzelmetrik: Er misst ob "70% Konfidenz" tatsächlich 70% der Zeit korrekt liegt. Ohne Brier Score-Monitoring ist die DCE-Confidence nicht kalibriert — sie klingt präzise ohne es zu sein.
+
+```python
+# Brier Score Berechnung (täglich in ko-aggregator loggen)
+def brier_score(confidence_scores: list, outcomes: list) -> float:
+    """
+    confidence_scores: DCE-Output der letzten N Tage (0.0-1.0)
+    outcomes: 1 wenn Markt-Erwartung eingetreten, 0 wenn nicht
+    Gut: < 0.25 · Akzeptabel: < 0.33 · Schlecht: > 0.33
+    """
+    return float(np.mean([(c - o) ** 2 for c, o in zip(confidence_scores, outcomes)]))
+```
+
+**Degradations-Alert:** Wenn Brier Score über 0.33 steigt oder Regime Persistence unter 3 Tage fällt → automatischer Alert im Morning Briefing + manuelle Modell-Review ausgelöst.
+
+---
+
+### 5c. Das "Misstrauens-Prinzip"
 
 Jedes ML-Modell in UIQ muss drei Tests bestehen:
 
