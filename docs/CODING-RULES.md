@@ -197,8 +197,8 @@ Prioritäten-Hierarchie (unveränderlich):
 |---|---|---|---|
 | ~~**#26**~~ | ~~TVA Sprint A Rest: `f_sellProbability`~~ | — | ✅ ERLEDIGT v5.25.0 (03.08.2026) |
 | **#27** | Mindest-Volumen-Filter für AVWAP + OB-Detector (illiquide Titel wie AIVAF) | Niedrig | Bei Gelegenheit |
-| **#28** | Journal-Modul v1 | **Hoch** | ✅ Bereit (ADX live, TVA Sprint A erledigt) |
-| **#29** | Portfolio Health Score (Übersicht aller gehaltenen Positionen) | Mittel | Nach Journal |
+| ~~**#28**~~ | ~~Journal-Modul v1~~ | — | ➡️ Umgewidmet → Refundex (05.08.2026, DSS §0) |
+| **#29** | Portfolio Health Score | Mittel | Nach Journal (Refundex) |
 | **#30** | Szenario-Simulation (-15% Nasdaq → Optionsportfolio) | Mittel | Nach Portfolio |
 
 ---
