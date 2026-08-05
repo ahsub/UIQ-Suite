@@ -66,6 +66,22 @@ Navigation erweitert (MCM + neue Sektion). Header: v328 → v451.
 
 ---
 
+## Was heute passiert ist (Nachtrag Abend)
+
+### finArchive/ivArchive-Fix + fin:-Backup (ko-aggregator 9da6169)
+- **Fix 1** `market_aggregator.py`: `generate_daily_snapshot()` Success-Return
+  um `finArchive` + `ivArchive` aus `master` erweitert — Russell3000-Shard-Status
+  und IV-Archiv-Status jetzt im `daily_market_snapshot`-KV-Key sichtbar.
+- **Fix 2** `tr_backup.py` v1.1: `fin:`-Präfix ergänzt (neben `tr:` und `market:`);
+  ab nächstem Samstag-Backup sichtbar ob fin:shard:1–5 korrekt befüllt werden.
+
+### Track-Record erste Erkenntnisse (Backup Stand 01.08.2026, h7, BULL_QUIET)
+Alle Zellen n≥20, Minervini-Regime: ko_long 74% hitFresh (n=50), long_minervini
+59% (n=220), vcp_setups 67% (n=40, klein). h30 reift ab ~01.09.2026.
+Alle anderen Regime noch unter Mindest-n=20.
+
+---
+
 ## Nächste Session
 
 ### 🟡 Offen
