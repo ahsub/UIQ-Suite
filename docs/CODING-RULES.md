@@ -191,13 +191,13 @@ Prioritäten-Hierarchie (unveränderlich):
 
 ---
 
-## 9. Offene Backlog-Items (Stand 02.08.2026)
+## 9. Offene Backlog-Items (Stand 05.08.2026)
 
 | # | Was | Prio | Bedingung |
 |---|---|---|---|
-| **#26** | TVA Sprint A Rest: `f_sellProbability` für `score_short_breakdown()` | Mittel | ADX live ✅ |
+| ~~**#26**~~ | ~~TVA Sprint A Rest: `f_sellProbability`~~ | — | ✅ ERLEDIGT v5.25.0 (03.08.2026) |
 | **#27** | Mindest-Volumen-Filter für AVWAP + OB-Detector (illiquide Titel wie AIVAF) | Niedrig | Bei Gelegenheit |
-| **#28** | Journal-Modul v1 | Hoch | Nach ADX-Sprint ✅ |
+| **#28** | Journal-Modul v1 | **Hoch** | ✅ Bereit (ADX live, TVA Sprint A erledigt) |
 | **#29** | Portfolio Health Score (Übersicht aller gehaltenen Positionen) | Mittel | Nach Journal |
 | **#30** | Szenario-Simulation (-15% Nasdaq → Optionsportfolio) | Mittel | Nach Portfolio |
 
