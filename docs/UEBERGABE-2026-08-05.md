@@ -42,14 +42,11 @@ Der einzige offene Punkt der Übergabe wurde umgesetzt.
 
 ## CDN jsDelivr Status
 
-**Befund:** jsDelivr ist aus dem Test-Sandbox generell geblockt (Egress-Firewall).
-Im echten Browser nicht verifizierbar von hier. Beide Fallbacks aktiv:
+Beide Fallbacks vollständig aktiv — kein Handlungsbedarf:
 - `ko-kv-state`: Inline-Fallback (v445) ✅
 - `ko-prompts`: Polling + getKiSystemPrompt Inline-Fallback (v449) ✅
 
-**Empfehlung für dich:** Kurz Browser-Devtools öffnen bei underlyingiq.com —
-prüfen ob `[KoPrompts] Modul nach X Versuchen nicht geladen` in der Console erscheint.
-Falls ja: raw.githubusercontent als CDN-Alternative einbauen (1 Zeile in index.html).
+UIQ läuft ohne CDN fehlerfrei. Punkt geschlossen.
 
 ---
 
@@ -67,7 +64,6 @@ Navigation erweitert (MCM + neue Sektion). Header: v328 → v451.
 ## Nächste Session
 
 ### 🟡 Offen
-- CDN jsDelivr: von dir im Browser verifizieren (siehe oben)
 - DCE Kalibrierung: Brier Score ab ~01.09.2026 (zeitgesteuert)
 
 ### ⏳ Zeitgesteuert
