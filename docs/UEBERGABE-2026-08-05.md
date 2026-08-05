@@ -50,7 +50,12 @@ UIQ läuft ohne CDN fehlerfrei. Punkt geschlossen.
 
 ---
 
-## Was heute passiert ist (ergänzt)
+## Was heute passiert ist (finalisiert)
+
+### ko-ai Worker v1.9 versioniert (commit 4fd9184)
+SPOF UIQ-STRATEGIE §7 behoben — Worker erstmals in `workers/ko-ai.js`:
+morning 2000→3000 · deep_dive 800→2500 · eic 1200→2000 (Coaching-Ton v2.6 Abbruch-Fix).
+CF Dashboard bleibt Source of Truth; Datei ist versionierte Referenz.
 
 ### help.html aktualisiert auf v451 / Aggregator v5.28 (commit c7243e7)
 Neue Sektion „Aktuelle Indikatoren v5.9–v5.28" eingefügt:
