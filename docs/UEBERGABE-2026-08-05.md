@@ -53,6 +53,17 @@ Falls ja: raw.githubusercontent als CDN-Alternative einbauen (1 Zeile in index.h
 
 ---
 
+## Was heute passiert ist (ergänzt)
+
+### help.html aktualisiert auf v451 / Aggregator v5.28 (commit c7243e7)
+Neue Sektion „Aktuelle Indikatoren v5.9–v5.28" eingefügt:
+RS-Rank Score · Distribution Days · Anchored VWAP · Order Block Detector ·
+TVA-Indikatoren (trendScore/confluenceScore/tvaRegime/chopIndex/sellProbability) ·
+IV-Rank/IVP-Archiv · Earnings Calendar · DCE · DE-Modus · Coaching-KI · Modularisierung.
+Navigation erweitert (MCM + neue Sektion). Header: v328 → v451.
+
+---
+
 ## Nächste Session
 
 ### 🟡 Offen
