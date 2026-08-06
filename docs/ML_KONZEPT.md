@@ -161,6 +161,71 @@ Output: P(Regime_0..3) für nächsten Tag
 
 ---
 
+## 3b. Beziehung zu Backlog №29 — Regime-History-Flag als Brücke
+
+*(Ergänzt 07.08.2026 — aus Analyse MSE-Zustandslosigkeit)*
+
+Das HMM (Phase 2) ist die Ziel-Architektur für die Regime-Transition-Erkennung. Bis die Datenbasis reift (~01.10.2026), braucht UIQ eine Überbrückung — das ist **Backlog №29 (Regime-History-Flag)**.
+
+### Die Staffel-Sequenz
+
+```
+HEUTE — regelbasiert, zustandslos
+  MSE: VIX3M/VIX-Ratio → Label (BULL_QUIET / BULL_FRAGILE / POST_PANIC / STRESS)
+  Problem: zwei Tage mit identischem Ratio=1.03 bekommen das gleiche Label,
+           obwohl Markt sich erholt (STRESS→POST_PANIC) oder abschwächt (BULL→POST_PANIC)
+
+AB SOFORT — Backlog №29 (regelbasierter Übergangsvektor)
+  mse_history ist bereits im KV-Store vorhanden (30 Tage)
+  Auswertung: letzten 3–5 MSE-Labels → Übergangsvektor ableiten
+  vector = RECOVERING | DETERIORATING | STABLE
+  Aufwand: ~20 Zeilen Python, keine neue Datenbasis nötig
+  Vorteil: sofort verfügbar, deterministisch, vollständig interpretierbar
+
+AB ~01.09.2026 — BN-Analyse (Phase 1)
+  Entkorreliert die ~30 Score-Felder → sauberere MCM-Features
+  Kein direkter Beitrag zum Regime-Flag, aber:
+  → bessere Eingangssignale für das HMM in Phase 2
+
+AB ~01.10.2026 — MCM-HMM (Phase 2)
+  GaussianHMM(n_components=4) auf VIX / HY-Spread / Net Liquidity / Move / SKEW
+  Output: P(Expansion), P(Risk-Off), P(Crash), P(Transition) als Wahrscheinlichkeitsvektor
+  → ersetzt den regelbasierten vector durch einen probabilistischen, kalibrierten Prior
+  → Backlog №29 bleibt als Fallback bei HMM-Datenlücken
+
+AB Q1 2027 — NN selektiv (Phase 3)
+  LSTM(32) antizipiert Regime-Transition 1–3 Tage früher als HMM
+  → trainiert auf HMM-Labels, Go/No-Go nach 60 Tagen Phase-2-Betrieb
+```
+
+### Warum die Sequenz sauber ist
+
+Jede Stufe macht die nächste besser — keine Konkurrenz, keine Doppelarbeit:
+
+| Stufe | Methode | Beitrag für nächste Stufe |
+|---|---|---|
+| **№29 History-Flag** | regelbasiert, mse_history | Überbrückung bis HMM reif; liefert Labels zum Validieren |
+| **BN (Phase 1)** | pgmpy, Offline-Analyse | Entkorrelierte MCM-Features = besseres HMM-Training |
+| **HMM (Phase 2)** | hmmlearn, GaussianHMM | Probabilistischer vector ersetzt regelbasierten; liefert Labels für NN |
+| **NN (Phase 3)** | LSTM(32), selektiv | Antizipation auf Basis HMM-Labels |
+
+### Verhältnis History-Flag zu MCM-HMM
+
+| | History-Flag (№29) | MCM-HMM (Phase 2) |
+|---|---|---|
+| **Methode** | Regelbasiert (letzte N Labels) | Datengetrieben (Wahrscheinlichkeiten) |
+| **Output** | `RECOVERING / DETERIORATING / STABLE` | `P(state_0..3)` kontinuierlich |
+| **Datenbedarf** | Sofort (mse_history vorhanden) | ≥ 90 Tage MCM-Zeitreihen |
+| **Interpretierbarkeit** | Hoch — jeder Schritt nachvollziehbar | Mittel — latente Zustände |
+| **Präzision** | Approximation | Kalibriert (Brier Score messbar) |
+| **Verhältnis** | Überbrückung + Fallback | Zielzustand |
+
+**Konsequenz für NEUTRAL als 5. Regime (Backlog №29):**
+Mit dem HMM wird `NEUTRAL` als eigenes Label überflüssig:
+`POST_PANIC + vector=STABLE + consecutive≥5` entspricht regelbasiert dem NEUTRAL-Konzept.
+Im HMM-Zeitalter: hohe `P(Transition)` bei niedrigem `P(Crash)` und `P(Risk-Off)` = funktionales NEUTRAL — präziser als jedes statische Label.
+
+
 ## 4. Umsetzungsplan
 
 ### Phase 1 — BN-Analyse (September 2026)
@@ -692,6 +757,7 @@ Candy     Kap. 7, 8        Particle Filters, Joint State/Parameter
 
 ---
 
-*ML_KONZEPT.md v1.1 · August 2026 · UIQ Suite*  
+*ML_KONZEPT.md v1.2 · August 2026 · UIQ Suite*  
 *Literaturbewertung ergänzt: 6 Referenzwerke bewertet, Lese-Roadmap definiert*  
+*§3b ergänzt (07.08.2026): Beziehung Regime-History-Flag (Backlog №29) → BN → HMM → NN als Staffel-Sequenz*  
 *Nächste Revision: nach BN-Analyse September 2026*
