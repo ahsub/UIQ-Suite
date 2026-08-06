@@ -1,115 +1,129 @@
-# ÜBERGABE 2026-08-06 — UIQ Suite Session
+# ÜBERGABE 2026-08-06 — UIQ Suite + Refundex Session
 
 ## ⚠️ ÜBERGABE-HEADER-REGEL
 Alle Angaben sind **unverified** bis zur eigenständigen Bestätigung.
-Claude muss proaktiv fragen: **"hast du das verifiziert oder übernommen?"**
+Claude muss proaktiv fragen: **„hast du das verifiziert oder übernommen?"**
 
 ---
 
-## Verifizierbarer Stand (GitHub, 05.08.2026 Abend)
+## Verifizierbarer Stand (GitHub, 06.08.2026 Abend)
 
 | Komponente | Stand | Commit |
 |---|---|---|
-| **Aggregator** | **v5.28.0** | `9da6169` (finArchive-Fix) |
-| **Frontend** | **v452** | `29b3ef8` |
-| **ko-prompts.js** | **v2.6.0** | `@610192d` |
-| **ko-ai Worker** | **v1.9** | `workers/ko-ai.js` versioniert |
-| **tr_backup.py** | **v1.1** | fin:-Präfix ergänzt |
-| **GHA Run** | #192 ✅ success | 05.08.2026 06:10 UTC |
+| **Frontend (axel-scanner)** | **v453** | `314b475` |
+| **Aggregator** | **v5.28.0** | `9da6169` (unverändert) |
+| **ko-prompts.js** | **v2.6.0** | `@610192d` (unverändert) |
+| **ko-ai Worker** | **v1.9** | `workers/ko-ai.js` (unverändert) |
+| **Refundex ROADMAP** | **v1.6** | `db45d98` |
+| **Refundex engine/** | `flex_client.py` v1.0.0 | `db45d98` |
+| **Refundex workers/** | `ko-flex-proxy.js` v1.0.0 | `db45d98` |
+| **GHA Run** | #192 ✅ success | 05.08. 06:10 UTC (letzter Lauf) |
 
 ---
 
 ## Was heute passiert ist
 
-### Morgen
-- **ko-prompts v2.6.0** (`@610192d`, v451): Morning Briefing Coaching-Ton —
-  EIC Mentor-Stil mit Metrik-Erklärungspflicht + Handlungshaltung je Abschnitt;
-  Public: Erklär-Pflicht pro Messwert, TOP-KANDIDATEN-Begründung.
+### UIQ — Verifikation + Cleanup
 
-### Mittag
-- **ko-ai Worker v1.9** versioniert (`workers/ko-ai.js`, SPOF §7 behoben):
-  max_tokens morning 2000→3000, deep_dive 800→2500, eic 1200→2000
-  (behebt Morning-Briefing-Abbrüche durch Coaching-Ton v2.6).
-- **help.html v451/Aggregator v5.28**: neue Sektion „Aktuelle Indikatoren v5.9–v5.28"
-  (RS-Rank, DD, AVWAP, OB, TVA, IV-Rank, Earnings, DCE, DE-Modus, Coaching-KI,
-  Modularisierung). Navigation erweitert.
+**P1 — ko-trackrecord.js Frontend-Verifikation ✅**
+- CDN-Hash `@e4f93297` in index.html = letzter ko-modules-Commit → aktuell ✅
+- EIC-Guard doppelt abgesichert (Tab unsichtbar + Panel nie direkt erreichbar) ✅
+- `tr:stats` KV-Zugriff korrekt über `window.TrackRecord.load()` ✅
+- DOM vollständig: `tr-matrix-container`, Refresh-Button, `switchAlphaTab` ✅
+- **Kein Fix nötig.** Frontend ist bereit für h30-Daten (~01.09.)
 
-### Nachmittag — Aufräum-Sprint
-- **SUITE.md + CODING-RULES**: Backlog #26 TVA Sprint A ✅ ERLEDIGT,
-  #28 Journal-Modul ➡️ Refundex umgewidmet (DSS §0-Filtertest),
-  Fortschreibungshistorie 3.5 vollständig.
-- **Prio-4-Restfunde v452** (`29b3ef8`): ki-dropdown-wrap 3 tote getElementById,
-  overheat-text/sektor-overheat-content OR-Fallback bereinigt. Backlog #19 geschlossen.
-- **Architektur-Entscheidung Journal**: gehört in Refundex, kein UIQ-Code.
-  Begründung: Trade-Journal = Positions-Bewirtschaftung nach dem Trade,
-  nicht Entscheidungs-Tool. Flex-Query-Anbindung macht P&L automatisch.
+**P2 — Backlog #19 finaler Abschluss ✅ → Frontend v453 (`314b475`)**
+- 2 redundante `/* fix #19: war preset-select */`-Kommentare entfernt
+- Z.17315: OR-Fallback-Tautologie (`getElementById() || getElementById()`) bereinigt
+- Z.24931: Herkunftskommentar entfernt
+- Changelog-Eintrag v453 committed
+- **Backlog #19 vollständig geschlossen** (v412 Migration → v452 Dead-Code → v453 Kommentare)
 
-### Abend — Diagnose + Fixes
-- **Russell3000-Shard-Diagnose**: tr_backup_latest.json analysiert (Stand 01.08.).
-  Befund: finArchive war leer in market:snapshot — generate_daily_snapshot()
-  hat master["finArchive"] nie in den Return übernommen. fin:-Keys fehlten im Backup.
-- **Fix market_aggregator.py**: finArchive + ivArchive in generate_daily_snapshot()
-  Success-Return → ab nächstem Lauf im daily_market_snapshot-KV-Key sichtbar.
-- **Fix tr_backup.py v1.1**: fin:-Präfix ergänzt → ab Samstag 09.08. im Backup.
+### Refundex — Architektur + Infrastruktur-Sprint
 
-### Track-Record erste Erkenntnisse (h7, BULL_QUIET, n≥20, Stand 01.08.)
-| Strategie | hit | hitFresh | n |
-|---|---|---|---|
-| ko_long | 72% | **74%** | 50 |
-| long_minervini | 63% | 59% | 220 |
-| short_fading | 61% | 58% | 110 |
-| vcp_setups | 53% | **67%** | 40 |
-| long_mr | 44% | 48% | 110 |
-| options_csp | 36% | 33% | 50 |
+**P3 — Datenmodell + ROADMAP (`e195e1f`)**
+- `docs/DATENMODELL_JOURNAL.md` v1.0: vollständiges JSON-Schema für Trade-Journal
+  (automatische Felder aus Flex-XML + manuelle subjektive Dimension)
+- `docs/ROADMAP.md` v1.5 → v1.6: Items 2.8–2.11 ergänzt
 
-h30-Daten: überall n=0 — reift ab ~01.09.2026. Alle anderen Regime unter n=20.
+**Flex-XML Analyse (echte CapTrader-Daten 2023–2026)**
 
----
+Kritische Erkenntnisse aus 4 XML-Files:
+- **Keine `ClosedLots`-Sektion** vorhanden (war Annahme in DATENMODELL) → P&L kommt aus
+  Close-Trades (`openCloseIndicator='C'`, `fifoPnlRealized`)
+- **OPT notes-Codes** entschlüsselt: `Ep`=Verfall, `A`=Assignment, `P`=Combo-Teil, `MLG`=Manual Leg
+- **Teilfills** über `ibOrderID` aggregieren (nicht `tradeID`)
+- **Quellensteuer** vorhanden: `FRTAX`-Einträge in `StmtFunds` (Brutto-DIV + FRTAX = Netto)
+- `DATENMODELL_JOURNAL.md` muss ClosedLots-Sektion korrigiert werden (nächste Session)
 
-## Plan für morgen (06.08.2026)
+**Empfohlene Flex-Query-Anpassungen (noch nicht umgesetzt — Axel macht zuhause):**
+- Format auf **XML** umstellen (falls noch CSV)
+- Sektion **`ClosedLots`** aktivieren → fertig gematchte FIFO-Paare
+- Sektion **`CashTransactions`** aktivieren → Dividenden mit `country`-Feld direkt
 
-### 🔵 Priorität 1 — Track-Record Frontend-Verifikation
-Prüfen ob `ko-trackrecord.js` korrekt in index.html eingebunden ist und die
-Track-Record-Sektion im EIC-Modus tatsächlich erscheint. Zeitkritisch: h30-Daten
-kommen ab September — Frontend muss bereit sein.
+**`engine/flex_client.py` v1.0.0 (`db45d98`)**
+- Zwei-Schritt-Pull: SendRequest → ReferenceCode → GetStatement + Retry-Logik
+- Credentials aus `.env` (`IB_FLEX_TOKEN`, `IB_FLEX_QUERY_ID`), nie im Code
+- CLI: `python -m engine.flex_client --output data/flex_latest.xml`
+- `engine/requirements.txt` aktualisiert (requests + python-dotenv)
+- `.env.example` als Vorlage committed
 
-Konkret zu prüfen:
-- CDN-Hash für ko-trackrecord.js in index.html korrekt?
-- EIC-Guard greift? (Sektion nur im EIC-Modus sichtbar)
-- `tr:stats` KV-Key korrekt gelesen?
-- Zellen mit n≥20 werden angezeigt (BULL_QUIET h7)?
-- n<20-Zellen korrekt mit Mindest-n-Hinweis geblockt?
+**`workers/ko-flex-proxy.js` v1.0.0 (`db45d98`)**
+- Cloudflare Worker als CORS-Bridge für Browser-Pull
+- `POST /flex` mit `{ token, queryId }` → XML-Rückgabe
+- Rate-Limit 10 Req/h, Token-Maskierung, `GET /health`
+- Deployment: `wrangler deploy workers/ko-flex-proxy.js --name ko-flex-proxy`
 
-### 🔵 Priorität 2 — Namensdrift-Cleanup (optional)
-`ticker-preset` (26x) vs. `preset-select` (3x) — letzter offener Punkt
-aus Backlog #19. Echter Abschluss des Dead-Code-Audits.
-
-### 🔵 Priorität 3 — Refundex Journal-Backlog-Eintrag
-Architektur-Entscheidung ist getroffen — Datenstruktur für Journal in
-Refundex konkret ausformulieren.
+**ibkr-tax-tool (`ahsub/ibkr-tax-tool`) — Python-Sandkasten**
+- Befund: nur Scaffolding (2 Commits vom 05.08.), kein echter Steuer-Code
+- Entscheidung: **archivieren** (GitHub Settings → Archive)
+- Fachlich vollständig in Refundex aufgegangen
 
 ---
 
-## ⏳ Zeitgesteuert — kein Handlungsbedarf
+## Offene To-dos für Axel (zuhause am Mac)
+
+| # | Aufgabe | Wo |
+|---|---|---|
+| A1 | `cd refundex && git pull` — aktuellen Stand holen | Terminal |
+| A2 | `cp .env.example .env` → Token + QueryID aus CapTrader Client Portal eintragen | Terminal/Editor |
+| A3 | `pip install requests python-dotenv` | Terminal |
+| A4 | Test: `python -m engine.flex_client --output data/flex_test.xml` | Terminal |
+| A5 | Flex-Query in CapTrader auf **XML** umstellen + `ClosedLots` + `CashTransactions` aktivieren | IBKR Client Portal |
+| A6 | Worker deployen: `wrangler deploy workers/ko-flex-proxy.js --name ko-flex-proxy` | Terminal |
+| A7 | `ahsub/ibkr-tax-tool` archivieren (GitHub → Settings → Archive) | GitHub Web |
+
+---
+
+## Offene UIQ Backlog-Punkte (Prioritäten)
+
+| Prio | Item | Status |
+|---|---|---|
+| 🔴 | **AVP (Anchored Volume Profile)** — nächster geplanter Sprint | noch nicht gestartet |
+| 🔴 | **`parseActivityXML()`** in `ko-flex.js` (ROADMAP 2.8) | Stub vorhanden |
+| 🟡 | Backlog #27 Mindest-Volumen-Filter AVWAP/OB-Detector | niedrige Prio |
+| 🟡 | Backlog #16 Calendar-Buffer strategie-spezifisch | Track-Record-getriggert |
+| 🟡 | Backlog #22 sizingMultiplier Strategie-Ampel | nach Track-Record-Review |
+| 🟡 | VCP Sprint 2 — Volumen-Bestätigung | nach Sprint-1-Praxiserfahrung |
+| 🔵 | `DATENMODELL_JOURNAL.md` korrigieren (ClosedLots-Sektion raus) | nächste Refundex-Session |
+| 🔵 | ko-journal.js Modul implementieren (ROADMAP 2.9) | nach 2.8 + 2.10 |
+| ⏳ | h30 Track-Record reift | ~01.09.2026 |
+| ⏳ | IWV Holdings CSV aktualisieren | ~27.08.2026 |
+
+---
+
+## ⏳ Zeitgesteuert
 
 | Wann | Was |
 |---|---|
-| 09.08. (Sa) | fin:-Backup: erste Shard-Sichtbarkeit |
+| 09.08. (Sa) | fin:-Backup: erste Shard-Sichtbarkeit nach finArchive-Fix |
 | ~12.08. | IV-Rank ab 30 Archiv-Tagen automatisch aktiv |
-| ~27.08. | IWV Holdings CSV aktualisieren |
+| ~27.08. | IWV Holdings CSV aktualisieren (ishares.com → IWV → Holdings → CSV) |
 | ~01.09. | h30 Track-Record / BN-Analyse / DCE Brier Score |
 | ~01.10. | MCM-HMM |
 
 ---
 
-## Technische Schulden (nichts Kritisches)
-
-- `ticker-preset`/`preset-select` Namensdrift (Backlog #19 Rest)
-- ko-trackrecord.js Frontend-Verifikation (→ morgen)
-- Refundex Journal-Datenstruktur (→ nächste Woche)
-
----
-
-*UIQ Suite Übergabe 05.08.2026 Abend · Aggregator v5.28.0 · Frontend v452*
-*ko-prompts v2.6.0 · ko-ai v1.9 · tr_backup v1.1*
-*Heute: Morning Coaching + SPOF-Fix + Aufräum + finArchive-Fix — gute Session!*
+*UIQ Suite + Refundex Übergabe 06.08.2026 Abend*
+*Frontend v453 · Refundex ROADMAP v1.6 · flex_client.py v1.0.0 · ko-flex-proxy v1.0.0*
+*Heute: Verifikation TR-Frontend ✅ · Backlog #19 final ✅ · Journal-Datenmodell · Flex-XML-Analyse · Pull-Infrastruktur gebaut*
