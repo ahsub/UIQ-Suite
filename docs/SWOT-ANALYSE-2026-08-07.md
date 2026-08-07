@@ -1,7 +1,8 @@
 # UIQ-Suite — SWOT-Analyse (technisch + strategisch)
 
-**Version:** 1.1
-**Stand:** 07.08.2026 (v1.1: Business-Fakten nachgetragen, Matrix terminiert)
+**Version:** 1.2
+**Stand:** 07.08.2026 (v1.2: Backtest-Status Parallel-Session eingearbeitet; v1.1: Business-Fakten, Matrix terminiert)
+**Hinweis Konsolidierung:** Parallel existiert `docs/SWOT_2026_08_07.md` (zweite Session, 07.08. vormittags) mit weitgehend deckungsgleichen Befunden — eine der beiden Dateien sollte zur kanonischen erklärt, die andere als Querverweis-Stub reduziert werden.
 **Autor:** Claude (externe Review-Session), auf Basis Read-only-Zugriff auf `ahsub/{axel-scanner, ko-aggregator, UIQ-Suite, refundex}` + Websuche Wettbewerb
 **Vorgänger:** SWOT in `ko-aggregator/docs/STRATEGIE.md` §3 (v1.12, 15.07.2026) — dieses Dokument vertieft und aktualisiert mit Code-Evidenz
 **Prüfstein laut Auftrag:** Kommerzialisierung nur bei ausreichender Perspektive
@@ -87,7 +88,7 @@ Die Frage war: Kommerzialisierung nur bei ausreichender Perspektive. Mein Urteil
 | # | Kriterium | Schwelle | Status 07.08. | Zieltermin |
 |---|---|---|---|---|
 | 1 | Rechtsgutachten | keine strukturelle Umbau-Auflage | **nicht begonnen** (Fakt, Frage 5) | Erstberatung vor Beta-Start, Gutachten Okt. |
-| 2 | Backtest 2007–2026 | Regime-Gates schlagen naive Baseline (200T×Vol) | nicht gebaut | Sep. |
+| 2 | Backtest 2007–2026 | Regime-Gates schlagen naive Baseline (200T×Vol) | **vorläufig ✅** — Parallel-Session 07.08. meldet Gate-A Sharpe 1.66 vs 0.63, MaxDD −23% vs −55% (SUITE.md v4.1); ABER: Skript nicht committet, Baseline-Definition/Annualisierung/Kosten ungeprüft → Reproduktion ausstehend | Skript-Commit + Gegenrechnung Aug./Sep. |
 | 3 | Beta-Aktivität | ≥5 Nutzer mit ≥2 Sessions/Woche über 4 Wochen | **0 externe Nutzer** — Beta-Reife erst diese Woche erreicht (Fakt, Frage 2) | Nov. |
 | 4 | Zahlungsbereitschafts-Signal | ≥3 Beta-Nutzer bejahen 30+ €/Monat konkret (Preis-Hypothese 30–50 €, Frage 3) | offen | Nov./Dez. |
 | 5 | Track-Record hit30 | erste Auswertung ohne Kontaminations-Befund | läuft (seit 02.07.) | Okt./Nov. |
