@@ -1,4 +1,4 @@
-# ÜBERGABE 2026-08-07 — UIQ Suite + Refundex Session
+# ÜBERGABE 2026-08-07 — Finales Tagesprotokoll
 
 ## ⚠️ ÜBERGABE-HEADER-REGEL
 Alle Angaben sind **unverified** bis zur eigenständigen Bestätigung.
@@ -10,97 +10,64 @@ Claude muss proaktiv fragen: **„hast du das verifiziert oder übernommen?"**
 
 | Komponente | Stand | Commit |
 |---|---|---|
-| **Aggregator** | **v5.29.0** | `e1e87e9` |
+| **Aggregator** | **v5.32.0** | `3a437e4` |
 | **Frontend (axel-scanner)** | **v453** | `314b475` (unverändert) |
-| **ko-prompts.js** | **v2.6.0** | `@610192d` (unverändert) |
-| **ko-ai Worker** | **v1.9** | unverändert |
-| **SUITE.md** | **v3.6** | `f53b4d1` (Backlog №29) |
-| **ML_KONZEPT.md** | **v1.2** | `a7e37dd` (§3b Staffel-Sequenz) |
-| **Refundex ROADMAP** | **v1.6** | `db45d98` (unverändert) |
-| **GHA Run** | nächster Lauf | morgen früh ~06:10 UTC |
+| **SUITE.md** | **v4.0** | `bba459b` |
+| **ML_KONZEPT.md** | **v1.2** | `a7e37dd` |
+| **Refundex ko-flex.js** | `parseActivityXML v1.0` | `1d6de73` |
+| **Refundex ko-journal.js** | **v1.0.0** | `7b26775` |
+| **Refundex kap.html** | Detail-View + CDN-Hash | `d42c050` |
+| **Refundex flex_client.py** | Bugfix _is_flex_data | `0c554e1` |
+| **ko-flex-proxy Worker** | **live** | `683aee53` |
+| **GHA Run** | nächster Lauf | morgen ~06:10 UTC |
 
 ---
 
-## Was heute passiert ist
+## Was heute passiert ist — Vollständige Liste
 
-### MSE — Regime-History-Flag (Backlog №29) ✅
+### UIQ — Aggregator
 
-**Analyse:**
-- Aktuell 4 MSE-Regime (kein `NEUTRAL` im Produktivcode — nur Default-Parameter)
-- Problem identifiziert: MSE ist zustandslos — gleicher Ratio=1.03 kann
-  Erholung aus Stress oder Abschwächung aus Bull bedeuten → gleiche Gates, falsch
-- `NEUTRAL` als 5. Regime diskutiert → entschieden: History-Flag eleganter
-
-**Implementierung `calc_regime_history_flag()` — Aggregator v5.29.0:**
-```
-vector:        RECOVERING | DETERIORATING | STABLE | UNKNOWN
-consecutive:   Tage im aktuellen Regime in Folge
-stressDaysAgo: Handelstage seit letztem STRESS_UNSTABLE
-prevRegimes:   letzten 5 Labels (Kontext)
-ratioTrend:    RISING | FALLING | FLAT (5T VIX3M/VIX-Slope)
-method:        "rule_based_v1"  ← HMM-ready (ab Okt. → "hmm_v1")
-```
-- Datenbasis: `mse_history.vixRatio` (bereits vorhanden, 252T)
-- Output: `master.market.regimeContext` im KV-Store
-- 5 Szenarien getestet: RECOVERING ✅ DETERIORATING ✅ STABLE ✅ UNKNOWN ✅ NEUTRAL-Proxy ✅
-- Fehlerisoliert: `UNKNOWN`-Fallback bei Datenlücke
-
-**Architektur-Dokumentation:**
-- `SUITE.md` v3.6: Backlog №29 vollständig spezifiziert
-- `ML_KONZEPT.md` v1.2: §3b — Staffel-Sequenz
-  №29 (regelbasiert) → BN Sept. → HMM Okt. → NN Q1/2027
-
-### Wichtige konzeptuelle Erkenntnisse heute
-
-1. **MSE ist zustandslos** — Regime-History-Flag löst das elegant ohne neues Label
-2. **NEUTRAL überflüssig** — entsteht implizit als `STABLE + consecutive≥5`
-3. **HMM-ready by design** — `method`-Feld vorbereitet für nahtlosen Übergang
-4. **BN → HMM Sequenz** — BN-Entkorrelierung verbessert HMM-Features
-
----
-
-## Programm morgen: Refundex
-
-### Priorität 1 — `DATENMODELL_JOURNAL.md` korrigieren (~30 min)
-
-Aus der gestrigen Flex-XML-Analyse sind Korrekturen nötig:
-
-| Was | Korrektur |
+| Version | Was |
 |---|---|
-| `ClosedLots`-Sektion | **Entfernen** — nicht in CapTrader-Query vorhanden |
-| `OptionEAE` | **Neu ergänzen** als primäre Datenquelle für Assignment/Expiry/Exercise |
-| Teilfill-Aggregation | Explizit über `ibOrderID` (nicht `tradeID`) dokumentieren |
-| notes-Codes | `Ep`, `A`, `P`, `MLG`, `MLG;P` mit Bedeutung ergänzen |
-| `CashTransactions` | Als neue Sektion ergänzen (129 Einträge verifiziert) |
+| v5.29.0 | Regime-History-Flag `calc_regime_history_flag()` |
+| v5.30.0 | `regimeContext` in `tr:snap` (Validierung Ebene 1) |
+| v5.31.0 | SWOT №32/33/35: Testgürtel (25 Tests), Ratio-Konvention, yfinance gepinnt |
+| v5.32.0 | W3 Regime-Transparenz: `regimeMeta` in KV + tr:snap |
 
-### Priorität 2 — `parseActivityXML()` in `ko-flex.js` (Kern-Sprint)
+### UIQ — Dokumentation
 
-Datenbasis vollständig bekannt aus gestern — jetzt implementieren.
+- `SUITE.md` v3.6→v4.0: Backlog №29–36, SWOT-Verweis
+- `ML_KONZEPT.md` v1.2: §3b Staffel-Sequenz
+- `SWOT_2026_08_07.md` v1.0: Claude Mythos Preview Review
+- `VALIDIERUNG_META_SIGNAL.md` v1.0: 4 Ebenen, Entscheidungsmatrix
+- `REVIEW_PAKET_META_SIGNAL.md`: für externe Review-Sessions
 
-**Zu parsende Sektionen (Reihenfolge):**
-1. `Trades` → Fills mit `fifoPnlRealized` bei Close-Trades
-2. `OptionEAE` → Assignment/Expiry/Exercise-Paare (OPT + STK)
-3. `CashTransactions` → Dividenden (`DIV`) + Quellensteuer (`FRTAX`)
+### Refundex — ROADMAP vollständig implementiert
 
-**Bekannte Besonderheiten:**
-- Teilfills: mehrere `<Trade>`-Einträge mit gleicher `ibOrderID` → aggregieren
-- OPT notes: `Ep`=Verfall, `A`=Assignment, `P`=Combo, `MLG`=Manual Leg
-- Doppelzeilen in StmtFunds: nur `BaseCurrency`-Zeilen verwenden
-- FRTAX ist negativ (Abzug), DIV ist positiv (Brutto)
+| ROADMAP | Was | Commit |
+|---|---|---|
+| 2.8 | `parseActivityXML()` in ko-flex.js | `1d6de73` |
+| 2.9 | `ko-journal.js` v1.0.0 + Journal-Tab + Detail-View | `7b26775` + `8b67754` |
+| 2.10 | `flex_client.py` — Pull funktioniert ✅ | lokal getestet |
+| 2.11 | `ko-flex-proxy` Worker deployed | `d42c050` |
 
-**Stub bereits vorhanden in `ko-flex.js`:**
-```javascript
-case 'activity_xml': return { format, error: 'Activity XML Parser — coming soon' };
-```
-→ diesen Stub ersetzen
+### Diverses
 
-### Priorität 3 — ko-flex-proxy Worker deployen (optional, wenn Zeit)
+- `ibkr-tax-tool` archiviert ✅ (A7)
+- `flex_client.py` Bugfix: `_is_flex_data()` False-Positive für Code 1019 (`0c554e1`)
+- `.env` lokal konfiguriert, Flex-Pull 4,5 MB YTD ✅
 
-```bash
-cd ~/uiq/refundex
-wrangler deploy workers/ko-flex-proxy.js --name ko-flex-proxy
-```
-Voraussetzung: Wrangler installiert (`npm install -g wrangler`)
+---
+
+## Offene To-dos
+
+| # | Was | Wo |
+|---|---|---|
+| №34 | Backtest 2007–2026 | nächster Sprint |
+| №36 | Rechtsgutachten WpHG/WpIG | du, ~800€ |
+| W3 | Client-MSE Code (ko-market-state.js) gegen Server-Regime abgleichen | UIQ |
+| — | Feature-Freeze September erwägen | Entscheidung |
+| — | DATENMODELL_JOURNAL.md v1.1 CDN-Hash aktualisieren | Refundex |
 
 ---
 
@@ -108,25 +75,14 @@ Voraussetzung: Wrangler installiert (`npm install -g wrangler`)
 
 | Wann | Was |
 |---|---|
-| 08.08. (morgen) | GHA Run #193 — v5.29.0 erstmals live, regimeContext im KV |
-| 09.08. (Sa) | fin:-Backup: erste Shard-Sichtbarkeit |
+| 08.08. morgen früh | GHA Run: v5.32.0 erstmals live, regimeMeta + regimeContext in KV |
 | ~12.08. | IV-Rank ab 30 Archiv-Tagen automatisch aktiv |
 | ~27.08. | IWV Holdings CSV aktualisieren |
 | ~01.09. | h30 Track-Record / BN-Analyse / DCE Brier Score |
-| ~01.10. | MCM-HMM — ersetzt rule_based_v1 durch hmm_v1 |
+| ~01.10. | MCM-HMM + val_layer.py + Validierung Ebene 1 |
 
 ---
 
-## Offene To-dos Axel (lokal)
-
-| # | Aufgabe | Status |
-|---|---|---|
-| A6 | Worker deployen: `wrangler deploy ko-flex-proxy` | ⏳ offen |
-| A7 | `ahsub/ibkr-tax-tool` archivieren (GitHub → Settings) | ⏳ offen |
-
----
-
-*UIQ Suite + Refundex Übergabe 07.08.2026 Abend*
-*Aggregator v5.29.0 · SUITE.md v3.6 · ML_KONZEPT.md v1.2*
-*Heute: MSE-Zustandslosigkeit analysiert → Regime-History-Flag implementiert → Staffel-Architektur dokumentiert*
-*Morgen: Refundex — DATENMODELL_JOURNAL korrigieren + parseActivityXML() implementieren*
+*UIQ Suite + Refundex Übergabe 07.08.2026 — Voller Arbeitstag*
+*Aggregator v5.32.0 · SUITE.md v4.0 · Refundex ROADMAP 2.8–2.11 ✅*
+*Heute: Regime-History-Flag · SWOT · Meta-Signal-Architektur · parseActivityXML · Journal · Worker*
