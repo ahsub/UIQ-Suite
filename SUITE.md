@@ -276,6 +276,92 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 29. **MSE Regime-History-Flag + NEUTRAL als 5. Regime** *(07.08.2026, aus Analyse MSE-Zustandslosigkeit)* — **Kernproblem:** Der MSE klassifiziert jeden Tag zustandslos — er kennt nur den aktuellen VIX3M/VIX-Ratio und VIX-Wert, aber nicht den Übergangsvektor. Zwei Tage mit identischem Ratio=1.03 bekommen das gleiche Label `POST_PANIC_REVERSION`, obwohl sie fundamental verschiedene Marktphasen sein können: (A) Markt erholt sich aus Backwardation (`STRESS → POST_PANIC`, Ratio steigt) vs. (B) Markt schwächt ab aus Bull (`BULL_QUIET → POST_PANIC`, Ratio fällt). Heute erhalten beide **identische Strategie-Gates** — das ist suboptimal.
 
+30. **Makro-Regime-Trendanalyse + Meta-Signal-Architektur** *(07.08.2026, aus Analyse Datensatz-Inventar)* — Natürliche Erweiterung von Backlog №29: Die History-Flag-Logik (Übergangsvektor aus Zeitreihen) systematisch auf alle UIQ-Datensätze anwenden und in einer Meta-Beziehung bündeln.
+
+   **Inventar — drei Klassen von Datensätzen:**
+
+   *Klasse A — Zeitreihen mit Verlauf (sofort vektorisierbar):*
+   VIX/VIX3M/VVIX/SKEW (252T, täglich), VIX3M/VIX-Ratio (252T, regimeContext bereits implementiert №29), HY-Spread FRED (300 Obs, wöchentlich), Net Liquidity FRED (120 Obs, wöchentlich), Zinsstruktur 10J-2J/10J-3M (FRED, täglich)
+
+   *Klasse B — Momentaufnahmen ohne History-Tracking (nachrüstbar):*
+   PCR (täglich, KV-Speicherung nötig), Fear&Greed (täglich), MOVE Index (täglich), McClellan Breadth Oscillator (täglich), IOS Market Score (täglich), Distribution Days (täglich)
+
+   *Klasse C — Ticker-Ebene (Markt-Aggregat extrahierbar):*
+   RS-Rank-Verteilung (Median/Top-Quartil über alle Ticker), Composite-Score-Trend (Durchschnitt über Universum), VCP-Dichte (Anzahl aktiver VCP-Muster)
+
+   **Schritt 1 — Signal-Trend-Funktion (universell, analog History-Flag):**
+   ```python
+   def calc_signal_trend(series, window=10, threshold=0.5):
+       """Steigungsvektor für beliebige Zeitreihe."""
+       # delta über window → RISING | FALLING | STABLE | UNKNOWN
+       # Normalisierung: absolut oder Z-Score-Delta je nach Skala
+   ```
+
+   **Schritt 2 — Makro-Regime-Kontext (`calc_macro_regime_context`):**
+   6 Makro-Regime regelbasiert aus Klasse-A-Vektoren:
+   ```
+   EXPANSION:      HY stabil/fallend, Net-Liq expandiert, Kurve steilt, VIX niedrig
+   LATE_CYCLE:     HY steigt leicht, Net-Liq stabil, Breadth schwächelt
+   STRESS_BUILDING: HY steigt schnell, Net-Liq schrumpft, VIX steigt, Ratio fällt
+   ACUTE_STRESS:   HY > 5%, VIX > 30, Ratio < 0.98, Net-Liq stark negativ
+   RECOVERY:       HY fällt, Net-Liq erholt, VIX fällt, Ratio steigt
+   NEUTRAL_MACRO:  Alle Signale nahe 0, keine klare Richtung
+   ```
+   Output: `master.market.macroRegime` im KV-Store
+
+   **Schritt 3 — Breadth-Trend-Kontext (`calc_breadth_context`):**
+   Klasse-B-Signale als Verlauf (KV-History nötig, 30T rolling):
+   McClellan-Trend (EXPANDING/CONTRACTING), Distribution-Days-Dichte, IOS-Score-Trend
+   Output: `master.market.breadthContext`
+
+   **Schritt 4 — Markt-Breite-Aggregat aus Ticker-Ebene (`calc_universe_context`):**
+   Klasse-C: RS-Rank-Median aller Ticker, Anteil VCP-aktiver Ticker, Composite-Score-Trend
+   Output: `master.market.universeContext`
+
+   **Schritt 5 — Meta-Signal-Architektur (`calc_meta_signal`):**
+   Die eigentliche Kernidee: alle Vektoren in eine Meta-Beziehung setzen.
+   ```
+   Dimension 1 (Makro-Fundament):  macroRegime      — Wochen/Monate
+   Dimension 2 (Mikro-Struktur):   mseRegime        — Tage
+   Dimension 3 (Übergangsvektor):  regimeContext    — Richtung des MSE
+   Dimension 4 (Markt-Breite):     breadthContext   — Partizipation
+   Dimension 5 (Universum):        universeContext  — Ticker-Qualität
+   ```
+
+   Meta-Signal-Logik (regelbasiert → später HMM-Input):
+   ```
+   macroRegime=STRESS_BUILDING + mseRegime=BULL_QUIET + vector=STABLE
+     → "Oberfläche trügt" — Gate-Reduktion auch bei ruhigem MSE
+
+   macroRegime=EXPANSION + mseRegime=BULL_FRAGILE + vector=RECOVERING
+     → "Kurze Volatilitätsspitze im strukturellen Bull" — weniger defensiv
+
+   macroRegime=RECOVERY + breadth=EXPANDING + universe=RS_IMPROVING
+     → "Breite Erholung" — Momentum-Gates grün
+
+   macroRegime=LATE_CYCLE + breadth=CONTRACTING + universe=RS_DETERIORATING
+     → "Breite bröckelt" — Positionsgröße reduzieren trotz positiver Oberfläche
+   ```
+   Output: `master.market.metaSignal` — Konfidenz + narrative Erklärung für Morning Briefing
+
+   **Beziehung zu ML-Architektur (ML_KONZEPT.md §3b):**
+   Das Meta-Signal ist der natürliche Input-Vektor für das MCM-HMM (Phase 2, Okt. 2026):
+   statt einzelner Indikatoren bekommt das HMM den 5-dimensionalen Meta-Signal-Vektor.
+   Das verbessert HMM-Qualität erheblich gegenüber Einzelsignalen.
+
+   **Implementierungsreihenfolge:**
+   1. `calc_signal_trend()` universal (20 Zeilen) — sofort möglich
+   2. `mse_history` um FRED-Zeitreihen erweitern (HY-Spread + Net-Liq als Arrays)
+   3. `calc_macro_regime_context()` (Klasse A, ~80 Zeilen)
+   4. KV-History für Klasse-B-Signale (30T rolling, separater KV-Key)
+   5. `calc_breadth_context()` + `calc_universe_context()`
+   6. `calc_meta_signal()` — Komposition aller Dimensionen
+   **Trigger: nach Backlog №29 im Betrieb (~01.09.2026), parallel zu BN-Analyse**
+
+   Verwandt mit: №29 (Regime-History-Flag), ML_KONZEPT.md §3b (Staffel-Sequenz), DCE (nutzt meta_signal als Input)
+
+
+
    **Lösungsansatz 1 — Regime-History-Flag (bevorzugt):** Statt eines neuen statischen Labels wird der Übergangsvektor als Kontext-Objekt mitgeführt:
    ```python
    regime_context = {
@@ -334,7 +420,8 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 | 3.2 | 01.08.2026 | **Session 01.08.2026 — DE-Modus + MCM-Parität + 3 Bugfixes.** (1) §7 Backlog-Punkt №25 (DE-Modus) als ✅ ERLEDIGT: TRADEGATE_MAP +18 verifizierte Einträge (BRKB→BRY, KO→CCC3, PG→PGG, PM→PM1, C→CIT, CSCO→CSC0, T→RHAT, TMUS→T1MU, CMCSA→CBC3, SPGI→SPG1, BX→BXD, ABNB→AB9, LULU→LUL, BIIB→BII, MO→PHM1, WM→WM2, CI→CI1, GD→GD1); TG-Premarket-Preset auf IWV-Top-100 erweitert (vorher nur TRADEGATE_MAP-Keys); Symbole live im Browser verifiziert (getTradegateSym-Test, alle 5 korrekt). (2) §7 Backlog-Punkt №17 (MCM-Parität) vollständig geschlossen: `net_liquidity` als letzter fehlender Faktor in `_MCM_SIGNAL_RULES` + `build_server_market_context()` ergänzt (ko-aggregator v5.20.0); alle 10 Kern-Faktoren + 3 Calendar-Faktoren jetzt Server↔Client-parität. Die 4 ursprünglich fehlenden Faktoren (ndx_breadth, intermarket_score, treasury_stress, bull_indicator) waren bereits seit v5.13.0 (21.07.) implementiert — nur net_liquidity fehlte noch. (3) Bugfix-Sprint: ko-trackrecord.js `export{}`-SyntaxError (v418); autoSyncOnStart 401 fehlender Auth-Header (v419); updateScoreDivergenceDisplay `divs.slice()` self-reference TypeError (v420). Frontend jetzt v420, Aggregator v5.20.0. |
 | 3.1 | 30.07.2026 | §7 Backlog-Punkte №23+24 als ✅ ERLEDIGT markiert: (1) ko-prompts-registry Sprint 2 — alle KI-Call-Prompts aus index.html externalisiert (`getIntermarketPrompt`, `getOversoldPrompt`, `getMetaAnalysisPrompt`), ko-prompts.js v2.4.0, axel-scanner v414. (2) ko-indicators-registry Sprint — `STRATEGY_TO_LB` + `_lbToStrat` als Single Source of Truth in ko-prompts.js v2.5.0 (`lbKey`-Felder + `getLbKey`/`stratFromLb`/`getStratToLbMap`), axel-scanner v415. IWV Holdings CSV aktualisiert (Stand 24.07.2026, `ahsub/ko-aggregator/data/iwv_holdings.csv`). Bestandsaufnahme-Methodik bestätigt: Scope-Analyse vor Bau verhinderte nutzlosen DOM-Read-Umbau und lenkte auf das tatsächliche Modularisierungsproblem. |
 | 3.5 | 05.08.2026 | **Session 05.08.2026 — Morning Briefing Coaching-Ton + Aufräum + Architektur-Entscheidung Journal.** (1) ko-prompts v2.6.0: `_getMorningPrompt` EIC auf Coaching-Sprache (Mentor-Stil, Metrik-Erklärungspflicht, Handlungshaltung je Abschnitt) umgestellt; Public-Modus: Erklär-Pflicht pro Messwert, TOP-KANDIDATEN-Begründungspflicht. API unverändert. (2) ko-ai Worker v1.9: erstmals versioniert in `workers/ko-ai.js` (SPOF §7 behoben); `max_tokens` morning 2000→3000, deep_dive 800→2500, eic 1200→2000 (Abbrüche durch Coaching-Ton v2.6 behoben). (3) help.html auf v451/Aggregator v5.28 aktualisiert: neue Sektion „Aktuelle Indikatoren v5.9–v5.28" (RS-Rank, DD, AVWAP, OB, TVA, IV-Rank, Earnings, DCE, DE-Modus, Coaching-KI, Modularisierung). (4) Backlog #26 TVA Sprint A als ✅ ERLEDIGT markiert. (5) Backlog #19 Prio-4-Restfunde vollständig bereinigt (v452): ki-dropdown-wrap 3 tote getElementById-Aufrufe, overheat-text/sektor-overheat-content OR-Fallback vereinfacht. (6) **Architektur-Entscheidung Journal-Modul**: #28 aus UIQ-Backlog herausgelöst → Refundex. DSS §0-Filtertest: Journal ist Positions-Bewirtschaftung, nicht Entscheidungs-Tool; Flex-Query-Anbindung macht es in Refundex wertvoller (P&L automatisch statt manuell). Frontend v452, ko-prompts v2.6.0 @610192d. |
-| 3.6 | 07.08.2026 | §7 Backlog-Punkt №29 ergänzt: MSE Regime-History-Flag (Übergangsvektor RECOVERING/DETERIORATING/STABLE aus mse_history) + NEUTRAL als 5. Regime — Konzeptanalyse, Datenbasis bereits vorhanden (mse_history KV), Implementierung Track-Record-getriggert (~01.10.2026). |
+| 3.6 | 07.08.2026 | §7 Backlog-Punkt №29
+| 3.7 | 07.08.2026 | §7 Backlog-Punkt №30 ergänzt: Makro-Regime-Trendanalyse + Meta-Signal-Architektur (5 Dimensionen: Makro/Mikro/Vektor/Breite/Universum → Meta-Signal als HMM-Input-Vektor) | ergänzt: MSE Regime-History-Flag (Übergangsvektor RECOVERING/DETERIORATING/STABLE aus mse_history) + NEUTRAL als 5. Regime — Konzeptanalyse, Datenbasis bereits vorhanden (mse_history KV), Implementierung Track-Record-getriggert (~01.10.2026). |
 | 3.4 | 03.08.2026 | **Session 03.08.2026 — TVA Sprint A + DSS-Leitprinzip.** **(1)** TVA Sprint A abgeschlossen (Aggregator v5.25.0, Run #183 ✅, 711/711 Ticker): `calc_std_trend_score()` → `trendScore` (−100..+100, EMA-Stack×ADX-Konviktion); `calc_confluence_score()` → `confluenceScore` (0–100, 5 Faktoren: Trend/Momentum/Volumen/AVWAP/OB); Sigmoid in `score_short_breakdown()` (`sellProbability`, TVA f_sellProbability); AVWAP-Gate 9 in `score_long_minervini()` (`distToAvwapPct` als Support-Distanz, +15 Punkte in AVWAP-Zone). **(2) DSS-Leitprinzip als §0 in SUITE.md verankert** (verbindlich, schlägt alle anderen Abschnitte): UIQ ist ein diagnostisches Entscheidungssystem — Ob → Wie → Was (Reihenfolge ist Architektur, nicht Konvention). Filtertest für jede neue Idee: Hilft es zu entscheiden ob/wie/was gehandelt werden soll? Wenn nein: kommt nicht ins Produkt. UIQ-Erfolgsmaßstab explizit als Schutz-Versprechen, nicht Rendite-Versprechen. **(3) ML_KONZEPT.md v1.0** angelegt (`ahsub/UIQ-Suite/docs/ML_KONZEPT.md`): BN/HMM/NN als Signal-Kalibrierung im DSS-Framework, 3-Phasen-Plan (BN-Analyse Sept. 2026, MCM-HMM Okt. 2026, NN frühestens Q1 2027), Datenbasis-Constraints, Ausschlussliste. TVA_MATHLIB_ANALYSE.md um ML-Konzept-Abschnitt erweitert. Kernbotschaft: UIQ wird nicht besser durch mehr Metriken — Ziel ist Reduktion auf unabhängige Signale bei steigender Entscheidungsqualität. |
 | 3.3 | 02.08.2026 | **Session 02.08.2026 — IOS-Konzept-Integration + Order Blocks + DE-Modus.** Aggregator v5.24.0, Frontend v408. **(1)** RS-Rank Score (`compute_rs_rank_score()`, v5.21.0): 6 Bedingungen analog IOS Institutional Momentum Engine, Dual-Benchmark SPY+IWM, 703/711 Ticker live. Frontend: Badge + DeepDive rs001–rs006. **(2)** Distribution Days (`compute_distribution_days()`, v5.21.0): O'Neil/IBD 25T-Lookback, SPY 7 / QQQ 9 DD = DANGER (02.08.2026), Tearsheet-Warnblock. **(3)** Anchored VWAP (`compute_anchored_vwap()`, v5.22.0): EWMA nach Zeiierman, Anker = 52W-Tief, α=1−e^(−ln(2)/20), ETF/Krypto-gefiltert (v5.23.0). Frontend: Badge ⚡🔥⚓⚠ + DeepDive-Block + KI-Prompt. **(4)** Minervini Sigmoid (v5.23.0): TVA MathLibrary `f_buyProbability`-Konzept, `s=100/(1+e^(−0.06×(raw−50)))`. **(5)** Order Block Detector (`compute_orderblocks()`, v5.24.0): Hybrid Zeiierman+BigBeluga+Flux, 17 KV-Felder, 507/711 Ticker live, 12 CSP-Confluence-Kandidaten (AVWAP+OB). **(6)** DE-Modus: TG-Delta-Badge `🇩🇪 TG +1.23%` (grün/rot), TRADEGATE_MAP +25 Einträge (IWV Top-100 ~96% abgedeckt). **(7) TVA MathLibrary Sprint A vorgemerkt** (Backlog №26, s.u.): `f_stdTrendScore`, `f_marketRegime`, `f_chopIndex`, `f_sellProbability` — Referenzdokument in `docs/TVA_MATHLIB_ANALYSE.md`, Python-Port-Snippets vorhanden. Sofort umsetzbar sobald Zeit. |
 
