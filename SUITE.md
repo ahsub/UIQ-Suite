@@ -283,6 +283,94 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
    *Klasse A — Zeitreihen mit Verlauf (sofort vektorisierbar):*
    VIX/VIX3M/VVIX/SKEW (252T, täglich), VIX3M/VIX-Ratio (252T, regimeContext bereits implementiert №29), HY-Spread FRED (300 Obs, wöchentlich), Net Liquidity FRED (120 Obs, wöchentlich), Zinsstruktur 10J-2J/10J-3M (FRED, täglich)
 
+31. **IBKR API-Erweiterung — Marktdaten, Fundamentals, Options-Chains** *(07.08.2026, frühe Morgenstunden)* — Konzeptionelle Weichenstellung: Klare Trennung zwischen dem was wir haben und dem was möglich wäre.
+
+   **Was wir haben — Flex Web Service (implementiert, v5.30.0):**
+   Reporting-Export für abgeschlossene Trades, Positionen, Dividenden, QSt.
+   Kein Live-Zugang, kein Ticker-Universum, keine Marktdaten.
+   Zweck: Refundex (Steuer, Journal), nicht UIQ (Entscheidung).
+
+   **Was möglich wäre — IBKR Client Portal (CP) API:**
+   REST-API ohne TWS-Installation, OAuth2, JSON-Responses.
+   Basis-URL: `https://localhost:5000/v1/api/` (CP Gateway lokal) oder
+   `https://api.ibkr.com/v1/api/` (Cloud-Variante, beta).
+
+   *Globale Ebene (Market-Regime + Macro-Regime):*
+   - Historische OHLCV für beliebige globale Indizes (DAX, Nikkei, EM, etc.)
+     → Macro-Regime nicht mehr US-zentrisch (nur VIX/FRED)
+     → Globale Breadth: wie viele Märkte sind gleichzeitig im Bull-Modus?
+   - Sektoren-Rotation aus globalen ETFs (MSCI World Sectors)
+   - FX-Crosses (EUR/USD, USD/JPY) als Makro-Signal
+
+   *Ticker-Ebene (Aggregator-Universum):*
+   - **Fundamentaldaten**: EPS, Revenue-Wachstum, KGV, Debt/Equity direkt von IBKR
+     → ersetzt fehlende Fundamentals in Composite Score
+     → Value-Leaderboard auf echten Daten statt Näherungswerten
+   - **Earnings-Kalender**: Earnings-Date + EPS-Estimate direkt je Ticker
+     → Strategie-Gates: automatisch kein Entry 5T vor Earnings (heute manuell)
+     → Earnings-Surprise-Historie für Qualitäts-Score
+   - **Options-Chain**: IV, Greeks (Delta/Theta/Vega), OI, Volume je Strike
+     → IV-Rank aus echten Daten (heute: Approximation via HV-Percentile)
+     → CSP/CC: optimale Strike-Wahl automatisiert (Delta-Target statt Daumenregel)
+     → PCR direkt je Ticker (nicht nur Markt-PCR)
+   - **Short Interest**: Days-to-Cover, Short-Float
+     → Squeeze-Risk-Indikator auf echten Daten (heute: calc_squeeze_risk approximiert)
+
+   *Universum-Ebene:*
+   - **Dynamischer Scanner**: IBKR-eigener Scanner (Volumen-Ausreißer, Gap-Up, etc.)
+     → Ticker-Universum nicht mehr auf ~700 fixiert
+     → Tägliche Ergänzung von Momentum-Kandidaten die noch nicht im Universum sind
+   - **Corporate Actions**: Splits, Mergers, Spin-Offs direkt (heute: CorporateActions aus Flex-XML, nur eigene Positionen)
+
+   **Technische Voraussetzungen:**
+   ```
+   Option A — CP Gateway (lokal, empfohlen für Privatanleger):
+     1. Client Portal Gateway herunterladen (IBKR)
+     2. Lokal starten: java -jar root/bin/run.sh root/conf.yaml
+     3. OAuth2-Login einmalig im Browser
+     4. API auf localhost:5000 verfügbar (Session ~24h)
+     Nachteil: läuft nur wenn Mac läuft — nicht für GHA-Nachtlauf
+
+   Option B — Cloud-API (beta, kein lokales Gateway):
+     Noch eingeschränkt, nicht alle Endpoints verfügbar
+     Besser für automatisierte Nachtläufe (GHA)
+
+   Option C — Hybrid:
+     CP Gateway für Fundamentals/Earnings (wöchentlich, manuell angestoßen)
+     yfinance bleibt für Daily-OHLCV (GHA-Nachtlauf)
+     FRED bleibt für Makro
+   ```
+
+   **Empfehlung: Option C (Hybrid), stufenweise:**
+   ```
+   Stufe 1 (~Q4 2026): Earnings-Kalender via CP API
+     → höchster sofortiger Nutzen, einfachste Integration
+     → wöchentlicher Pull, in KV gespeichert, Gate-Logik nutzt es
+
+   Stufe 2 (~Q1 2027): IV-Rank aus echten Options-Chains
+     → ersetzt HV-Percentile-Approximation
+     → Voraussetzung: CP Gateway stabil im Betrieb
+
+   Stufe 3 (~Q2 2027): Fundamentaldaten + Short Interest
+     → Value-Leaderboard auf echten Daten
+     → Composite Score erweitern
+
+   Stufe 4 (offen): Globale Indizes für Macro-Regime
+     → Macro-Regime nicht mehr US-zentrisch
+   ```
+
+   **Abgrenzung zu Flex Web Service (wichtig):**
+   Flex Web Service → Refundex (was war: abgeschlossene Trades, Steuer)
+   CP API          → UIQ (was ist + was kommt: Live-Daten, Entscheidung)
+   Beide nutzen IBKR-Credentials, sind aber völlig verschiedene Systeme.
+
+   **Nächster Schritt:** CP Gateway lokal installieren + Earnings-Endpoint testen.
+   Kein Bau vor Abschluss der Meta-Signal-Validierung Ebene 1 (~01.10.2026) —
+   Prioritätsspine: UIQ Phase 0 zuerst, CP API ist Erweiterung nicht Fundament.
+   Verwandt mit: №29+30 (Meta-Signal), ML_KONZEPT.md §3b, Refundex 2.10 (Flex Web Service)
+
+
+
    *Klasse B — Momentaufnahmen ohne History-Tracking (nachrüstbar):*
    PCR (täglich, KV-Speicherung nötig), Fear&Greed (täglich), MOVE Index (täglich), McClellan Breadth Oscillator (täglich), IOS Market Score (täglich), Distribution Days (täglich)
 
@@ -426,7 +514,8 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 | 3.5 | 05.08.2026 | **Session 05.08.2026 — Morning Briefing Coaching-Ton + Aufräum + Architektur-Entscheidung Journal.** (1) ko-prompts v2.6.0: `_getMorningPrompt` EIC auf Coaching-Sprache (Mentor-Stil, Metrik-Erklärungspflicht, Handlungshaltung je Abschnitt) umgestellt; Public-Modus: Erklär-Pflicht pro Messwert, TOP-KANDIDATEN-Begründungspflicht. API unverändert. (2) ko-ai Worker v1.9: erstmals versioniert in `workers/ko-ai.js` (SPOF §7 behoben); `max_tokens` morning 2000→3000, deep_dive 800→2500, eic 1200→2000 (Abbrüche durch Coaching-Ton v2.6 behoben). (3) help.html auf v451/Aggregator v5.28 aktualisiert: neue Sektion „Aktuelle Indikatoren v5.9–v5.28" (RS-Rank, DD, AVWAP, OB, TVA, IV-Rank, Earnings, DCE, DE-Modus, Coaching-KI, Modularisierung). (4) Backlog #26 TVA Sprint A als ✅ ERLEDIGT markiert. (5) Backlog #19 Prio-4-Restfunde vollständig bereinigt (v452): ki-dropdown-wrap 3 tote getElementById-Aufrufe, overheat-text/sektor-overheat-content OR-Fallback vereinfacht. (6) **Architektur-Entscheidung Journal-Modul**: #28 aus UIQ-Backlog herausgelöst → Refundex. DSS §0-Filtertest: Journal ist Positions-Bewirtschaftung, nicht Entscheidungs-Tool; Flex-Query-Anbindung macht es in Refundex wertvoller (P&L automatisch statt manuell). Frontend v452, ko-prompts v2.6.0 @610192d. |
 | 3.6 | 07.08.2026 | §7 Backlog-Punkt №29
 | 3.7 | 07.08.2026 | §7 Backlog-Punkt №30
-| 3.8 | 07.08.2026 | `docs/VALIDIERUNG_META_SIGNAL.md` v1.0 erstellt: 4 Validierungsebenen (Vector-Returns, Makro-Lead-Time, Brier-Score, HMM-A/B), Entscheidungsmatrix, Zeitplan bis Feb. 2027; №29-Verweis ergänzt (regimeContext in tr:snap) | ergänzt: Makro-Regime-Trendanalyse + Meta-Signal-Architektur (5 Dimensionen: Makro/Mikro/Vektor/Breite/Universum → Meta-Signal als HMM-Input-Vektor) | ergänzt: MSE Regime-History-Flag (Übergangsvektor RECOVERING/DETERIORATING/STABLE aus mse_history) + NEUTRAL als 5. Regime — Konzeptanalyse, Datenbasis bereits vorhanden (mse_history KV), Implementierung Track-Record-getriggert (~01.10.2026). |
+| 3.8 | 07.08.2026 | `docs/VALIDIERUNG_META_SIGNAL.md`
+| 3.9 | 07.08.2026 | §7 Backlog №31: IBKR CP API — Fundamentals, Options-Chains, Earnings-Kalender, globale Indizes; Hybrid-Strategie Option C; Abgrenzung Flex Web Service vs. CP API | v1.0 erstellt: 4 Validierungsebenen (Vector-Returns, Makro-Lead-Time, Brier-Score, HMM-A/B), Entscheidungsmatrix, Zeitplan bis Feb. 2027; №29-Verweis ergänzt (regimeContext in tr:snap) | ergänzt: Makro-Regime-Trendanalyse + Meta-Signal-Architektur (5 Dimensionen: Makro/Mikro/Vektor/Breite/Universum → Meta-Signal als HMM-Input-Vektor) | ergänzt: MSE Regime-History-Flag (Übergangsvektor RECOVERING/DETERIORATING/STABLE aus mse_history) + NEUTRAL als 5. Regime — Konzeptanalyse, Datenbasis bereits vorhanden (mse_history KV), Implementierung Track-Record-getriggert (~01.10.2026). |
 | 3.4 | 03.08.2026 | **Session 03.08.2026 — TVA Sprint A + DSS-Leitprinzip.** **(1)** TVA Sprint A abgeschlossen (Aggregator v5.25.0, Run #183 ✅, 711/711 Ticker): `calc_std_trend_score()` → `trendScore` (−100..+100, EMA-Stack×ADX-Konviktion); `calc_confluence_score()` → `confluenceScore` (0–100, 5 Faktoren: Trend/Momentum/Volumen/AVWAP/OB); Sigmoid in `score_short_breakdown()` (`sellProbability`, TVA f_sellProbability); AVWAP-Gate 9 in `score_long_minervini()` (`distToAvwapPct` als Support-Distanz, +15 Punkte in AVWAP-Zone). **(2) DSS-Leitprinzip als §0 in SUITE.md verankert** (verbindlich, schlägt alle anderen Abschnitte): UIQ ist ein diagnostisches Entscheidungssystem — Ob → Wie → Was (Reihenfolge ist Architektur, nicht Konvention). Filtertest für jede neue Idee: Hilft es zu entscheiden ob/wie/was gehandelt werden soll? Wenn nein: kommt nicht ins Produkt. UIQ-Erfolgsmaßstab explizit als Schutz-Versprechen, nicht Rendite-Versprechen. **(3) ML_KONZEPT.md v1.0** angelegt (`ahsub/UIQ-Suite/docs/ML_KONZEPT.md`): BN/HMM/NN als Signal-Kalibrierung im DSS-Framework, 3-Phasen-Plan (BN-Analyse Sept. 2026, MCM-HMM Okt. 2026, NN frühestens Q1 2027), Datenbasis-Constraints, Ausschlussliste. TVA_MATHLIB_ANALYSE.md um ML-Konzept-Abschnitt erweitert. Kernbotschaft: UIQ wird nicht besser durch mehr Metriken — Ziel ist Reduktion auf unabhängige Signale bei steigender Entscheidungsqualität. |
 | 3.3 | 02.08.2026 | **Session 02.08.2026 — IOS-Konzept-Integration + Order Blocks + DE-Modus.** Aggregator v5.24.0, Frontend v408. **(1)** RS-Rank Score (`compute_rs_rank_score()`, v5.21.0): 6 Bedingungen analog IOS Institutional Momentum Engine, Dual-Benchmark SPY+IWM, 703/711 Ticker live. Frontend: Badge + DeepDive rs001–rs006. **(2)** Distribution Days (`compute_distribution_days()`, v5.21.0): O'Neil/IBD 25T-Lookback, SPY 7 / QQQ 9 DD = DANGER (02.08.2026), Tearsheet-Warnblock. **(3)** Anchored VWAP (`compute_anchored_vwap()`, v5.22.0): EWMA nach Zeiierman, Anker = 52W-Tief, α=1−e^(−ln(2)/20), ETF/Krypto-gefiltert (v5.23.0). Frontend: Badge ⚡🔥⚓⚠ + DeepDive-Block + KI-Prompt. **(4)** Minervini Sigmoid (v5.23.0): TVA MathLibrary `f_buyProbability`-Konzept, `s=100/(1+e^(−0.06×(raw−50)))`. **(5)** Order Block Detector (`compute_orderblocks()`, v5.24.0): Hybrid Zeiierman+BigBeluga+Flux, 17 KV-Felder, 507/711 Ticker live, 12 CSP-Confluence-Kandidaten (AVWAP+OB). **(6)** DE-Modus: TG-Delta-Badge `🇩🇪 TG +1.23%` (grün/rot), TRADEGATE_MAP +25 Einträge (IWV Top-100 ~96% abgedeckt). **(7) TVA MathLibrary Sprint A vorgemerkt** (Backlog №26, s.u.): `f_stdTrendScore`, `f_marketRegime`, `f_chopIndex`, `f_sellProbability` — Referenzdokument in `docs/TVA_MATHLIB_ANALYSE.md`, Python-Port-Snippets vorhanden. Sofort umsetzbar sobald Zeit. |
 
