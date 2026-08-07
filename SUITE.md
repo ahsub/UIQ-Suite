@@ -346,6 +346,31 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
    → Lernmuster-Engine: über 50+ Trades hinweg Muster erkennen.
      "In 8/10 Rolls war RSI > 65 bei Eröffnung — du eröffnest CSPs zu spät."
 
+38. **Counterfactual Performance Engine — "Was wäre wenn"** *(07.08.2026, aus Analyse Flex-XML-Datenbasis)*
+
+   Performance-Analyse auf drei Ebenen:
+
+   *Ebene 1 — Echte Performance:* P&L je Position (EUR, steuerkorrekt), ROC annualisiert,
+   Win-Rate je Strategie × Regime, DTE-Klassen-Analyse.
+
+   *Ebene 2 — Counterfactual Szenarien je Position:*
+   (A) Kein Rolling → assigned + gehalten: besser/schlechter?
+   (B) Anderer Strike (Delta 0.20 vs. 0.30): Prämie vs. Stress-Differenz
+   (C) Früher geschlossen (50% Profit-Take): ROC-Vergleich annualisiert
+   (D) Alternative Strategie (CSP vs. Spread): gleiches Kapital, anderes Risikoprofil
+
+   *Ebene 3 — Systemische Muster (das wirkliche Gold):*
+   "Deine 23 CSPs in BULL_QUIET: Win-Rate 87%, ROC 2.8%/Monat.
+   Deine 8 CSPs in POST_PANIC: Win-Rate 37%, ROC -1.2%/Monat."
+   "14 Rolls insgesamt — 9 davon (64%) haben das Ergebnis verschlechtert."
+
+   **Datenbasis:** Flex-XML 2023–2026 ✅ · iv_history (ab 12.08.) ✅ · mse_history ✅
+   **Lücke:** IV-Rank zum Entry-Zeitpunkt historisch (yfinance Options-History, aufwändig)
+   **Trigger:** nach OptionsDoktor (2.12), also frühestens Q1 2027.
+   Verwandt mit: №37 (OptionsDoktor), UIQ Track Record, Backtest 2007–2026.
+
+
+
    **Datenfluss:**
    ```
    Flex-XML (alle Trades 2023–2026)
@@ -577,7 +602,8 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 | 3.9 | 07.08.2026 | §7 Backlog №31
 | 4.0 | 07.08.2026 | Externe SWOT-Analyse
 | 4.1 | 07.08.2026 | Backtest
-| 4.2 | 07.08.2026 | Backlog №37: OptionsCoach + OptionsDoktor — KI Options-Coaching, Lernmuster-Engine, Alleinstellungsmerkmal DACH | 2007–2026 ausgeführt: Go-Kriterium 2 ✅ ERFÜLLT (Sharpe 1,66 vs 0,63, MaxDD -23% vs -55%, Gate schützt 4/5 Krisen) | (Claude Mythos Preview) → `docs/SWOT_2026_08_07.md` v1.0; 6 Go/No-Go-Kriterien definiert; 7 Pareto-Empfehlungen; Backlog №32–36 ergänzt |: IBKR CP API — Fundamentals, Options-Chains, Earnings-Kalender, globale Indizes; Hybrid-Strategie Option C; Abgrenzung Flex Web Service vs. CP API | v1.0 erstellt: 4 Validierungsebenen (Vector-Returns, Makro-Lead-Time, Brier-Score, HMM-A/B), Entscheidungsmatrix, Zeitplan bis Feb. 2027; №29-Verweis ergänzt (regimeContext in tr:snap) | ergänzt: Makro-Regime-Trendanalyse + Meta-Signal-Architektur (5 Dimensionen: Makro/Mikro/Vektor/Breite/Universum → Meta-Signal als HMM-Input-Vektor) | ergänzt: MSE Regime-History-Flag (Übergangsvektor RECOVERING/DETERIORATING/STABLE aus mse_history) + NEUTRAL als 5. Regime — Konzeptanalyse, Datenbasis bereits vorhanden (mse_history KV), Implementierung Track-Record-getriggert (~01.10.2026). |
+| 4.2 | 07.08.2026 | Backlog №37
+| 4.3 | 07.08.2026 | Backlog №38: Counterfactual Performance Engine (Was-wäre-wenn, 3 Ebenen, Trigger Q1 2027) |: OptionsCoach + OptionsDoktor — KI Options-Coaching, Lernmuster-Engine, Alleinstellungsmerkmal DACH | 2007–2026 ausgeführt: Go-Kriterium 2 ✅ ERFÜLLT (Sharpe 1,66 vs 0,63, MaxDD -23% vs -55%, Gate schützt 4/5 Krisen) | (Claude Mythos Preview) → `docs/SWOT_2026_08_07.md` v1.0; 6 Go/No-Go-Kriterien definiert; 7 Pareto-Empfehlungen; Backlog №32–36 ergänzt |: IBKR CP API — Fundamentals, Options-Chains, Earnings-Kalender, globale Indizes; Hybrid-Strategie Option C; Abgrenzung Flex Web Service vs. CP API | v1.0 erstellt: 4 Validierungsebenen (Vector-Returns, Makro-Lead-Time, Brier-Score, HMM-A/B), Entscheidungsmatrix, Zeitplan bis Feb. 2027; №29-Verweis ergänzt (regimeContext in tr:snap) | ergänzt: Makro-Regime-Trendanalyse + Meta-Signal-Architektur (5 Dimensionen: Makro/Mikro/Vektor/Breite/Universum → Meta-Signal als HMM-Input-Vektor) | ergänzt: MSE Regime-History-Flag (Übergangsvektor RECOVERING/DETERIORATING/STABLE aus mse_history) + NEUTRAL als 5. Regime — Konzeptanalyse, Datenbasis bereits vorhanden (mse_history KV), Implementierung Track-Record-getriggert (~01.10.2026). |
 | 3.4 | 03.08.2026 | **Session 03.08.2026 — TVA Sprint A + DSS-Leitprinzip.** **(1)** TVA Sprint A abgeschlossen (Aggregator v5.25.0, Run #183 ✅, 711/711 Ticker): `calc_std_trend_score()` → `trendScore` (−100..+100, EMA-Stack×ADX-Konviktion); `calc_confluence_score()` → `confluenceScore` (0–100, 5 Faktoren: Trend/Momentum/Volumen/AVWAP/OB); Sigmoid in `score_short_breakdown()` (`sellProbability`, TVA f_sellProbability); AVWAP-Gate 9 in `score_long_minervini()` (`distToAvwapPct` als Support-Distanz, +15 Punkte in AVWAP-Zone). **(2) DSS-Leitprinzip als §0 in SUITE.md verankert** (verbindlich, schlägt alle anderen Abschnitte): UIQ ist ein diagnostisches Entscheidungssystem — Ob → Wie → Was (Reihenfolge ist Architektur, nicht Konvention). Filtertest für jede neue Idee: Hilft es zu entscheiden ob/wie/was gehandelt werden soll? Wenn nein: kommt nicht ins Produkt. UIQ-Erfolgsmaßstab explizit als Schutz-Versprechen, nicht Rendite-Versprechen. **(3) ML_KONZEPT.md v1.0** angelegt (`ahsub/UIQ-Suite/docs/ML_KONZEPT.md`): BN/HMM/NN als Signal-Kalibrierung im DSS-Framework, 3-Phasen-Plan (BN-Analyse Sept. 2026, MCM-HMM Okt. 2026, NN frühestens Q1 2027), Datenbasis-Constraints, Ausschlussliste. TVA_MATHLIB_ANALYSE.md um ML-Konzept-Abschnitt erweitert. Kernbotschaft: UIQ wird nicht besser durch mehr Metriken — Ziel ist Reduktion auf unabhängige Signale bei steigender Entscheidungsqualität. |
 | 3.3 | 02.08.2026 | **Session 02.08.2026 — IOS-Konzept-Integration + Order Blocks + DE-Modus.** Aggregator v5.24.0, Frontend v408. **(1)** RS-Rank Score (`compute_rs_rank_score()`, v5.21.0): 6 Bedingungen analog IOS Institutional Momentum Engine, Dual-Benchmark SPY+IWM, 703/711 Ticker live. Frontend: Badge + DeepDive rs001–rs006. **(2)** Distribution Days (`compute_distribution_days()`, v5.21.0): O'Neil/IBD 25T-Lookback, SPY 7 / QQQ 9 DD = DANGER (02.08.2026), Tearsheet-Warnblock. **(3)** Anchored VWAP (`compute_anchored_vwap()`, v5.22.0): EWMA nach Zeiierman, Anker = 52W-Tief, α=1−e^(−ln(2)/20), ETF/Krypto-gefiltert (v5.23.0). Frontend: Badge ⚡🔥⚓⚠ + DeepDive-Block + KI-Prompt. **(4)** Minervini Sigmoid (v5.23.0): TVA MathLibrary `f_buyProbability`-Konzept, `s=100/(1+e^(−0.06×(raw−50)))`. **(5)** Order Block Detector (`compute_orderblocks()`, v5.24.0): Hybrid Zeiierman+BigBeluga+Flux, 17 KV-Felder, 507/711 Ticker live, 12 CSP-Confluence-Kandidaten (AVWAP+OB). **(6)** DE-Modus: TG-Delta-Badge `🇩🇪 TG +1.23%` (grün/rot), TRADEGATE_MAP +25 Einträge (IWV Top-100 ~96% abgedeckt). **(7) TVA MathLibrary Sprint A vorgemerkt** (Backlog №26, s.u.): `f_stdTrendScore`, `f_marketRegime`, `f_chopIndex`, `f_sellProbability` — Referenzdokument in `docs/TVA_MATHLIB_ANALYSE.md`, Python-Port-Snippets vorhanden. Sofort umsetzbar sobald Zeit. |
 
