@@ -1,7 +1,7 @@
 # UIQ-Suite — SWOT-Analyse (technisch + strategisch)
 
-**Version:** 1.0
-**Stand:** 07.08.2026
+**Version:** 1.1
+**Stand:** 07.08.2026 (v1.1: Business-Fakten nachgetragen, Matrix terminiert)
 **Autor:** Claude (externe Review-Session), auf Basis Read-only-Zugriff auf `ahsub/{axel-scanner, ko-aggregator, UIQ-Suite, refundex}` + Websuche Wettbewerb
 **Vorgänger:** SWOT in `ko-aggregator/docs/STRATEGIE.md` §3 (v1.12, 15.07.2026) — dieses Dokument vertieft und aktualisiert mit Code-Evidenz
 **Prüfstein laut Auftrag:** Kommerzialisierung nur bei ausreichender Perspektive
@@ -82,14 +82,16 @@ Die Frage war: Kommerzialisierung nur bei ausreichender Perspektive. Mein Urteil
 
 **Go/No-Go-Kriterien für die Kommerzialisierungs-Entscheidung** (Vorschlag, Q4 2026 zu bewerten):
 
-| # | Kriterium | Schwelle | Status 07.08. |
-|---|---|---|---|
-| 1 | Rechtsgutachten | keine strukturelle Umbau-Auflage | offen |
-| 2 | Backtest 2007–2026 | Regime-Gates schlagen naive Baseline (200T×Vol) | nicht gebaut |
-| 3 | Beta-Aktivität | ≥5 Nutzer mit ≥2 Sessions/Woche über 4 Wochen | unbekannt |
-| 4 | Zahlungsbereitschafts-Signal | ≥3 Beta-Nutzer bejahen 20+ €/Monat konkret | offen |
-| 5 | Track-Record hit30 | erste Auswertung ohne Kontaminations-Befund | läuft |
-| 6 | Test-Abdeckung Scoring-Kern | Regime-Klassifikation + Top-3-Scorer unit-getestet | 0 % |
+**Bewertungstermin: Dezember 2026** (verschoben von Q4-Anfang: Beta startet bei null, braucht Sep–Nov für 4-Wochen-Aktivitätsdaten).
+
+| # | Kriterium | Schwelle | Status 07.08. | Zieltermin |
+|---|---|---|---|---|
+| 1 | Rechtsgutachten | keine strukturelle Umbau-Auflage | **nicht begonnen** (Fakt, Frage 5) | Erstberatung vor Beta-Start, Gutachten Okt. |
+| 2 | Backtest 2007–2026 | Regime-Gates schlagen naive Baseline (200T×Vol) | nicht gebaut | Sep. |
+| 3 | Beta-Aktivität | ≥5 Nutzer mit ≥2 Sessions/Woche über 4 Wochen | **0 externe Nutzer** — Beta-Reife erst diese Woche erreicht (Fakt, Frage 2) | Nov. |
+| 4 | Zahlungsbereitschafts-Signal | ≥3 Beta-Nutzer bejahen 30+ €/Monat konkret (Preis-Hypothese 30–50 €, Frage 3) | offen | Nov./Dez. |
+| 5 | Track-Record hit30 | erste Auswertung ohne Kontaminations-Befund | läuft (seit 02.07.) | Okt./Nov. |
+| 6 | Test-Abdeckung Scoring-Kern | Regime-Klassifikation + Top-3-Scorer unit-getestet | 0 % | Sep. |
 
 Sind 5–6 von 6 grün → Phase 2 voll einleiten. Sind ≤3 grün → UIQ als exzellentes Eigen-Tool weiterbetreiben (das es heute schon ist) und die Kommerzialisierungs-Frage auf GuidelineIQ verlagern, wo Domänenvorsprung und Regulatorik-Vertrautheit größer sind. Ein "Eigen-Tool-Ausgang" ist kein Scheitern: Die Entwicklungskosten sind bereits durch den Eigennutzen gedeckt.
 
@@ -105,6 +107,20 @@ Sind 5–6 von 6 grün → Phase 2 voll einleiten. Sind ≤3 grün → UIQ als e
 
 ---
 
-## 7. Offene Punkte für Fortschreibung
+## 7. Business-Fakten (nachgetragen 07.08.2026, Quelle: Axel)
 
-Business-Fragen 1–5 (Kosten, Beta, Preis, Stunden, Recht) nachtragen; KV-Live-Prüfung tr:snap/tr:eval-Bestand; Client-MSE-Code (ko-market-state.js in ko-modules — Repo nicht Teil dieses Zugriffs) gegen Server-Regime abgleichen (W3); Wettbewerbs-Deep-Dive (Preisstufen verifizieren, Feature-Matrizen) bei Bedarf als eigene Recherche-Session.
+**Kosten:** Mai ~46 €, Juni ~159 €, Juli-Peak ~250 € (Anthropic, deckungsgleich mit intensivster Entwicklungsphase), August nach 6 Tagen 12,43 €; Cloudflare ~9 €/Monat; Claude-Abo ~220 €/Jahr (Entwicklungswerkzeug). **Einschränkung:** Entwicklungs- und Betriebskosten nicht getrennt messbar — Kosten-Telemetrie pro Feature/Nutzer fehlt (→ Empfehlung 8). Schätzung reiner Betrieb je aktivem Nutzer: 10–30 €/Monat KI-Kosten; bestätigt Notwendigkeit der Phase-1-Cache/Queue/Kontingent-Konzepte vor Beta-Skalierung.
+
+**Beta:** 0 externe Nutzer; Beta-Reife nach Axels Einschätzung erst in dieser Woche erreicht. Alle Nutzungs- und Zahlungsbereitschafts-Aussagen sind damit Hypothesen (T4 verschärft, O5 unerschlossen).
+
+**Preis-Hypothese:** 30–50 €/Monat (konsistent mit US-Referenzpreisen, unvalidiert).
+
+**Kapazität:** 4–5 Std./Tag seit Projektbeginn Ende Mai 2026 (~10 Wochen Gesamtprojektalter). Doppelte Lesart: außergewöhnliche Velocity als Stärke; ~30 Wochenstunden als Dauerzustand ist die zentrale Tragfähigkeitsfrage (W6/T6 verschärft — das Projekt ist faktisch ein zweiter Beruf).
+
+**Rechtsberatung:** Nichts unternommen ("erst sehen, wie sich das Projekt entwickelt"). Bewertung: nachvollziehbar für die Bauphase, aber jetzt inkonsistent mit dem Beta-Plan — Empfehlung: anwaltliche **Erstberatung vor Einladung externer Beta-Tester** (auch kostenlose Beta mit empfehlungsähnlichen Ausgaben an Dritte berührt die WpHG-Abgrenzung), Vollgutachten vor dem ersten Euro.
+
+**Konsequenz für §5:** Urteil unverändert (Perspektive ausreichend für Beta + Phase-2-Vorbereitung, nicht für Verpflichtungen), aber Zeitachse konkretisiert: Go/No-Go Dez. 2026; erste Umsätze frühestens Q1/Q2 2027; Best Case Ende 2027: 50–150 Abonnenten / 1.500–5.000 € MRR. Drei-Szenarien-Rahmen (Geschäftsmodell mit Rollenteilung / Eigen-Tool / GuidelineIQ-Pivot) im Begleitdokument BRIEFING-GESCHAEFTSMODELL-2026-08-09.md.
+
+## 8. Verbleibende offene Punkte
+
+KV-Live-Prüfung tr:snap/tr:eval-Bestand; Client-MSE-Code (ko-modules) gegen Server-Regime abgleichen (W3); Wettbewerbs-Deep-Dive (Preisstufen verifizieren) vor Preisentscheidung; **neu:** Kosten-Telemetrie (API-Kosten je Feature/Nutzer taggen) als Voraussetzung sauberer Unit Economics.
