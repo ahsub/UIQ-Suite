@@ -63,11 +63,11 @@ Trigger: 01.10.2026.
 |---|---|---|
 | Rechtsgutachten WpHG/WpIG | Axel | diese Woche |
 | Beta-Aktivität messen (10 Tokens) | Axel | diese Woche |
-| KiSt in Ergebnisanzeige (`getKiStSummary()`) | nächste Session | |
-| ROADMAP 2.8–2.11 als ✅ markieren | nächste Session | |
-| Refundex 1.3 Feedback-Kanal | nächste Session | |
-| W3 Client-MSE Dokumentation | nächste Session | |
-| SWOT-Datei-Konsolidierung (SWOT-ANALYSE vs. SWOT_2026_08_07) | nächste Session | |
+| ✅ KiSt in Ergebnisanzeige (`getKiStSummary()`) | 08.08.2026 | kap.html `236788304e` |
+| ✅ ROADMAP 2.8–2.11 als ✅ markiert | 08.08.2026 | ROADMAP v1.8 `518e185` |
+| ✅ Refundex 1.3 Feedback-Kanal | bereits aktiv | ahildebrand@me.com + GitHub Issues, ROADMAP v1.8 |
+| ✅ W3 Client-MSE Dokumentation | 08.08.2026 | CLIENT-MSE-DOKU.md v1.0 `54f8c41` |
+| ✅ SWOT-Konsolidierung | 08.08.2026 | SWOT_2026_08_07.md zu Stub reduziert `c334a56` |
 
 ---
 
