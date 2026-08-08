@@ -346,6 +346,102 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
    → Lernmuster-Engine: über 50+ Trades hinweg Muster erkennen.
      "In 8/10 Rolls war RSI > 65 bei Eröffnung — du eröffnest CSPs zu spät."
 
+39. **RS-Linien-Neuhoch (rs-line-new-high)** *(08.08.2026, aus Pine-Script-Review IOS Institutional Momentum Engine v3.0)*
+    **Kernidee:** Die klassische O'Neil/Minervini-Diagnose: die relative-Stärke-*Linie* eines Tickers macht ein neues Hoch *bevor* der Kurs ein neues Hoch macht — starkes Frühwarnsignal für institutionelle Akkumulation.
+    **Abgrenzung zu №14 (RS-Rank):** RS-Rank = Querschnitts-Perzentil aller Ticker ("besser als X% des Universums heute"). RS-Linien-Neuhoch = Zeitreihen-Messung pro Ticker ("eigene RS-Linie auf 63-Tage-Hoch"). Beides ist unabhängig und komplementär.
+    **Berechnung (server-seitig, §2.4):**
+    `rs_line = close / bench_close` (Bench = SPY, täglich)
+    `rs_line_new_high = rs_line >= max(rs_line, 63)`
+    Datenbasis: yfinance SPY-OHLCV bereits im Aggregator vorhanden. Kein neuer Datenfeed.
+    **Gewichte:** Keine direkte Score-Integration vor Backtest via `backtest_2007_2026.py` (§2.4).
+    Zunächst als binäres Feld `rsLineNewHigh: bool` im Snapshot + Display im DeepDive.
+    **Visualisierung:** Grünes Flag-Icon im DeepDive-Block wenn True — kein Score-Beitrag vor Validierung.
+    **Priorität:** Mittel. **Trigger:** Nächster Aggregator-Indicators-Sprint.
+    **Nicht bauen vor:** Backtest-Validierung (№34) abgeschlossen.
+    Verwandt mit: №14 (RS-Rank), №34 (Backtest), Pine-Script IOS IME v3.0 rs006.
+
+40. **OBV-Trend als Akkumulations-Proxy** *(08.08.2026, aus Pine-Script-Review IOS Institutional Momentum Engine v3.0)*
+    **Kernidee:** On-Balance-Volume > seiner 20-Tage-SMA zeigt netto-institutionellen Kaufdruck — ohne neue Datenquelle, nur aus vorhandenen OHLCV-Daten.
+    **Berechnung (server-seitig, §2.4):**
+    `obv = cumsum(volume * sign(close - close[1]))`
+    `obv_signal = obv > sma(obv, 20)` → bool
+    `obv_trend = (obv - obv[10]) / abs(obv[10])` → normierter Anstieg
+    Datenbasis: Volume bereits in yfinance-Daten. Kein neuer Datenfeed.
+    **Gewichte:** Keine direkte Score-Integration vor Backtest (§2.4).
+    Zunächst als Felder `obvAboveMa: bool` + `obvTrend: float` im Snapshot.
+    **Abgrenzung:** Kein Ersatz für FINRA-DIX (Dark Pool) — OBV ist börsenöffentliches Volumen.
+    Ergänzt die bestehende institutionelle Signalkette (Distribution Days, McClellan).
+    **Priorität:** Mittel. **Trigger:** Nächster Aggregator-Indicators-Sprint (gemeinsam mit №39).
+    **Nicht bauen vor:** Backtest-Validierung (№34).
+    Verwandt mit: №39 (RS-Neuhoch), №34 (Backtest), Pine-Script IOS IME v3.0 ib005/ib006.
+
+41. **Portfolio Heat + Hard-Penalty-Capping als DCE-RiskEstimator-Baustein** *(08.08.2026, aus Pine-Script-Review IOS Position & Risk Engine v2.0)*
+    **Zwei untrennbare Konzepte — gemeinsam ein DCE-Baustein:**
+
+    *Portfolio Heat (C):*
+    Summe aller offenen Risiken als % des Account-NAV vs. einem konfigurierbaren Maximum (z.B. 8%).
+    `portfolio_heat = sum(risk_per_position%) über alle offenen Positionen`
+    Beantwortet: "Wie viel Risiko habe ich bereits eingegangen — *bevor* ich diesen Trade eröffne?"
+    Direkte Eingabe in DCE `position_size`-Output (§4b: EVT-VaR + Portfolio-Heat → RiskEstimator).
+    **Wichtig:** Kein freistehender Score — ein zweiter Positions-Sizing-Entscheider außerhalb der DCE
+    widerspräche dem Singularitäts-Prinzip (analog §2.6 für Regime).
+
+    *Hard-Penalty-Capping (D):*
+    Verletzungen (Heat > Max, Exposure > 95%) *deckeln* den Konfidenz-Score auf einen Maximalwert
+    (z.B. max(score, 35)) statt Punkte additiv abzuziehen. Damit kann kein GREEN-Signal eine
+    Risiko-Grenz-Verletzung rechnerisch überstimmen.
+    Implementierungsregel für den DCE-RiskEstimator:
+    ```python
+    if heat_violation:
+        confidence = min(confidence_raw, 0.35)
+    if exposure_violation:
+        confidence = min(confidence_raw, 0.45)
+    ```
+    **Datenquelle:** Flex-XML via ko-journal.js (offene Positionen, Refundex-Anbindung).
+    Voraussetzung: ko-journal.js v1.0.0 ✅ (07.08.2026) + OptionsDoktor-Integration (№37).
+    **Trigger:** DCE-Refactoring-Sprint (~September/Oktober 2026, nach BN Phase 1).
+    **Nicht bauen vor:** DCE-Refactoring-Sprint gestartet.
+    Verwandt mit: ML_KONZEPT §4b (DCE Interface), №37 (OptionsDoktor), №22 (sizingMultiplier),
+    Pine-Script IOS Position & Risk Engine v2.0.
+
+42. **Extension-Penalty als Chase-Schutz** *(08.08.2026, aus Pine-Script-Review IOS Entry Score v2.0)*
+    **Kernidee:** Ein Ticker der >8% über seiner EMA21 notiert ist "extended" — Einstieg zu diesem
+    Zeitpunkt hat historisch schlechtes Aufwand/Ertrag-Verhältnis (überdehnte Moves kehren zur MA zurück).
+    Asymmetrische Bestrafung statt linearer Abzug.
+    **Berechnung:**
+    `extension_pct = (close - ema21) / close * 100`
+    `is_extended = extension_pct > 8.0`
+    Gate-Logik (server-seitig, §2.4): wenn `is_extended=True` → Malus im Entry-Score oder
+    explizite Warnung im DeepDive ("Extended +X% über EMA21 — Chase-Risiko").
+    **Schwellenwert 8%:** Aus Pine-Script übernommen, *unvalidiert* — muss durch Backtest
+    kalibriert werden (§2.4). Könnte für verschiedene Volatilitäts-Regime unterschiedlich sein
+    (High-Beta: 12%? Low-Beta: 5%?).
+    **Abgrenzung:** Kein Ersatz für VCP-Tight-Window-Logik (Preis-Struktur-Analyse) — ergänzt
+    diese um eine absolute Distanz-Schranke.
+    **Anwendungsbereiche:** Minervini-Score-Gate, VCP-Breakout-Score, CSP-Einstieg (Chase-Schutz
+    auch bei Options-Strategien relevant wenn Strike nahe aktuellem Kurs).
+    **Zunächst:** Feld `extensionPct: float` + `isExtended: bool` im Snapshot + DeepDive-Warnung.
+    Score-Integration erst nach Backtest-Kalibrierung.
+    **Priorität:** Mittel. **Trigger:** Nächster Aggregator-Indicators-Sprint (gemeinsam mit №39+40).
+    **Nicht bauen vor:** Backtest-Validierung (№34).
+    Verwandt mit: №13c (Entry-Preispunkte), №18 (VCP), №34 (Backtest),
+    Pine-Script IOS Entry Score v2.0.
+
+43. **Leadership-Faktor für MSE** *(08.08.2026, aus Pine-Script-Review IOS Market Engine v3.8)*
+    **⚠️ ZURÜCKGESTELLT — post 01.10.2026**
+    **Kernidee:** Anteil der Top-10-Leader (NVDA, MSFT, META, AMZN, GOOGL, AVGO, PLTR, GEV, VRT, ANET)
+    die über ihrer SMA50 notieren UND den SPY in den letzten 20T outperformen.
+    Würde der MSE einen neuen Signal-Input hinzufügen, der heute nicht vorhanden ist.
+    **Warum zurückgestellt (§2.6 + Track-Record-Gate):**
+    (1) Jeder neue MSE-Input vor Track-Record-Validierung macht den laufenden Track-Record
+        schwerer interpretierbar (welche MSE-Definition galt an Tag X?).
+    (2) Backtest-Validierung (№34) muss zuerst zeigen ob Leadership einen eigenständigen
+        Beitrag über die bestehende MSE-Logik hinaus liefert.
+    (3) Gewichte für Leadership-Integration sind per §2.4 unvalidiert — Übernahme aus
+        Pine-Script verboten.
+    **Trigger: erstes Track-Record-Review + Backtest-Abschluss (~01.10.2026).**
+    Verwandt mit: §2.4, §2.6, §2.7 (CODING-RULES), №34 (Backtest), Pine-Script IOS Market Engine v3.8.
+
 38. **Counterfactual Performance Engine — "Was wäre wenn"** *(07.08.2026, aus Analyse Flex-XML-Datenbasis)*
 
    Performance-Analyse auf drei Ebenen:
