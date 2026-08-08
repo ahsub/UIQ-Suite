@@ -1,6 +1,6 @@
 # ML_KONZEPT.md — Maschinelles Lernen als Signal-Kalibrierung in UIQ
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Datum:** August 2026  
 **Status:** Konzept — Implementierung phasenweise ab September 2026  
 **Verantwortlich:** Dr. Axel Hildebrand  
@@ -82,6 +82,45 @@ Tatsächlich bestehen starke Abhängigkeiten:
 Das Bayesian Network löst dieses Problem strukturell.
 
 ---
+
+## §2b. Data Foundation — Voraussetzung für alle ML-Phasen
+
+**Erkenntnisdatum:** 08.08.2026 (aus Morning-Briefing-Bug-Analyse)
+**Referenz:** SUITE.md Backlog №44
+
+Alle ML-Phasen (BN Sept. 2026, HMM Okt. 2026, NN Q1 2027) setzen voraus dass
+die Eingabe-Zeitreihen **konsistent, datiert und vollständig** sind. Heute sind
+~35 Metriken über verschiedene Datenstrukturen verteilt — ohne einheitliches
+Schema, ohne Freshness-Garantie, ohne strukturierte History.
+
+**Die Data Foundation ist kein Feature — sie ist die Datenbasis auf der
+BN/HMM/NN überhaupt sinnvoll trainiert werden können.**
+
+Ohne sie: BN bekommt Snapshots mit unbekannter Staleness → Modell lernt Rauschen.
+Mit ihr: BN bekommt validierte Zeitreihen mit bekannter Qualität → Modell lernt Signal.
+
+**35 Zeitreihen in 3 Klassen:**
+- Klasse 1 (Regime): VIX, VIX3M, Ratio, VVIX-Z, SKEW-Pct, PCR, MSE-Regime, Flag
+- Klasse 2 (Makro): HY-Spread, Net Liquidity, MOVE, Fear&Greed, IOS Score, McClellan, DIX
+- Klasse 3 (Universum): RS-Median, %SMA200, VCP-Dichte, Composite-Trend, DD, IV-Median
+
+**Container-Architektur:**
+- KV-Store: aktueller Tag (Live-Briefing, bestehend)
+- SQLite `data/metrics.db`: vollständige Zeitreihe, täglich append, pandas-Interface
+- Validator: jede Metrik mit `status` (fresh/stale/missing/error) + `data_date`
+
+**Mehrwert für KI-Analysen — Zeitreihen-Kontext statt Snapshot:**
+```
+Fear & Greed: heute 70 · vor 5T 45 · vor 20T 28 → +42 Punkte (schnelle Umkehr)
+IOS Market Score: heute 83 · vor 5T 71 · vor 20T 65 → strukturelle Verbesserung
+Regime: BULL_QUIET (3T) · davor POST_PANIC (7T) · Übergangsvektor: RECOVERING
+```
+
+**Trigger:** nach UIQ Phase-0 (~01.10.2026), unmittelbar vor BN-Phase 1.
+Ohne Data Foundation kein sinnvolles BN-Training.
+
+---
+
 
 ## 3. Methoden-Überblick: Stärken und UIQ-Rolle
 
