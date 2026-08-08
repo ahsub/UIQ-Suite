@@ -82,3 +82,54 @@ Portfolio-Heat (SUITE.md Backlog №41).
 - Hast du das verifiziert oder übernommen?
 - PAT nach Session löschen
 - №43 Leadership-Faktor: Erinnerung 01.10.2026
+
+---
+
+## Abend-Addendum (späte Session)
+
+### UIQ — Morning-Briefing-Bug v454 behoben
+**Symptom:** SENTIMENT-Abschnitt zeigte `[object Object]` für IOS Market Score
+und `n/v` für Fear & Greed — obwohl beide Werte im KV vorhanden.
+
+**Root Cause:** Server-Briefing (`generate_daily_snapshot()`) hatte IOS Market
+Score nie in `mlines` — KI erfand ihn aus Training. Fear & Greed: `fg.get('score')`
+lieferte `None` bei leerem Dict → kein Eintrag → KI schrieb `n/v`.
+
+**Fix:** `market_aggregator.py` v5.36.0 — `772549b`
+- IOS Market Score in `mlines` ergänzt (Score + Rating + Decision)
+- Fear & Greed robuster Check (`is not None` statt Truthy-Check)
+- Prompt-Sentinel um IOS Score erweitert
+
+### UIQ Data Foundation — Backlog №44 verankert
+**Strategische Erkenntnis:** Der Bug hat offenbart dass wir ~35 Metriken ohne
+einheitliches Schema, ohne Freshness-Garantie und ohne strukturierte History haben.
+Das ist der fehlende Unterbau für Meta-Signal (№30), BN/HMM/NN (ML_KONZEPT §3b)
+und DCE.
+
+**Entscheidung (Axel + Claude, 08.08.2026):**
+- Pareto: täglich, SQLite, Validator, Zeitreihen-Kontext im Briefing
+- Container: KV (Live) + SQLite `data/metrics.db` (History/Backtest)
+- 35 Zeitreihen in 3 Klassen
+- **Trigger: nach Phase-0 (~01.10.2026), vor BN-Training**
+
+Commits: SUITE.md №44 `60a94c0` · ML_KONZEPT v1.1 `fc7faff`
+
+### Commits heute gesamt (chronologisch)
+| Commit | Repo | Was |
+|---|---|---|
+| `1161ff2` | UIQ-Suite | CODING-RULES v1.1 |
+| `a6937d4` | UIQ-Suite | CODING-RULES v1.2 |
+| `00f8492` | UIQ-Suite | SUITE.md №39–43 |
+| `518e185` | refundex | ROADMAP v1.8 |
+| `c334a56` | UIQ-Suite | SWOT-Stub |
+| `54f8c41` | UIQ-Suite | CLIENT-MSE-DOKU v1.0 |
+| `2367883` | refundex | kap.html KiSt-Box |
+| `c181491` | refundex | ko-flex.js v1.2 |
+| `c6ebbc9b` | refundex | ko-flex.js v1.3 |
+| `fe371da5` | refundex | kap.html CDN+Badge |
+| `ae1a673b` | refundex | ROADMAP v2.2 |
+| `772549b` | ko-aggregator | market_aggregator v5.36.0 |
+| `60a94c0` | UIQ-Suite | SUITE.md №44 Data Foundation |
+| `fc7faff` | UIQ-Suite | ML_KONZEPT v1.1 §2b |
+
+**Nächste Session: CapTrader Portfolio & Options-Projekt**
