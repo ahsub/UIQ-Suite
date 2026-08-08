@@ -442,6 +442,78 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     **Trigger: erstes Track-Record-Review + Backtest-Abschluss (~01.10.2026).**
     Verwandt mit: §2.4, §2.6, §2.7 (CODING-RULES), №34 (Backtest), Pine-Script IOS Market Engine v3.8.
 
+44. **UIQ Data Foundation — Unified Metric Container** *(08.08.2026, strategische Erkenntnis aus Morning-Briefing-Bug-Analyse)*
+
+    **Kernidee (Axel, 08.08.2026):** Alle Metriken & Indikatoren täglich in einem
+    einheitlichen, validierten Container sammeln, speichern und als Grundlage für
+    KI-Analysen nutzen — nicht nur Snapshot-Werte, sondern Zeitreihen mit Verlauf.
+
+    **Was heute fehlt:** ~35 Zeitreihen verteilt über mse_history, macro_zscores,
+    vixTerm, fredMacro, iosMarket, pcr, iv_history, fearGreed, breadthOsc — alle
+    mit verschiedenen Schemas, keine Vollständigkeitsprüfung, keine strukturierte
+    History, kein Backtest-Interface.
+
+    **Ziel-Architektur (Pareto-Entscheidung 08.08.2026):**
+
+    *Schicht 1 — Daily Collection Run (GHA, ~03:37 UTC):*
+    Alle 35 Metriken in 3 Klassen sammeln:
+    - Klasse 1 (Markt-Regime): VIX, VIX3M, ratio_vix_vix3m, VVIX-Z, SKEW-Pct,
+      PCR, MSE-Regime + Confidence, Regime-History-Flag
+    - Klasse 2 (Makro-Kontext): HY-Spread, Net Liquidity, MOVE, Fear&Greed,
+      IOS Market Score (9 Sub-Scores), McClellan, DIX
+    - Klasse 3 (Universum-Aggregat): RS-Rank-Median, %Ticker über SMA200,
+      VCP-Dichte, Composite-Score-Trend, Distribution-Days, IV-Rank-Median
+
+    *Schicht 2 — Validator (neu):*
+    Jede Metrik bekommt: `value`, `source`, `fetched_at`, `data_date`,
+    `staleness_hours`, `status` (fresh/stale/missing/error), `fallback_used`.
+    Ohne Validator ist kein Briefing-Wert vertrauenswürdig datierbar.
+
+    *Schicht 3 — Container (zwei Ebenen):*
+    - KV-Store: aktueller Tag (Live-Briefing, wie heute)
+    - SQLite in GHA (`data/metrics.db`): vollständige Zeitreihe, täglich append.
+      Pandas-Interface für Backtest. Rückfüllung: VIX/FRED historisch (frei,
+      252T als Startpunkt), Rest ab 08.08.2026.
+
+    *Schicht 4 — KI-Analyse-Input (der eigentliche Mehrwert):*
+    KI bekommt nicht nur Snapshot, sondern Zeitreihen-Kontext:
+    ```
+    Fear & Greed: heute 70 · vor 5T 45 · vor 20T 28 → +42 Punkte (schnelle Umkehr)
+    IOS Market Score: heute 83 · vor 5T 71 · vor 20T 65 → strukturelle Verbesserung
+    Regime: BULL_QUIET (3T) · davor POST_PANIC_REVERSION (7T) · RECOVERING
+    ```
+    Erst damit kann die KI Geschwindigkeit, Divergenz und Analogien erkennen —
+    nicht nur den aktuellen Wert kommentieren.
+
+    **Verhältnis zu bestehenden Komponenten:**
+    - `mse_history` → wird Teil von Klasse 1, nicht ersetzt sondern integriert
+    - `iv_history/` → wird Teil von Klasse 3 (IV-Rank-Median)
+    - Backlog №30 (Meta-Signal-Architektur) → Data Foundation ist die Datenbasis
+    - ML_KONZEPT §3b (Staffel-Sequenz) → BN/HMM brauchen strukturierte Zeitreihen
+    - Track-Record (tr:snap/tr:eval) → separates System, bleibt unberührt
+
+    **Implementierungsreihenfolge:**
+    ```
+    Phase 1: Schema definieren (metric_schema.json) — 1 Session
+    Phase 2: Validator-Schicht (metric_validator.py) — 1 Session
+    Phase 3: SQLite-Integration in GHA (data/metrics.db, append) — 1 Session
+    Phase 4: Zeitreihen-Kontext im Briefing-Prompt — 1 Session
+    Phase 5: Backtest-Interface (pandas query) — 1 Session
+    Phase 6: Historische Rückfüllung VIX/FRED (252T) — 1 Session
+    ```
+
+    **Nicht bauen vor:** UIQ Phase-0-Abschluss (Track Record ≥ 60T, ~01.10.2026).
+    Begründung: Data Foundation ist Infrastruktur für Phase 1 (BN/HMM) —
+    sie erhöht die Qualität, ist aber kein Phase-0-Blocker.
+
+    **Warum jetzt verankern:** Der Morning-Briefing-Bug (08.08.2026) hat gezeigt
+    dass wir nicht wissen ob unsere Metrik-Werte aktuell, stale oder erfunden sind.
+    Das ist kein Rand-Problem — es ist der fehlende Unterbau für alles was wir in
+    ML_KONZEPT §3b, Meta-Signal (№30) und DCE geplant haben.
+
+    Verwandt mit: №30 (Meta-Signal-Architektur), №34 (Backtest 2007–2026),
+    ML_KONZEPT.md §3b, CODING-RULES §2.7 (Track-Record-Integrität).
+
 38. **Counterfactual Performance Engine — "Was wäre wenn"** *(07.08.2026, aus Analyse Flex-XML-Datenbasis)*
 
    Performance-Analyse auf drei Ebenen:
