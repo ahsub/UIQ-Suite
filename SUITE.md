@@ -514,6 +514,42 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     Verwandt mit: №30 (Meta-Signal-Architektur), №34 (Backtest 2007–2026),
     ML_KONZEPT.md §3b, CODING-RULES §2.7 (Track-Record-Integrität).
 
+45. **Beta-Kostenkontrolle — KI-Feature-Klassifizierung (A/B) + Cache-Layer** *(08.08.2026, aus Refundex-Session Token-Kosten-Diskussion)* — Ausgangsfrage: Tokenraten/Kosten bei 10–20 Betausern, Ziel möglichst geringe Kosten in der Testphase.
+
+    **Verifiziert (nicht angenommen) aus `axel-scanner/workers/ko-ai.js`:**
+    - Modelle aktuell: `claude-sonnet-4-6` (morning, deep_dive, dark_pool, eic) und
+      `claude-haiku-4-5-20251001` (makro, ki_briefing, oversold, meta_analysis) —
+      beide aktuell, nicht retired (Fehlalarm aus ungenauer Notiz ausgeräumt).
+    - `RATE_LIMITS.morning = 20` trägt bereits Axels eigenen Kommentar:
+      *"TEMP hochgesetzt für Phase-0.5-Testphase — vor Beta-Launch auf 2-3 senken"*.
+
+    **Kernerkenntnis:** 6 von 8 Actions (`makro`, `ki_briefing`, `morning`,
+    `oversold`, `meta_analysis`, `dark_pool`) hängen ausschließlich von Marktlage/Tag
+    ab, nicht von individuellem User-Input — Klasse A, backend-generierbar/teilbar.
+    `deep_dive` hängt von Ticker+Tag ab (nicht von User) — deterministisch bei
+    gleichem Prompt ("nur Daten aus dem Prompt, keine Erfindungen"), daher pro
+    Ticker+Tag cachebar statt pro User. Einzig `eic`/`deep_dive_expert` sind
+    echte Klasse B (Axels persönliches Portfolio hart im Prompt, Zeile 144ff.) —
+    zu bestätigen, dass `expertMode` exklusiv an Axel gebunden ist und damit
+    nicht gegen die Beta-Nutzerzahl multipliziert.
+
+    **Umsetzung (Reihenfolge):**
+    1. KV-Cache-Layer vor `callAnthropic()`: `daily:{action}:{modus}:{datum}`
+       für die 6 tagesweiten Actions, `deepdive:{ticker}:{datum}:{modus}` für
+       Deep Dive. Cache-Hit → kein API-Call.
+    2. Nightly-GHA-Erweiterung: die 6 tagesweiten Actions einmal vorgenerieren
+       (Batch API, 50% Rabatt, unkritisch für Timing), in KV ablegen.
+    3. `RATE_LIMITS.morning` 20→2-3 (Axels eigene TODO-Notiz), wird durch (2)
+       ohnehin größtenteils obsolet.
+    4. `deep_dive`-Modell vorerst unverändert (Sonnet) — Cache deckelt das
+       Volumen bereits; Umstieg auf Haiku 4.5 bleibt Option, falls die
+       Cache-Hit-Rate nach Beta-Start niedriger ausfällt als angenommen.
+    5. Verifizieren: `expertMode`-Gating exklusiv auf Axel beschränkt.
+
+    **Kein Bau vor:** Punkt 5 (Verifikation), da sonst Kostenannahme auf
+    ungeprüfter Basis steht. Sonst kein Blocker — unabhängig von UIQ Phase 0
+    umsetzbar, da reine Kosteninfrastruktur ohne Signal-/Scoring-Änderung.
+
 38. **Counterfactual Performance Engine — "Was wäre wenn"** *(07.08.2026, aus Analyse Flex-XML-Datenbasis)*
 
    Performance-Analyse auf drei Ebenen:
@@ -607,9 +643,23 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
      → Value-Leaderboard auf echten Daten
      → Composite Score erweitern
 
+   Stufe 3a (Fundamentaldaten, roic.ai) vorziehbar auf ~Q4 2026
+   Stufe 3b (Short Interest) bleibt CP-API-gebunden, ~Q2 2027
+
    Stufe 4 (offen): Globale Indizes für Macro-Regime
      → Macro-Regime nicht mehr US-zentrisch
    ```
+
+   **Update 08.08.2026 (aus roic.ai-Recherche, Refundex-Session):** Stufe 3 lässt
+   sich vorziehen und von der CP-API-Abhängigkeit entkoppeln — roic.ai liefert
+   Income Statement/Balance Sheet/Cash Flow/Financial Ratios/Valuation Multiples
+   direkt per REST, ohne OAuth2/lokales Gateway. Kein Ersatz für CP API insgesamt:
+   roic.ai hat keine Options-Chains, keinen Echtzeit-Earnings-Kalender, keinen
+   Depotbezug — Stufe 1, Stufe 2 und der Short-Interest-Teil von Stufe 3 bleiben
+   CP-API-Aufgabe. Vor Bau zu klären: roic.ai-Rate-Limits (Free 5 req/min/2 Jahre;
+   Individual $29/Monat, 300 req/min/5 Jahre) gegen 711-Ticker-Nightly-Run rechnen
+   — Free reicht vermutlich nicht für einen vollständigen Lauf. Daher Stufe 3
+   aufgeteilt in 3a (Fundamentaldaten via roic.ai) und 3b (Short Interest, CP-API).
 
    **Abgrenzung zu Flex Web Service (wichtig):**
    Flex Web Service → Refundex (was war: abgeschlossene Trades, Steuer)
@@ -739,6 +789,8 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.4 | 08.08.2026 | §7 Backlog №31 präzisiert: roic.ai als unabhängige Fundamentaldaten-Quelle identifiziert (Refundex-Session, kap.html-Arbeit) — Stufe 3 aufgeteilt in 3a (Fundamentaldaten via roic.ai, vorziehbar ~Q4 2026) und 3b (Short Interest, bleibt CP-API-gebunden, Q2 2027). Rate-Limit-Check gegen 711-Ticker-Universum vor Bau offen. |
+| 4.5 | 08.08.2026 | §7 Backlog №45 ergänzt: Beta-Kostenkontrolle — KI-Feature-Klassifizierung (A/B) + Cache-Layer (Refundex-Session, Ausgangsfrage Token-Kosten bei 10–20 Betausern). Modell-Verifikation `ko-ai.js`: `claude-sonnet-4-6`/`claude-haiku-4-5-20251001`, nicht retired. Kernerkenntnis: 6/8 Actions sind tagesweise teilbar (nicht user-multipliziert), `deep_dive` ticker+tag-cachebar statt user-cachebar. `RATE_LIMITS.morning` 20→2-3 vorgemerkt (deckt sich mit Axels eigener TODO-Notiz im Code). |
 | 1.0 | 03.07.2026 | Erstfassung: Zielbild 3+2 (inkl. DepotIQ und Ruhestandsmodul als Zukunftsprojekte hoher Prio), konsolidierte Grundgesetze, Konsistenz-Standards (Glossar, Regelwerk-Einheit, Prompt-Bibliothek, Design-System, K1–K3-Umsetzungspfad), Suite-Portal-Zielbild, offene Entscheidungen |
 | 1.1 | 03.07.2026 | Umzug ins Meta-Repo UIQ-Suite (Single Source, Entscheidung №1 ✓); §4 Prioritäten-Wirbelsäule (Build- vs. Denk-Kapazität, UIQ Phase 0 = Leitprojekt, Claude-Warnpflicht); §5 Suite-SWOT Meta-Ebene (Claude + Gemini-Cross-Check) |
 | 1.2 | 06.07.2026 | §3.6 Web-Präsenz & Rechtsseiten (Domain-Architektur, Impressum/Datenschutz/Kontakt/FAQ, i18n-Suite-Regel DACH-first, Corporate Identity, Content-Governance mit Single-Source-Prinzip) + §3.7 Timeframe Design/Web-Rollout in vier Phasen D0–D3 (D0 Sammelbecken sofort, D2 Rollout gekoppelt an UIQ v2.0 Q4 2026 — bewusste Effizienz-Kopplung, keine Doppelarbeit im v1.x-Monolithen). Backlog-Punkt №6 ergänzt. |
