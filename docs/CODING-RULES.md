@@ -1,7 +1,7 @@
 # UIQ Suite — Coding Rules & Session Protocol
 
-**Version:** 1.0  
-**Stand:** August 2026  
+**Version:** 1.1  
+**Stand:** 08.08.2026  
 **Ablage:** `ahsub/UIQ-Suite/docs/CODING-RULES.md`  
 **Geltung:** Verbindlich für alle Entwicklungsarbeiten in UIQ Suite.  
 **Ergänzt:** SUITE.md §2 (Grundgesetze) + LEITBILD.md (Produkt-Identität)
@@ -50,6 +50,58 @@ Kein Deploy ohne Verifikation.
 - **Frontend:** `<meta name="version" content="YYYYMMDD-v{N}">` + Changelog-Eintrag v{N} vor v{N-1}
 - **Changelog-Format:** `v{N}: Kurzbeschreibung (Datum): Details. GHA Run #{N} wenn relevant.`
 - **Commit-Messages:** `feat/fix/chore/docs(scope): Beschreibung vX.Y.Z` — scope = aggregator/frontend/docs
+
+
+### 2.4 Externe Signal-Ideen (Pine Script, Paper, Drittcode)
+
+**Gewichte niemals übernehmen:**
+Punktgewichte aus externen Quellen (Pine Scripts, Papers, fremde
+Scoring-Systeme) sind per Definition unvalidiert. Signal-Idee und
+Implementierungsgewicht sind strikt zu trennen:
+- Signal-Logik (Regel, Bedingung): kann als Kandidat ins Backlog
+- Gewicht/Score-Beitrag: erst nach Backtest via `backtest_2007_2026.py`
+  in den `compositeScore` integrieren — nie direkt übernehmen.
+
+**Scores immer server-seitig:**
+Jede Scoring-Berechnung, die in den `compositeScore` einfließt, läuft
+ausschließlich im Aggregator (Python/GHA). Kein Score-Gewicht darf im
+Frontend sichtbar oder rekonstruierbar sein (IP-Schutz, v454).
+
+### 2.5 Ratio-Konvention (verbindlich)
+
+Jede Variable, die ein VIX-Term-Verhältnis trägt, **muss** die Richtung
+im Namen kodieren:
+- `ratio_vix_vix3m` = VIX / VIX3M (steigt bei Stress)
+- `ratio_3m_spot` = VIX3M / VIX (fällt bei Stress — Backwardation-Proxy)
+
+Generische Namen wie `ratio` oder `vix_ratio` sind **verboten**.
+Bei jedem neuen Consumer einer Ratio-Variable: Richtung explizit
+im Kommentar bestätigen (`# ratio_vix_vix3m: >1 = Stress`).
+
+### 2.6 Regime-Klassifikator-Singularität
+
+Es darf **genau einen** autoritativen Regime-Klassifikator geben:
+den Server-MSE im Aggregator. Neue Regime-Logik im Frontend oder in
+separaten Modulen ist verboten, solange sie dieselben Label-Namen
+verwendet (BULL_QUIET, STRESS_UNSTABLE usw.). Anzeige-/Hilfslogik
+darf Regime-Werte *darstellen*, aber nicht *berechnen*.
+Zuwiderhandlungen erzeugen das "Dual/Triple Truth"-Problem (SWOT W3).
+
+### 2.7 Track-Record-Integrität
+
+**Regeländerungen versionieren:**
+Jede Änderung an Scoring-Gewichten, Regime-Schwellen oder
+Klassifikationslogik erhält einen expliziten Versions-Timestamp im
+Aggregator-Changelog *und* einen Eintrag im Track-Record-Log
+(`tr:meta`-Key in KV): `{"version": "v5.x", "changed": "...", "from": "YYYY-MM-DD"}`.
+Ohne diesen Eintrag ist der Track-Record für den betroffenen Zeitraum
+nicht interpretierbar.
+
+**Universum-Archiv:**
+Die monatlich aktualisierten IWV-Holdings-CSVs müssen point-in-time
+referenzierbar bleiben. `ex_iwv_tickers.csv` + Monats-CSVs in
+Git-History reichen nur, wenn der Backtest-Code explizit das
+historisch gültige Universum je Datum lädt (Survivorship-Fix T3c).
 
 ---
 
@@ -169,6 +221,14 @@ Vor jedem neuen Feature folgende Punkte abhaken:
 [ ] GHA-Trigger: Manuell triggern + Snapshot inspizieren
 [ ] Version: AGGREGATOR_VERSION + meta version + Changelog
 [ ] Handover: UEBERGABE-*.md aktualisiert
+[ ] Gewicht-Quelle: Eigene Backtest-Validierung (backtest_2007_2026.py)?
+    Fremde Gewichte → erst validieren, nie direkt übernehmen. (§2.4)
+[ ] Score-Berechnung: Läuft server-seitig im Aggregator? Kein Client-Recalc. (§2.4)
+[ ] Ratio-Variablen: Richtungs-kodierter Name verwendet? (§2.5)
+[ ] Regime-Logik: Kein neuer paralleler Klassifikator eingebaut? (§2.6)
+[ ] Regeländerung: tr:meta-Key + Changelog-Eintrag gesetzt? (§2.7)
+[ ] Test-Abdeckung: Neue Scoring-Funktion hat Unit-Tests in test_*.py? (W1/SWOT)
+[ ] DSS-Filtertest: Feature besteht LEITBILD §3 auch bei eigenem Vorschlag? (T5/SWOT)
 ```
 
 ---
@@ -203,4 +263,4 @@ Prioritäten-Hierarchie (unveränderlich):
 
 ---
 
-*UIQ Suite Coding Rules v1.0 · August 2026*
+*UIQ Suite Coding Rules v1.1 · 08.08.2026 · §2.4–2.7 aus SWOT-Fable-Review ergänzt*
