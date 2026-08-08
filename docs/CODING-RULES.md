@@ -1,6 +1,6 @@
 # UIQ Suite — Coding Rules & Session Protocol
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Stand:** 08.08.2026  
 **Ablage:** `ahsub/UIQ-Suite/docs/CODING-RULES.md`  
 **Geltung:** Verbindlich für alle Entwicklungsarbeiten in UIQ Suite.  
@@ -102,6 +102,29 @@ Die monatlich aktualisierten IWV-Holdings-CSVs müssen point-in-time
 referenzierbar bleiben. `ex_iwv_tickers.csv` + Monats-CSVs in
 Git-History reichen nur, wenn der Backtest-Code explizit das
 historisch gültige Universum je Datum lädt (Survivorship-Fix T3c).
+
+### 2.8 Penalty-Architektur in Score-Systemen
+
+**Capping statt additiver Abzug bei Grenz-Verletzungen:**
+Wenn ein Score eine harte Grenze verletzt (Portfolio-Heat > Max, Exposure > 95%,
+ungültiges CRV), wird der Gesamt-Score *gedeckelt*, nicht additiv reduziert:
+
+```python
+# Richtig — Verletzung überstimmt immer:
+if heat_violation:
+    score = min(score_raw, 35)
+
+# Falsch — kann durch hohen Basis-Score überstimmt werden:
+if heat_violation:
+    score = score_raw - 40
+```
+
+**Begründung:** Additive Abzüge können durch hohe Teilwerte kompensiert werden —
+ein ELITE-Momentum-Signal kann so eine Heat-Verletzung rechnerisch wegdiskutieren.
+Capping verhindert das strukturell: die Verletzung *gewinnt immer*.
+Gilt für: DCE-RiskEstimator, Options-Scorer-Gates, jedes künftige Score-System
+mit harten Sicherheitsgrenzen. (Backlog №41, Pine-Script IOS Position & Risk Engine v2.0)
+
 
 ---
 
@@ -263,4 +286,4 @@ Prioritäten-Hierarchie (unveränderlich):
 
 ---
 
-*UIQ Suite Coding Rules v1.1 · 08.08.2026 · §2.4–2.7 aus SWOT-Fable-Review ergänzt*
+*UIQ Suite Coding Rules v1.2 · 08.08.2026 · §2.4–2.7 SWOT + §2.8 Penalty-Capping*
