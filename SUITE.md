@@ -591,6 +591,30 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     Optionspreis-Bezug, daher als Prio 2/nicht relevant eingestuft (Details im
     Übergabeprotokoll).*
 
+48. **Konzept-Lehren aus Pine-Review — übertragbar auf UIQ-Strategielogik** *(09.08.2026, aus Bear Put Spread v1/PROv2-Review)* — Arbeitsziel bei Pine-Skripten ist Konzept-/Ideenextraktion für UIQ, nicht Pine-Code-Pflege (Axel-Klarstellung 09.08.2026). Zwei Denkfehler-Muster identifiziert, die als Prüfpunkt für jede künftige UIQ-Options-/Trading-Strategielogik gelten sollen, unabhängig von der konkreten Quelle:
+
+    **(a) Lookback-Monotonie bei Strike-/Schwellenwert-Auswahl:** Navigator PRO v2
+    verglich `sixMonthLow` mit `sixWeekLow`, ohne zu bedenken, dass ein längeres
+    Lookback-Fenster das Minimum eines kürzeren Fensters nie unterschreiten kann
+    (`sixMonthLow ≤ sixWeekLow` gilt strukturell immer) — die daraus abgeleitete
+    Strike-Zuordnung war dadurch permanent invertiert. **Prüffrage für UIQ:**
+    Bei jeder Logik, die zwei verschieden lange Lookback-Fenster vergleicht
+    (Threshold-Auswahl, Strike-Selector, Breakout-Referenz etc.), explizit
+    verifizieren, welche Richtung die Monotonie erzwingt, statt sie anzunehmen.
+
+    **(b) Risk/Reward-Asymmetrie gegen die gehandelte Trendrichtung:** TP/SL war
+    5%/10% gesetzt, unabhängig davon, ob das Signal mit oder gegen einen
+    bestätigten Trend wettet — bei einem Short-Signal in einem bestätigten
+    Aufwärtstrend ist das strukturell ungünstig. **Prüffrage für UIQ:** Bei jeder
+    Options-/Directional-Strategie (insb. Premium-Selling gegen Trend) TP/SL-Ratio
+    explizit gegen die MSE-Regime-Richtung prüfen, nicht als statischen
+    Default übernehmen.
+
+    **Kein Bau, reine Heuristik/Merkposten** — anzuwenden als Review-Checkpunkt bei
+    künftigen UIQ-Strategiebausteinen (insb. Options-Scorer, Strike-Logik,
+    Strategie-Router-Regeln). *Herkunft: `docs/UEBERGABE-2026-08-09-pine-review.md`,
+    verwandt mit №46/47.*
+
 38. **Counterfactual Performance Engine — "Was wäre wenn"** *(07.08.2026, aus Analyse Flex-XML-Datenbasis)*
 
    Performance-Analyse auf drei Ebenen:
@@ -833,6 +857,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 | 4.4 | 08.08.2026 | §7 Backlog №31 präzisiert: roic.ai als unabhängige Fundamentaldaten-Quelle identifiziert (Refundex-Session, kap.html-Arbeit) — Stufe 3 aufgeteilt in 3a (Fundamentaldaten via roic.ai, vorziehbar ~Q4 2026) und 3b (Short Interest, bleibt CP-API-gebunden, Q2 2027). Rate-Limit-Check gegen 711-Ticker-Universum vor Bau offen. |
 | 4.5 | 08.08.2026 | §7 Backlog №45 ergänzt: Beta-Kostenkontrolle — KI-Feature-Klassifizierung (A/B) + Cache-Layer (Refundex-Session, Ausgangsfrage Token-Kosten bei 10–20 Betausern). Modell-Verifikation `ko-ai.js`: `claude-sonnet-4-6`/`claude-haiku-4-5-20251001`, nicht retired. Kernerkenntnis: 6/8 Actions sind tagesweise teilbar (nicht user-multipliziert), `deep_dive` ticker+tag-cachebar statt user-cachebar. `RATE_LIMITS.morning` 20→2-3 vorgemerkt (deckt sich mit Axels eigener TODO-Notiz im Code). |
 | 4.6 | 09.08.2026 | §7 Backlog №46+47 ergänzt aus Pine-Script-Review-Session (Bear Put Spread v1/PROv2 Bugfixes committed nach PINE-Skripts, ChartPrime Bayesian Trend NaN-Fix) + gezielter Marktsichtung Options-Indikatoren: №46 VIX/VIX3M Term Structure (Contango/Backwardation, reale Ticker, Prio 1, Anschluss an 4-Regime-Engine/STRESS_UNSTABLE) und №47 Put/Call Ratio CBOE CPC/PCC (reale Daten, Prio 1, zweite Sentiment-Dimension neben DIX). Beide als Kandidaten für Backlog №44 Data Foundation vorgemerkt, kein Bau vor Architektur-Entscheidung (Regime-Singularität §2.6 bzw. Doppelzählungs-Vermeidung). Architektur-Fund: Pine Script ohne Echtzeit-Optionsketten-Zugriff, GEX/IV-Rank-Pine-Indikatoren daher Prio 2/ungeeignet. Details: `docs/UEBERGABE-2026-08-09-pine-review.md`. |
+| 4.7 | 09.08.2026 | Arbeitsweisen-Klarstellung (Axel): Pine-Skript-Reviews dienen Ideen-/Konzeptextraktion für UIQ, nicht Pine-Code-Pflege. §7 Backlog №48 ergänzt: zwei übertragbare Denkfehler-Muster aus Bear-Put-Spread-Review als Prüfpunkt für künftige UIQ-Strategielogik verankert — (a) Lookback-Monotonie bei Strike-/Schwellenwert-Vergleichen (sixMonthLow ≤ sixWeekLow-Fall), (b) Risk/Reward-Asymmetrie gegen die gehandelte Trendrichtung. Reine Heuristik/Merkposten, kein Bau. |
 | 1.0 | 03.07.2026 | Erstfassung: Zielbild 3+2 (inkl. DepotIQ und Ruhestandsmodul als Zukunftsprojekte hoher Prio), konsolidierte Grundgesetze, Konsistenz-Standards (Glossar, Regelwerk-Einheit, Prompt-Bibliothek, Design-System, K1–K3-Umsetzungspfad), Suite-Portal-Zielbild, offene Entscheidungen |
 | 1.1 | 03.07.2026 | Umzug ins Meta-Repo UIQ-Suite (Single Source, Entscheidung №1 ✓); §4 Prioritäten-Wirbelsäule (Build- vs. Denk-Kapazität, UIQ Phase 0 = Leitprojekt, Claude-Warnpflicht); §5 Suite-SWOT Meta-Ebene (Claude + Gemini-Cross-Check) |
 | 1.2 | 06.07.2026 | §3.6 Web-Präsenz & Rechtsseiten (Domain-Architektur, Impressum/Datenschutz/Kontakt/FAQ, i18n-Suite-Regel DACH-first, Corporate Identity, Content-Governance mit Single-Source-Prinzip) + §3.7 Timeframe Design/Web-Rollout in vier Phasen D0–D3 (D0 Sammelbecken sofort, D2 Rollout gekoppelt an UIQ v2.0 Q4 2026 — bewusste Effizienz-Kopplung, keine Doppelarbeit im v1.x-Monolithen). Backlog-Punkt №6 ergänzt. |
