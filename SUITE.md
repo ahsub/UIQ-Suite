@@ -615,6 +615,48 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     Strategie-Router-Regeln). *Herkunft: `docs/UEBERGABE-2026-08-09-pine-review.md`,
     verwandt mit №46/47.*
 
+49. **Optionsmodul — Kognitive Architektur v1.0** *(09.08.2026, Axel-Manifest + Claude-Ausarbeitung)* — Grundsatzdokument: UIQ ist kein Dashboard/Scanner/Indikator-Sammlung, sondern ein mehrstufiges Entscheidungsmodell nach diagnostischem Vorbild (Axels Praxis als Dermatologe als Strukturgeber).
+
+    **6-Stufen-Kaskade:** Markt verstehen → Investor verstehen → Underlying
+    verstehen (KI-assistiert) → Strategie auswählen (KI-assistiert) →
+    Trade begleiten (KI-assistiert) → Aus Fehlern lernen (KI-assistiert).
+    Verbindet UIQ (Stufen 1–4, Markt-/Underlying-Diagnose) mit Refundex
+    (Stufen 5–6, Journal + OptionsDoktor, ROADMAP 2.9/2.12).
+
+    **Inhalt:** Strategiekatalog A–E (Directional-Neutral, Directional,
+    Volatility, Range-Bound, Volatility Spreads — je mit Erwartung,
+    Chart-Kontext, Greeks-Optimalwerten); charttechnische Trigger
+    (Support/Resistance >30 Tage, Breakout mit Volumenbestätigung,
+    Earnings/News-Events); Volatilitäts-Kegel (IV-Perzentil-Logik,
+    >90P verkaufen / <10P kaufen); 2-stufige Entscheidungsmatrix
+    (Richtung × IV-Rang → Strategieempfehlung).
+
+    **Entschieden (09.08.2026):**
+    - Investoren-Profil: zweistufig — Onboarding-Selbsteinschätzung +
+      Abgleich gegen reales Trading-Verhalten (Diskrepanz-Flag via
+      OptionsDoktor-Lernmuster-Engine)
+    - CapTrader/IBKR-Anbindung: beide Zwecke parallel — Live-Metriken
+      (Greeks/Earnings/Optionsketten) primär für UIQ-Options-Scorer,
+      Trade-Dokumentation primär für Refundex-Journal; eine Schnittstelle
+      (IBKR TWS API), Flex Query bleibt separat für Steuer-Historie
+    - Regime-Mapping v1 (BULL_QUIET→Covered Calls weiter OTM,
+      BULL_FRAGILE→Collars/weniger Selling, POST_PANIC_REVERSION→
+      aggressive Premium-Ernte, STRESS_UNSTABLE→defensiv/Long Vega bis
+      Hook) — **Lehrbuch-Logik, nicht gegen Backtest validiert.**
+
+    **Kein Bau vor:** Regime-Mapping-Validierung gegen 2007–2026-Backtest
+    (Gate-A Sharpe 1,66-Infrastruktur bereits vorhanden); IBKR-TWS-API-
+    Sprint-Einordnung (Ziel-Repo UIQ vs. Refundex) noch nicht final
+    entschieden, nur Vorschlag (`ko-ibkr-live.js` in UIQ).
+
+    **Offen:** §7 Frage 3 (Volatilitäts-Kegel-Fallback ohne echte IV-Daten,
+    bis TWS-API steht — synthetischer HV-Proxy als Übergang?).
+
+    *Verwandt mit: №44 (Data Foundation), №46/47 (VIX/VIX3M, P/C-Ratio),
+    №48 (Konzept-Lehren Pine-Review), ROADMAP 2.9/2.12 (Refundex Journal/
+    OptionsDoktor). Vollständiges Dokument:
+    `UIQ-Suite/docs/OPTIONSMODUL-ARCHITEKTUR.md` (v1.0, 319 Zeilen).*
+
 38. **Counterfactual Performance Engine — "Was wäre wenn"** *(07.08.2026, aus Analyse Flex-XML-Datenbasis)*
 
    Performance-Analyse auf drei Ebenen:
@@ -858,6 +900,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 | 4.5 | 08.08.2026 | §7 Backlog №45 ergänzt: Beta-Kostenkontrolle — KI-Feature-Klassifizierung (A/B) + Cache-Layer (Refundex-Session, Ausgangsfrage Token-Kosten bei 10–20 Betausern). Modell-Verifikation `ko-ai.js`: `claude-sonnet-4-6`/`claude-haiku-4-5-20251001`, nicht retired. Kernerkenntnis: 6/8 Actions sind tagesweise teilbar (nicht user-multipliziert), `deep_dive` ticker+tag-cachebar statt user-cachebar. `RATE_LIMITS.morning` 20→2-3 vorgemerkt (deckt sich mit Axels eigener TODO-Notiz im Code). |
 | 4.6 | 09.08.2026 | §7 Backlog №46+47 ergänzt aus Pine-Script-Review-Session (Bear Put Spread v1/PROv2 Bugfixes committed nach PINE-Skripts, ChartPrime Bayesian Trend NaN-Fix) + gezielter Marktsichtung Options-Indikatoren: №46 VIX/VIX3M Term Structure (Contango/Backwardation, reale Ticker, Prio 1, Anschluss an 4-Regime-Engine/STRESS_UNSTABLE) und №47 Put/Call Ratio CBOE CPC/PCC (reale Daten, Prio 1, zweite Sentiment-Dimension neben DIX). Beide als Kandidaten für Backlog №44 Data Foundation vorgemerkt, kein Bau vor Architektur-Entscheidung (Regime-Singularität §2.6 bzw. Doppelzählungs-Vermeidung). Architektur-Fund: Pine Script ohne Echtzeit-Optionsketten-Zugriff, GEX/IV-Rank-Pine-Indikatoren daher Prio 2/ungeeignet. Details: `docs/UEBERGABE-2026-08-09-pine-review.md`. |
 | 4.7 | 09.08.2026 | Arbeitsweisen-Klarstellung (Axel): Pine-Skript-Reviews dienen Ideen-/Konzeptextraktion für UIQ, nicht Pine-Code-Pflege. §7 Backlog №48 ergänzt: zwei übertragbare Denkfehler-Muster aus Bear-Put-Spread-Review als Prüfpunkt für künftige UIQ-Strategielogik verankert — (a) Lookback-Monotonie bei Strike-/Schwellenwert-Vergleichen (sixMonthLow ≤ sixWeekLow-Fall), (b) Risk/Reward-Asymmetrie gegen die gehandelte Trendrichtung. Reine Heuristik/Merkposten, kein Bau. |
+| 4.8 | 09.08.2026 | §7 Backlog №49 ergänzt: Optionsmodul Kognitive Architektur v1.0 (Axel-Manifest) — 6-Stufen-Kaskade (Diagnose-Analogie), Strategiekatalog A–E, charttechnische Trigger, Volatilitäts-Kegel, 2-stufige Entscheidungsmatrix, Regime-Mapping-Entwurf (nicht backtest-validiert). Investorenprofil (zweistufig: Selbsteinschätzung + Trade-Abgleich) und CapTrader-Anbindung (beide Zwecke, eine TWS-API-Schnittstelle) entschieden. Volltext: `docs/OPTIONSMODUL-ARCHITEKTUR.md`. |
 | 1.0 | 03.07.2026 | Erstfassung: Zielbild 3+2 (inkl. DepotIQ und Ruhestandsmodul als Zukunftsprojekte hoher Prio), konsolidierte Grundgesetze, Konsistenz-Standards (Glossar, Regelwerk-Einheit, Prompt-Bibliothek, Design-System, K1–K3-Umsetzungspfad), Suite-Portal-Zielbild, offene Entscheidungen |
 | 1.1 | 03.07.2026 | Umzug ins Meta-Repo UIQ-Suite (Single Source, Entscheidung №1 ✓); §4 Prioritäten-Wirbelsäule (Build- vs. Denk-Kapazität, UIQ Phase 0 = Leitprojekt, Claude-Warnpflicht); §5 Suite-SWOT Meta-Ebene (Claude + Gemini-Cross-Check) |
 | 1.2 | 06.07.2026 | §3.6 Web-Präsenz & Rechtsseiten (Domain-Architektur, Impressum/Datenschutz/Kontakt/FAQ, i18n-Suite-Regel DACH-first, Corporate Identity, Content-Governance mit Single-Source-Prinzip) + §3.7 Timeframe Design/Web-Rollout in vier Phasen D0–D3 (D0 Sammelbecken sofort, D2 Rollout gekoppelt an UIQ v2.0 Q4 2026 — bewusste Effizienz-Kopplung, keine Doppelarbeit im v1.x-Monolithen). Backlog-Punkt №6 ergänzt. |
