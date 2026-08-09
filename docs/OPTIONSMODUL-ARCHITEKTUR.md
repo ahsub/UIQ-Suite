@@ -232,10 +232,47 @@ Er beantwortet die Frage: „Ist die aktuelle IV hoch oder niedrig
 - IV 30.–70. Perzentil: → IV-neutralere Strategien
   Vertical Spreads, Covered Calls
 
-**Datenquelle-Frage:** Echte IV erfordert Options-Ketten-Daten (IBKR TWS API
-oder externe Quelle). Pine Script kann nur synthetischen HV-Proxy liefern
-(Backlog №46/47, Marktsichtung 09.08.2026: „Pine hat keinen Zugriff auf
-Echtzeit-Optionsketten"). Für UIQ ist echte IV das Ziel.
+**Datenquelle — 2-Phasen-Ansatz (entschieden 09.08.2026):**
+
+Echte IV erfordert Options-Ketten-Daten. Pine Script kann nur synthetischen
+HV-Proxy liefern (Backlog №46/47, Marktsichtung 09.08.2026: „Pine hat keinen
+Zugriff auf Echtzeit-Optionsketten"). Statt auf die perfekte Quelle zu warten,
+wird der Kegel stufenweise aufgebaut — ein Perzentil-Kegel braucht vor allem
+eine konsistente 1–2-Jahres-Zeitreihe, das lässt sich schon mit vorhandenen
+Daten beginnen.
+
+*Phase 1 — sofort nutzbar: Realized-Volatility-Proxy.* Rolling-Window-
+Standardabweichung der Log-Returns (20/30/60/90 Tage, annualisiert) aus
+bereits angebundenen Twelve-Data-Kurshistorien, Perzentil-Rang gegen die
+eigene 1–2-Jahres-Historie desselben Tickers. Kein zusätzlicher Anbieter,
+kein zusätzliches Budget. **Einschränkung, die im UI sichtbar sein muss:**
+Realized Vol ≠ IV — IV enthält die Volatilitäts-Risikoprämie und liegt daher
+systematisch über der realisierten Vol. Absolute Schwellenwerte (>90.
+Perzentil) wären mit diesem Proxy verzerrt, die *relative* Einordnung pro
+Titel bleibt aber brauchbar, da sich der Bias über die Zeitreihe größtenteils
+herauskürzt.
+
+*Phase 2 — nach IBKR-TWS-API-Anbindung: echte ATM-IV.* Keine
+Zusatzkosten, da dieselbe Verbindung ohnehin für Greeks/Earnings gebaut wird
+(§7 Frage 2). At-the-Money-IV pro Expiry direkt aus der Optionskette, gleiche
+Perzentil-Methodik, jetzt mit echten Werten. **Scope-Einschränkung
+(Kostenkontrolle, Backlog №45):** nicht das volle 711-Ticker-Universum,
+nur Journal-/Watchlist-Titel — Live-IV-Abruf pro Kette ist teurer als ein
+Kurs-Abruf, lohnt sich nur für tatsächlich gehandelte/beobachtete Titel.
+
+*Übergang:* Beide Phasen laufen parallel, sobald Phase 2 startet — ein
+echter IV-Kegel braucht selbst wieder 6–12 Monate Historie, bevor sein
+eigenes Perzentil aussagekräftig ist. Realized-Vol-Proxy bleibt aktiv, bis
+genug echte IV-Historie pro Ticker vorliegt, dann stiller Wechsel auf die
+echte Quelle.
+
+| | Phase 1 (jetzt) | Phase 2 (nach TWS-API) |
+|---|---|---|
+| Quelle | Realized Vol (Twelve Data) | ATM-IV (IBKR TWS API) |
+| Scope | Ganzes Universum möglich | Nur Journal/Watchlist |
+| Kosten | 0 € | 0 € (Anbindung ohnehin geplant) |
+| Genauigkeit | Näherung, Bias durch Vola-Risikoprämie | Exakt |
+| Aufbauzeit | Sofort startklar | 6–12 Monate bis aussagekräftiges Perzentil |
 
 ---
 
@@ -294,10 +331,11 @@ Defaults bei Gegen-Trend-Strategien).
      UIQ (da Live-Daten primär für Entry-Entscheidung gebraucht werden),
      Refundex konsumiert die Daten für Journal-Anreicherung.
 
-3. **Volatilitäts-Kegel-Datenquelle (§5):** Echte IV braucht
-   Optionsketten-Daten. Bis IBKR TWS API angebunden ist: Fallback auf
-   synthetischen HV-Proxy (historische Volatilität als Schätzung)?
-   **Weiterhin offen.**
+3. **Volatilitäts-Kegel-Datenquelle — ENTSCHIEDEN (09.08.2026):**
+   2-Phasen-Ansatz, s. §5 im Detail. Phase 1 (Realized-Vol-Proxy aus
+   Twelve Data, sofort startklar) läuft parallel zu Phase 2 (echte ATM-IV
+   nach IBKR-TWS-API-Anbindung), bis genug echte IV-Historie pro Ticker
+   für einen eigenen aussagekräftigen Kegel vorliegt.
 
 4. **Regime-Mapping — Entwurf ausgearbeitet (09.08.2026), NICHT validiert:**
    Claude-Vorschlag auf Basis von Optionsmarkt-Logik, nicht auf Basis
