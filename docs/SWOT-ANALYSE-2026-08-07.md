@@ -21,6 +21,19 @@ Gesichtet: SUITE.md v3.9, STRATEGIE.md v1.12, FINANZIERUNG-KONZEPT.md v1.0, VALI
 
 **S1 — Die Architektur-These ist real und im Code eingelöst.** Die Kette Regime → Strategie → Underlying → Instrument existiert nicht nur als Slogan: Regime-Klassifikation im Aggregator, Strategie-Gates je Regime (Coverage-Matrix mit expliziten Sperren, z.B. Collar-Scoring mit `return 0` bei STRESS_UNSTABLE), 10 Leaderboards, Options-Watchlist mit serverseitiger Anreicherung. Die Websuche bestätigt die Positionierungsthese: stock3/Guidants/TraderFox bedienen im DACH-Raum Screener + KO-Rechner, TrendSpider/Option Samurai (~30–80 €/Monat) Charting/Options-Scanning — ein Regime-*Router* mit Strategie-Sperrlogik ist in keinem der gesichteten Angebote das Kernprodukt. Jedes einzelne Kettenglied hat Wettbewerber; die Kette als Produkt bislang nicht.
 
+**Korrektur 09.08.2026:** Diese Aussage war zu pauschal — Eric Ludwigs
+5-Star-Options/Planet Options (deutschsprachig, LYNX-Partnerschaft, 20 Jahre
+Erfahrung, 45–47 €/Monat) bietet mit dem "Kassandra-Indikator" (40+
+Sub-Indikatoren zu einem Ampel-Score kombiniert) ein Markt-Regime-Signal,
+kombiniert mit kuratierten Short-Put/Bull-Put-Spread-Wochenlisten. Kein
+adaptives, probabilistisch kalibriertes Strategie-Gating wie UIQs
+4-Regime-Modell, aber strukturell näher an "Regime-Router" als anfangs
+angenommen. Details: `docs/WETTBEWERBSANALYSE-LUDWIG.md`. Kernunterschied
+bleibt: Push-Liste (alle Abonnenten identisch) vs. UIQs Diagnose-Ansatz
+(individuell je Nutzer/Position). Positives Nebensignal: Ludwigs Preis
+(45–47 €/Monat) für einen strukturell einfacheren Dienst validiert
+indirekt UIQs eigene Preis-Hypothese (30–50 €/Monat).
+
 **S2 — Außergewöhnliche Engineering-Ehrlichkeit.** Der Code dokumentiert eigene Fehler forensisch (v4.3-Kommentar zum Ratio-Konventions-Bug inkl. Fehlerbild und Marktfolge; KV-Retry-Historie; yfinance-Squeeze-Fallbacks mit Begründung). SUITE.md-Changelog protokolliert auch Rückbauten und revidierte Entscheidungen. Das ist die Kultur, aus der ein glaubwürdiger Track-Record entstehen kann — und sie ist bei Solo-Projekten selten.
 
 **S3 — Governance-Disziplin als struktureller Vorteil.** DSS-Leitprinzip (§0) mit Filtertest, Funnel-Regel (keine harte IBKR-Abhängigkeit im UIQ-Kern), Batch-Deployment, Verifikations-Standing-Rule, Backtest-Ergebnisse explizit als "niemals Marketing" klassifiziert. Letzteres ist zugleich Compliance-Voraussicht.
@@ -50,6 +63,14 @@ Gesichtet: SUITE.md v3.9, STRATEGIE.md v1.12, FINANZIERUNG-KONZEPT.md v1.0, VALI
 ## 3. Chancen
 
 **O1 — DACH-Marktlücke mit Preisreferenz.** Zahlungsbereitschaft der Zielgruppe ist durch US-Vergleichsprodukte belegt (TrendSpider-Basisstufe ~49 $/Monat plus KI-Aufpreise; Option Samurai kostenpflichtig nach Trial). Im deutschsprachigen Raum existiert kein Regime-Router; stock3/TraderFox besetzen Screener/KO-Rechner, nicht die Entscheidungsschicht darüber. Ein 20–50-€-Preis liegt *unter* der US-Referenz bei spezifischerem DACH-Nutzen (Tradegate/DE-Modus, KO-Kultur, deutsche Sprache, Steuersynergie).
+
+**Korrektur 09.08.2026:** Eric Ludwig (5-Star-Options/Planet Options,
+45–47 €/Monat) ist eine echte, deutschsprachige Preisreferenz *innerhalb*
+der Zielgruppe (nicht nur US-Vergleich) — zusätzliches, direkteres
+Validierungssignal für die 20–50-€-Preishypothese. Zugleich Korrektur an
+"kein Regime-Router im DACH-Raum": Ludwigs Kassandra-Indikator ist ein
+Markt-Regime-Signal, wenn auch ohne adaptives Strategie-Gating. Details:
+`docs/WETTBEWERBSANALYSE-LUDWIG.md`.
 
 **O2 — Track-Record als Burggraben mit Zeitvorteil.** Seit 02.07.2026 läuft die Uhr. Jeder Monat Betriebsdaten ist für Nachahmer nicht aufholbar. Der Backtest 2007–2026 (VIX3M-Historie) kann die Regime-Logik zusätzlich *sofort* validieren, ohne den Live-Track-Record zu belasten — beides zusammen ergibt die Story "historisch validiert + live belegt".
 
