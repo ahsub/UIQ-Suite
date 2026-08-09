@@ -337,17 +337,45 @@ Defaults bei Gegen-Trend-Strategien).
    nach IBKR-TWS-API-Anbindung), bis genug echte IV-Historie pro Ticker
    für einen eigenen aussagekräftigen Kegel vorliegt.
 
-4. **Regime-Mapping — Entwurf ausgearbeitet (09.08.2026), NICHT validiert:**
-   Claude-Vorschlag auf Basis von Optionsmarkt-Logik, nicht auf Basis
-   von Backtest-Daten (im Unterschied zu den Gate-A-Sharpe-1,66-Zahlen).
-   **Muss vor Bau gegen den 2007–2026-Backtest laufen.**
+4. **Regime-Mapping — Entwurf 09.08.2026, gegengeprüft 09.08.2026 gegen
+   `docs/REGIME-COVERAGE-ANALYSE.md` (v1.0, 17.07.2026):**
 
-   | Regime | IV-Niveau | Strategie | Begründung |
-   |---|---|---|---|
-   | BULL_QUIET | Niedrig (Kegel-Boden) | Covered Calls/CSP, **weiter OTM**, moderate Prämien | Ruhiger Trend = wenig Angst = wenig Prämie. Aggressives Short-Vega (Iron Condor) lohnt kaum bei billigen Optionen. |
-   | BULL_FRAGILE | Moderat, tendenziell steigend | Collars, engere Strikes, **weniger neue Short-Premium-Positionen** | Kurs steigt noch, aber Breadth/Sentiment signalisiert Risiko — gefährlichster Moment für ungehedgte Stillhalter-Positionen. |
-   | POST_PANIC_REVERSION | Hoch, fallend | **Beste Selling-Phase:** Bull Put Spreads, CSP auf abverkaufte Qualitätsaktien, Covered Calls (Cost-Basis-Reduktion) | IV-Crush-Ernte: Angst war da, Erholung hat begonnen. Deckt sich mit VIX/VIX3M-Fund (Backlog №46): „Deep Backwardation beste Selling-Chance — nach dem Hook." |
-   | STRESS_UNSTABLE | Hoch, weiter steigend/volatil | **Defensiv:** keine neuen Short-Positionen, wenn überhaupt Long Straddle/Strangle, sonst abwarten | Hohe IV verlockt zum Verkaufen, aber „unstable" heißt: Boden noch nicht gefunden, Gap-/Korrelationsrisiko. Erst bei Kipppunkt zu POST_PANIC_REVERSION wird verkauft. |
+   Wichtige Einordnung: Die Coverage-Analyse ist eine **qualitative
+   Prioritäts-Einstufung** (🟢/🟡/🔴 je Strategie×Regime) aus einer
+   unabhängigen Session vom 17.07.2026, kein quantitativer P&L-Backtest
+   wie die Gate-A-Sharpe-1,66-Zahlen. Sie ist trotzdem wertvoll: zwei
+   unabhängige Wege (Lehrbuch-Logik heute vs. Coverage-Gap-Analyse vor
+   drei Wochen) zur Gegenprüfung, bevor der eigentliche P&L-Backtest folgt.
+
+   **Bemerkenswert:** Bei BULL_FRAGILE kommen beide Analysen unabhängig
+   zum selben Schluss — die Coverage-Analyse identifizierte es bereits
+   am 17.07. als „echte Lücke" (keine P1-Strategie) und empfahl exakt
+   eine **Collar-/Protective-Put-Strategie**, ohne dass diese Session
+   davon wusste. Zwei unterschiedliche Methoden, gleiches Ergebnis —
+   ein brauchbares Signal, auch ohne quantitativen Beleg.
+
+   **Zwei Korrekturen am ursprünglichen Entwurf (09.08.2026, nach Abgleich):**
+   - **BULL_QUIET:** ursprünglich als „nur moderat" beschrieben — die
+     Coverage-Matrix stuft CSP/Wheel und Covered Call hier als 🟢 P2 ein
+     (echte Sekundär-Priorität, nicht nur „geht so"). Aufgewertet.
+   - **STRESS_UNSTABLE:** ursprünglich pauschal „keine neuen
+     Short-Positionen" — zu absolut. Die Coverage-Matrix differenziert:
+     generisches CSP/Wheel bleibt 🟡 (selektiv möglich, z. B. weit OTM/
+     lange Laufzeit), während enge Varianten (CSP ATM/Weekly) 🔴
+     (gesperrt) sind. Nuance übernommen.
+
+   | Regime | IV-Niveau | Strategie | Coverage-Matrix (17.07.) | Begründung |
+   |---|---|---|---|---|
+   | BULL_QUIET | Niedrig (Kegel-Boden) | Covered Calls/CSP, **weiter OTM** | 🟢 P2 (CSP/Wheel, Covered Call) | Ruhiger Trend = wenig Angst = wenig Prämie, aber solide Sekundär-Priorität, nicht nur Bestandspflege. |
+   | BULL_FRAGILE | Moderat, tendenziell steigend | **Collar/Protective-Put** — unabhängig bestätigte Lücke | 🟡 (CSP/Wheel, Covered Call) — keine P1-Strategie vorhanden | Kurs steigt noch, aber Risiko-Signal — gefährlichster Moment für ungehedgte Stillhalter-Positionen. Coverage-Analyse 17.07. empfahl unabhängig dieselbe Lösung. |
+   | POST_PANIC_REVERSION | Hoch, fallend | **Beste Selling-Phase:** Bull Put Spreads, CSP, Covered Calls | 🟢 P1 (CSP/Wheel, CSP ATM/NA), 🟢 P1 (Mean Reversion) | IV-Crush-Ernte, deckt sich mit VIX/VIX3M-Fund (№46) und der Coverage-Matrix — stärkste Übereinstimmung aller vier Regimes. |
+   | STRESS_UNSTABLE | Hoch, weiter steigend/volatil | **Selektiv defensiv:** generisches CSP/Wheel weit OTM/lang möglich, ATM/Weekly gesperrt | 🟡 CSP/Wheel, Covered Call; 🔴 CSP ATM/NA, CSP Weekly | Boden noch nicht gefunden — aber nicht pauschal „nichts geht", sondern strukturabhängig. |
+
+   **Weiterhin offen — jetzt präziser gefasst:** Muss vor Bau gegen den
+   quantitativen 2007–2026-Backtest laufen (Gate-A-Infrastruktur bereits
+   vorhanden), da beide bisherigen Analysen qualitativ sind. Zusätzlich:
+   VCP fehlt laut Coverage-Analyse komplett in `getStrategyGates()` —
+   nicht direkt Teil des Optionsmoduls, aber verwandter offener Punkt.
 
    **Merksatz:** Man verkauft Prämie nicht, wenn die IV hoch *ist* —
    sondern wenn sie hoch *war* und der Markt sich zu beruhigen beginnt.
