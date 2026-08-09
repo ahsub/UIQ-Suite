@@ -661,6 +661,32 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     OptionsDoktor). Vollständiges Dokument:
     `UIQ-Suite/docs/OPTIONSMODUL-ARCHITEKTUR.md` (v1.0, 319 Zeilen).*
 
+50. **Konjunktur-Dimension — identifizierte Lücke in der Data Foundation** *(09.08.2026, aus Kategorienvergleich mit Eric Ludwigs "Kassandra-Indikator", `docs/WETTBEWERBSANALYSE-LUDWIG.md`)* — **kollidiert aktuell mit Feature-Freeze (Axel, 09.08.2026), daher bewusst nicht zur Umsetzung vorgesehen, nur Backlog-Vermerk.**
+
+    **Herkunft:** Kein Reverse Engineering von Kassandra (nicht möglich/nicht
+    sinnvoll — Marketing-Text nennt nur 5 Kategorienamen, keine Formel, keine
+    Gewichtung, keine verifizierbaren Werte). Stattdessen eigener, offen
+    begründeter Abgleich der 5 genannten Kategorien (Momentum, Marktbreite,
+    Volatilität, Sentiment, Konjunktur) gegen UIQs bestehende Data Foundation:
+
+    | Kategorie | UIQ-Entsprechung |
+    |---|---|
+    | Momentum | ADX, chopIndex, trendScore (TVA Sprint A, bereits implementiert) |
+    | Marktbreite | McClellan Breadth Oscillator (Backlog #12, implementiert) |
+    | Volatilität | VIX/VIX3M Term Structure (№46) |
+    | Sentiment | Put/Call Ratio (№47), FINRA Reg SHO DIX (implementiert) |
+    | Konjunktur | **keine Entsprechung — echte Lücke** |
+
+    4 von 5 Kategorien bereits abgedeckt oder heute verankert (teils vor
+    Kenntnis von Kassandra). Konjunktur/Makro (Zinsstrukturkurve,
+    Arbeitsmarktdaten, Einkaufsmanagerindizes o. ä.) fehlt bislang komplett
+    in der Unified Metric Foundation (№44).
+
+    **Kein Bau — Feature-Freeze hat Vorrang.** Bei Aufhebung des Freeze:
+    zunächst prüfen, welche Konjunkturdaten überhaupt regimerelevant sind
+    (nicht jede Makro-Kennzahl ist für Optionsstrategie-Timing brauchbar),
+    dann als Kandidat für №44 einordnen.
+
 38. **Counterfactual Performance Engine — "Was wäre wenn"** *(07.08.2026, aus Analyse Flex-XML-Datenbasis)*
 
    Performance-Analyse auf drei Ebenen:
@@ -907,6 +933,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 | 4.8 | 09.08.2026 | §7 Backlog №49 ergänzt: Optionsmodul Kognitive Architektur v1.0 (Axel-Manifest) — 6-Stufen-Kaskade (Diagnose-Analogie), Strategiekatalog A–E, charttechnische Trigger, Volatilitäts-Kegel, 2-stufige Entscheidungsmatrix, Regime-Mapping-Entwurf (nicht backtest-validiert). Investorenprofil (zweistufig: Selbsteinschätzung + Trade-Abgleich) und CapTrader-Anbindung (beide Zwecke, eine TWS-API-Schnittstelle) entschieden. Volltext: `docs/OPTIONSMODUL-ARCHITEKTUR.md`. |
 | 4.9 | 09.08.2026 | №49 ergänzt: §7 Frage 3 (Volatilitäts-Kegel-Datenquelle) entschieden — 2-Phasen-Ansatz (Realized-Vol-Proxy sofort / echte ATM-IV nach TWS-API). Alle vier §7-Fragen im Optionsmodul-Architektur-Dokument nun entschieden. |
 | 4.10 | 09.08.2026 | №49 Regime-Mapping gegen `docs/REGIME-COVERAGE-ANALYSE.md` (17.07.2026) gegengeprüft — bemerkenswerte unabhängige Bestätigung bei BULL_FRAGILE (beide Analysen empfehlen Collar/Protective-Put ohne Kenntnis voneinander). STRESS_UNSTABLE-Nuance korrigiert (generisches CSP/Wheel selektiv möglich statt pauschal gesperrt), BULL_QUIET aufgewertet (🟢 P2 statt nur "moderat"). Quantitativer Backtest (Gate-A-Infrastruktur) bleibt offen — beide bisherigen Analysen sind qualitativ. |
+| 4.11 | 09.08.2026 | §7 Backlog №50 ergänzt: Konjunktur-Dimension als identifizierte Lücke in der Data Foundation (Kategorienvergleich mit Eric Ludwigs Kassandra-Indikator, `docs/WETTBEWERBSANALYSE-LUDWIG.md`) — 4 von 5 Kategorien bereits abgedeckt, Konjunktur/Makro fehlt. Explizit als Backlog-Vermerk ohne Bauabsicht markiert, da Kollision mit aktuellem Feature-Freeze (Axel). |
 | 1.0 | 03.07.2026 | Erstfassung: Zielbild 3+2 (inkl. DepotIQ und Ruhestandsmodul als Zukunftsprojekte hoher Prio), konsolidierte Grundgesetze, Konsistenz-Standards (Glossar, Regelwerk-Einheit, Prompt-Bibliothek, Design-System, K1–K3-Umsetzungspfad), Suite-Portal-Zielbild, offene Entscheidungen |
 | 1.1 | 03.07.2026 | Umzug ins Meta-Repo UIQ-Suite (Single Source, Entscheidung №1 ✓); §4 Prioritäten-Wirbelsäule (Build- vs. Denk-Kapazität, UIQ Phase 0 = Leitprojekt, Claude-Warnpflicht); §5 Suite-SWOT Meta-Ebene (Claude + Gemini-Cross-Check) |
 | 1.2 | 06.07.2026 | §3.6 Web-Präsenz & Rechtsseiten (Domain-Architektur, Impressum/Datenschutz/Kontakt/FAQ, i18n-Suite-Regel DACH-first, Corporate Identity, Content-Governance mit Single-Source-Prinzip) + §3.7 Timeframe Design/Web-Rollout in vier Phasen D0–D3 (D0 Sammelbecken sofort, D2 Rollout gekoppelt an UIQ v2.0 Q4 2026 — bewusste Effizienz-Kopplung, keine Doppelarbeit im v1.x-Monolithen). Backlog-Punkt №6 ergänzt. |
