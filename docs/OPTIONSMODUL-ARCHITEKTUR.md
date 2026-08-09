@@ -270,32 +270,49 @@ Defaults bei Gegen-Trend-Strategien).
 
 ## §7 — Offene Fragen
 
-1. **Investoren-Profil (§2, Stufe 2):** Onboarding-Fragenkatalog vs.
-   implizite Profilierung über Flex-XML-Trades? Oder beides?
+1. **Investoren-Profil (§2, Stufe 2) — ENTSCHIEDEN (09.08.2026):**
+   **Beides, zweistufig.** (a) Onboarding-Fragenkatalog erhebt
+   Selbsteinschätzung (Alter, Horizont, Depotgröße, Risikoneigung —
+   analog zum Profil in §2 Stufe 2). (b) UIQ prüft anhand der
+   tatsächlichen Flex-XML-Trades, ob die Selbsteinschätzung zum realen
+   Verhalten passt (z. B. „gibt an: konservativ" vs. „handelt: hohe
+   Rückkauf-Quote, enge Strikes, viele Trades" → Diskrepanz-Flag).
+   **Baubar erst mit OptionsDoktor-Lernmuster-Engine (Trigger 01.10.).**
 
-2. **CapTrader/IBKR-Anbindung für Live-Daten (Stufe 3+5):**
-   Flex Query liefert nur Transaktionsdaten (historisch). Für Live-Greeks,
-   Options-Ketten, IV-Rang und Earnings-Dates braucht es eine andere
-   Schnittstelle:
-   - **IBKR TWS API** (Client Portal Web API): Optionsketten mit
-     Greeks in Echtzeit, erfordert separate Authentifizierung
-   - **IBKR Earnings Calendar:** Genaue Earnings-Dates pro Ticker
-   - **Alternativen:** Twelve Data (bereits in UIQ), CBOE-Daten (Backlog №47)
-   - **Entscheidung offen:** Primär für UIQ-Options-Scorer (Live-Entry)
-     oder für Refundex/OptionsDoktor (retrospektive Analyse)?
+2. **CapTrader/IBKR-Anbindung — ENTSCHIEDEN (09.08.2026):**
+   **Beide Verwendungszwecke parallel**, eine Datenquelle:
+   - **Metriken (Greeks, Earnings-Dates, Optionsketten)** → primär für
+     UIQ-Options-Scorer (Live-Entry-Entscheidung, §3/§6)
+   - **Dokumentation abgeschlossener/laufender Trades** → primär für
+     Refundex-Journal (ROADMAP 2.9, bereits ✅) + OptionsDoktor (2.12)
+   - **Technisch:** IBKR TWS API/Client Portal Web API liefert beides aus
+     einer Schnittstelle (Optionsketten + Positions-Status). Flex Query
+     bleibt für die reine Steuer-Historie zuständig (Refundex), TWS API
+     kommt als *zusätzliche* Live-Schicht hinzu, ersetzt Flex Query nicht.
+   - **Noch offen:** Konkrete Sprint-Einordnung (UIQ oder Refundex als
+     Ziel-Repo für den API-Client) — Vorschlag: `ko-ibkr-live.js` in
+     UIQ (da Live-Daten primär für Entry-Entscheidung gebraucht werden),
+     Refundex konsumiert die Daten für Journal-Anreicherung.
 
 3. **Volatilitäts-Kegel-Datenquelle (§5):** Echte IV braucht
    Optionsketten-Daten. Bis IBKR TWS API angebunden ist: Fallback auf
    synthetischen HV-Proxy (historische Volatilität als Schätzung)?
+   **Weiterhin offen.**
 
-4. **Regime-Mapping (§6):** Welche MSE-Regimes mappen auf welche
-   Strategiegruppen? Erster Entwurf:
-   - BULL_QUIET → Covered Calls, Bull Put Spreads, Short Strangles
-   - BULL_FRAGILE → Collars, engere Spreads, weniger Selling
-   - STRESS_UNSTABLE → Long Straddles (vor Mean-Reversion-Hook),
-     danach Short Vega mit VIX/VIX3M-Bestätigung (Backlog №46)
-   - POST_PANIC_REVERSION → Aggressive Bull Put Spreads, Covered Calls
-     bei IV > 70P (Premium-Ernte nach Stress)
+4. **Regime-Mapping — Entwurf ausgearbeitet (09.08.2026), NICHT validiert:**
+   Claude-Vorschlag auf Basis von Optionsmarkt-Logik, nicht auf Basis
+   von Backtest-Daten (im Unterschied zu den Gate-A-Sharpe-1,66-Zahlen).
+   **Muss vor Bau gegen den 2007–2026-Backtest laufen.**
+
+   | Regime | IV-Niveau | Strategie | Begründung |
+   |---|---|---|---|
+   | BULL_QUIET | Niedrig (Kegel-Boden) | Covered Calls/CSP, **weiter OTM**, moderate Prämien | Ruhiger Trend = wenig Angst = wenig Prämie. Aggressives Short-Vega (Iron Condor) lohnt kaum bei billigen Optionen. |
+   | BULL_FRAGILE | Moderat, tendenziell steigend | Collars, engere Strikes, **weniger neue Short-Premium-Positionen** | Kurs steigt noch, aber Breadth/Sentiment signalisiert Risiko — gefährlichster Moment für ungehedgte Stillhalter-Positionen. |
+   | POST_PANIC_REVERSION | Hoch, fallend | **Beste Selling-Phase:** Bull Put Spreads, CSP auf abverkaufte Qualitätsaktien, Covered Calls (Cost-Basis-Reduktion) | IV-Crush-Ernte: Angst war da, Erholung hat begonnen. Deckt sich mit VIX/VIX3M-Fund (Backlog №46): „Deep Backwardation beste Selling-Chance — nach dem Hook." |
+   | STRESS_UNSTABLE | Hoch, weiter steigend/volatil | **Defensiv:** keine neuen Short-Positionen, wenn überhaupt Long Straddle/Strangle, sonst abwarten | Hohe IV verlockt zum Verkaufen, aber „unstable" heißt: Boden noch nicht gefunden, Gap-/Korrelationsrisiko. Erst bei Kipppunkt zu POST_PANIC_REVERSION wird verkauft. |
+
+   **Merksatz:** Man verkauft Prämie nicht, wenn die IV hoch *ist* —
+   sondern wenn sie hoch *war* und der Markt sich zu beruhigen beginnt.
 
 ---
 
