@@ -4,7 +4,7 @@
 OptionsDoktor/OptionsCoach (ROADMAP 2.12, SUITE.md №37, Trigger 01.10.2026).
 Update 10.08.2026: Regime-Mapping quantitativ validiert (§7 Punkt 4),
 IBKR-Live-API-Recherche (§7 Punkt 2), IV-Rank/Strategie-Matrix-Referenz
-übernommen (§7 Punkt 3a).*
+übernommen (§7 Punkt 3a), UIQ-Options-Agent-Architektur-Vision neu (§9).*
 
 ---
 
@@ -526,3 +526,107 @@ Defaults bei Gegen-Trend-Strategien).
 *v1.0 — 09.08.2026. Konzeptdokument, kein Code.*
 *Nächste Schritte: §7 klären, dann Backlog-Eintrag in SUITE.md für
 Entscheidungsmatrix-Sprint.*
+
+---
+
+## §9 — UIQ Options Agent: Architektur-Vision (10.08.2026, Axel-Auftrag)
+
+**Status: Entwurf, kein Bau begonnen.** Eigenständig für UIQ entworfen,
+**inspiriert von, aber nicht kopiert aus** einem externen Referenzprojekt
+(Details/Lizenzlage unten). Dies ist Axels Zielbild für das
+Options-Trading-Modul — der nächste logische Ausbauschritt nach
+OptionsDoktor/OptionsCoach (ROADMAP 2.12, Trigger 01.10.2026), keine
+Konkurrenz dazu, sondern die technische Grundlage darunter.
+
+### Referenz und Lizenzlage — vollständig transparent
+
+**Quelle der Inspiration:** [`nuglifeleoji/Options-Analytics-Agent`](https://github.com/nuglifeleoji/Options-Analytics-Agent)
+von **Leo Ji** (Math & CS, Stanford University; LLM-Architektur-Forscher).
+LangGraph-basierter Options-Analyse-Agent mit GPT-4o, ChromaDB
+(Vektor-Caching), SQLite (persistentes Gedächtnis), FastAPI-Microservice,
+Polygon.io als Datenquelle.
+
+**Wichtig: Dieses Repo hat KEINE Lizenz-Datei.** Ohne explizite Lizenz
+gilt automatisch "alle Rechte vorbehalten" — der Code selbst darf ohne
+Erlaubnis des Autors nicht kopiert, modifiziert oder in eigene Projekte
+übernommen werden, auch wenn er öffentlich auf GitHub einsehbar ist.
+**Was hier folgt, ist deshalb bewusst keine Code-Übernahme, sondern eine
+eigenständige, unabhängig entworfene Architektur**, die sich von denselben
+grundlegenden IDEEN inspirieren lässt (Ideen/Konzepte sind nicht
+urheberrechtlich geschützt, nur die konkrete Code-Ausdrucksform) — mit
+eigenen technischen Entscheidungen, die zu UIQs bestehendem Stack und
+Prinzipien passen, nicht zum Referenzprojekt.
+
+**Bemerkenswerte Bestätigung eures bestehenden Ansatzes:** Das Referenzprojekt
+lädt seine Verhaltensregeln aus externen Markdown-Dateien (`rules/
+agent_rules.md`, `rules/analysis_rules.md`) statt sie im Code zu verdrahten
+— dasselbe Prinzip, das UIQ mit `ko-prompts.js`/`ko-strategies.js` bereits
+verfolgt. Unabhängige Konvergenz zweier Projekte auf dasselbe Muster ist ein
+gutes Signal, dass der Ansatz richtig ist.
+
+### Was übernommen wird (als Idee, eigenständig implementiert)
+
+1. **Tool-orchestrierter Agent statt monolithischer Prompt.** Statt einem
+   LLM alles auf einmal zu geben, definierte Werkzeuge (Optionskette holen,
+   Greeks berechnen, IV-Rank abfragen, Regime prüfen, Track-Record-Statistik
+   abfragen), die der Agent bei Bedarf nacheinander aufruft. **Passt exakt
+   zum bereits dokumentierten No-Halluzination-Prinzip** (s. GEX-SCHEMA.md:
+   "Verdict wird konsumiert, nie vom LLM erzeugt") — der Agent formatiert
+   und erklärt Werkzeug-Ergebnisse, erfindet aber keine Zahlen.
+
+2. **Semantische Muster-Suche über historische Setups** — "ist diese
+   Konstellation (IV-Rank X, Regime Y, DTE Z) schon einmal aufgetreten, was
+   geschah danach?" Das ist **kein neuer Programmpunkt**, sondern die
+   technische Umsetzung dessen, was als OptionsDoktor-Lernmuster-Engine
+   (SUITE.md №37, Trigger 01.10.2026) bereits geplant ist — dieser Fund
+   bestätigt nur, dass eine Vektor-Ähnlichkeitssuche über die wachsenden
+   Track-Record-Daten der richtige technische Weg dafür sein könnte.
+
+3. **Persistentes Sitzungsgedächtnis** — für ein zukünftiges
+   OptionsCoach-Chat-Interface sinnvoll (merkt sich, welche Titel/Strategien
+   bereits besprochen wurden), aber niedrige Priorität, erst relevant sobald
+   ein Chat-Interface tatsächlich gebaut wird.
+
+4. **Saubere API-Schicht** um die Agent-Werkzeuge — ermöglicht, dass sowohl
+   ein künftiges Chat-Interface als auch andere UIQ-Komponenten (Scanner,
+   Aggregator) dieselben Werkzeuge nutzen, statt Logik zu duplizieren.
+
+### Was NICHT übernommen wird (bewusste Abweichung vom Vorbild)
+
+- **GPT-4o** → Claude, da UIQ bereits durchgängig mit Claude arbeitet
+  (Konsistenz mit dem Rest der Suite, keine zweite LLM-Anbindung).
+- **ChromaDB als dedizierter Vektor-DB-Server** → für UIQs vermutlich
+  überschaubares Datenvolumen (Track-Record-Einträge, keine unstrukturierten
+  Textmengen) reicht wahrscheinlich eine einfache Embedding-Ähnlichkeitssuche
+  auf dem bestehenden KV-Store, ohne zusätzliche Infrastruktur. Erst bei
+  echtem Bedarf (Datenvolumen wächst, Latenz wird Problem) auf eine
+  dedizierte Vektor-DB umsteigen — **YAGNI-Prinzip**, nicht vorab
+  überbauen.
+- **Polygon.io als Datenquelle** → UIQs eigene Datenstrategie (Twelve Data,
+  CBOE — s. GEX-SCHEMA.md v0.6 —, künftig IBKR) bleibt maßgeblich. Polygon.io
+  könnte bei Bedarf separat als weitere Option geprüft werden, ist aber
+  keine Voraussetzung für dieses Architektur-Muster.
+- **A/B-Testing, Skill-Ablation, Token-Monitoring** — sinnvolle
+  MLOps-Reife-Merkmale, aber niedrige Priorität vor einer funktionierenden
+  Kernversion. Später nachrüstbar, kein Blocker jetzt.
+
+### Phasen-Vorschlag (nicht terminiert, keine Bau-Freigabe)
+
+| Phase | Inhalt | Voraussetzung |
+|---|---|---|
+| 1 | Tool-orchestrierter Options-Agent (Claude + definierte Werkzeuge auf UIQs eigenen Daten) — Kern-Fähigkeit: "Frage zu Optionen für TICKER stellen, belegte Antwort bekommen" | Keine — kann auf bestehender Datenpipeline aufsetzen |
+| 2 | Semantische Muster-Suche über Track-Record-Daten | Genug Track-Record-Historie (läuft seit 03.07.2026, wächst) — ist ohnehin Voraussetzung für OptionsDoktor selbst |
+| 3 | Persistentes Sitzungsgedächtnis | Erst relevant mit echtem Chat-Interface |
+| 4 | Formale API-Schicht für Mehrfachnutzung | Erst wenn mehr als eine Komponente die Werkzeuge braucht |
+
+**Diese Phaseneinteilung ist ein Vorschlag zur Diskussion, keine
+Festlegung.** Passt sich in die bestehende OptionsDoktor-Zeitschiene ein
+(Trigger 01.10.2026), ersetzt sie nicht.
+
+### Kontaktaufnahme zum Autor — Axel-Idee, noch nicht umgesetzt
+
+Leo Ji hat seine E-Mail-Adresse öffentlich im GitHub-Profil hinterlegt
+(`Leo3527703410@outlook.com`). Axels Idee: ihn ggf. "mit ins Boot holen"
+und sich revanchieren — z. B. für eine Lizenzklärung/Kollaboration bei
+konkretem Code-Interesse, oder einfach als Anerkennung für die
+Inspiration. **Noch nicht kontaktiert** — Axel entscheidet, ob und wie.
