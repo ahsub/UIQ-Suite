@@ -1,7 +1,10 @@
 # UIQ Optionsmodul — Kognitive Architektur v1.0
 
 *Erstellt: 09.08.2026 — Konzeptdokument, kein Code. Reine Vorarbeit für
-OptionsDoktor/OptionsCoach (ROADMAP 2.12, SUITE.md №37, Trigger 01.10.2026).*
+OptionsDoktor/OptionsCoach (ROADMAP 2.12, SUITE.md №37, Trigger 01.10.2026).
+Update 10.08.2026: Regime-Mapping quantitativ validiert (§7 Punkt 4),
+IBKR-Live-API-Recherche (§7 Punkt 2), IV-Rank/Strategie-Matrix-Referenz
+übernommen (§7 Punkt 3a).*
 
 ---
 
@@ -380,6 +383,73 @@ Defaults bei Gegen-Trend-Strategien).
    Twelve Data, sofort startklar) läuft parallel zu Phase 2 (echte ATM-IV
    nach IBKR-TWS-API-Anbindung), bis genug echte IV-Historie pro Ticker
    für einen eigenen aussagekräftigen Kegel vorliegt.
+
+3a. **IV-Rank/Strategie-Matrix — externe Referenz übernommen (10.08.2026,
+    Axel-Entscheidung "integrieren und nutzen"):**
+
+    Quelle: `zubair-trabzada/ai-trading-claude`, Skill `trade-options`
+    (SKILL.md), MIT-Lizenz (Copyright (c) 2026 Zubair Trabzada, LICENSE-
+    Datei direkt geprüft — keine rechtlichen Hürden, Bedingung war nur
+    Copyright-Erhalt bei Übernahme).
+
+    **Was übernommen wird (Dokumentations-/Architekturebene, kein Code-
+    Dependency):** die Entscheidungslogik als Referenztabellen. **Was NICHT
+    übernommen wird:** die WebSearch-basierte Live-Datenbeschaffung dieses
+    Tools — passt architektonisch nicht zu UIQs Aggregator+KV-Cache-Pipeline
+    und bleibt außen vor. UIQ speist diese Tabellen weiterhin aus der
+    eigenen Datenpipeline, nicht aus Web-Suchen zur Laufzeit.
+
+    **Ergänzt (nicht ersetzt) das marktweite MSE-Regime um eine
+    Einzeltitel-Dimension:** MSE-Regime beantwortet "wie ist der
+    Gesamtmarkt", IV-Rank/Percentile beantwortet "ist DIESER Titel gerade
+    teuer oder billig gehandelt" — beide zusammen ergeben die vollständige
+    Strategiewahl (Kreuzung, analog zum bestehenden §6-Prinzip
+    Regime×Vola-Kegel).
+
+    | IV-Umfeld | IV-Rank | Strategie-Bias |
+    |---|---|---|
+    | Sehr hoch | >70% | Prämie verkaufen |
+    | Hoch | 50-70% | Verkaufen oder Spreads (begrenztes Risiko) |
+    | Moderat | 30-50% | Neutral — Spreads/direktionale Trades |
+    | Niedrig | 10-30% | Prämie kaufen |
+    | Sehr niedrig | <10% | Prämie kaufen / Straddles |
+
+    Zusätzlich IV-vs-HV-Interpretation: IV>HV+20% → Optionen teuer,
+    Verkaufs-Bias; IV≈HV → fair bepreist, keine Vola-Kante; IV<HV-20% →
+    Optionen billig, Kauf-Bias.
+
+    **Strategie-Matrix (15 Strategien mit Einsatzbedingung/Max-Gewinn/
+    -Verlust/Breakeven), Auszug — deckt mehr ab als UIQs aktuelle
+    `getStrategyGates()`:**
+
+    | Strategie | Wann einsetzen | Bei UIQ bereits als Gate vorhanden? |
+    |---|---|---|
+    | Long Call | Niedrige IV + starke Überzeugung | Nein |
+    | Bull Call Spread | Moderate IV + definiertes Ziel | Nein |
+    | Cash-Secured Put | Hohe IV + Bereitschaft zum Erwerb | Ja (CSP/Wheel) |
+    | Bull Put Spread | Hohe IV + bullisch | Ja |
+    | Call Diagonal | Moderate IV + graduelle Bewegung erwartet | Nein |
+    | Long Put | Niedrige IV + starke Überzeugung | Nein |
+    | Bear Put Spread | Moderate IV + definiertes Ziel | Nein |
+    | Bear Call Spread | Hohe IV + bearish | Nein |
+    | Iron Condor | Hohe IV + Seitwärtsmarkt | Nein |
+    | Short Strangle | Sehr hohe IV + Seitwärts (unbegrenztes Risiko) | Nein |
+    | Iron Butterfly | Hohe IV + Pinning nahe Strike | Nein |
+    | Covered Call | Aktien im Bestand + hohe IV | Ja |
+    | Calendar Spread | Steile IV-Terminstruktur | Nein |
+    | Collar/Protective Put | (nicht in Quelle, UIQ-eigen) | Ja (2.15-Lücke) |
+
+    **Einordnung:** Kein Aufruf, alle 9 fehlenden Strategien sofort zu
+    bauen — aber eine saubere, vorgefertigte Referenztabelle, die beim
+    nächsten Ausbau von `getStrategyGates()` Zeit spart (Einsatzbedingung/
+    Max-Gewinn/-Verlust/Breakeven muss nicht neu hergeleitet werden).
+    Priorisierung bleibt Axels Entscheidung, analog zum bestehenden
+    Feature-Freeze-Prinzip.
+
+    **Nebenhinweis:** Das Tool selbst ist als eigenständiges Claude-Code-
+    Skill installierbar (`curl ... | bash` laut Repo-README) — Axel kann es
+    unabhängig von UIQ für Ad-hoc-Einzeltitel-Checks nutzen, ohne dass das
+    mit dieser Dokumentations-Übernahme zusammenhängt.
 
 4. **Regime-Mapping — Entwurf 09.08.2026, gegengeprüft 09.08.2026 gegen
    `docs/REGIME-COVERAGE-ANALYSE.md` (v1.0, 17.07.2026):**
