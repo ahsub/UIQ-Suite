@@ -1,6 +1,6 @@
 # Investment-Suite — Dachdokument
 
-**Version:** 4.12
+**Version:** 4.13
 **Stand:** 10.08.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
@@ -202,7 +202,7 @@ Die Suite hat mehr berechtigte Vorhaben als Kapazität. Diese Rangfolge gilt fü
 
 **Claude-Pflicht:** In jeder Session aktiv warnen, wenn Build-Arbeit vom Leitprojekt abdriftet („Wirbelsäulen-Hinweis").
 
-**🔴 Offener kritischer Befund (Refundex, 10.08.2026):** Die Z.8/Z.9-Formel (Aktienveräußerungsgewinne/-verluste) wurde nie gegen einen PWC-Report validiert und wirkt bei rein kaufbasierten Jahren konzeptionell fragwürdig (Kauf-Cashflow würde als Verlust gezählt). Details, Verifikation und nächste Schritte: `ahsub/refundex/docs/ROADMAP.md` Abschnitt „🔴 KRITISCHER BEFUND 10.08.2026 — Z.8/Z.9-Formel Aktien unvalidiert (2.17)". Axel-Entscheidung: eigenständig behandeln, nicht im laufenden Feature-Sprint nebenbei fixen. Bis zur Klärung: Z.8/Z.9-Werte vor Abgabe manuell gegen die CapTrader-Jahressteuerbescheinigung prüfen.
+**✅ Geschlossener Befund (Refundex, 10.08.2026):** Die Z.8/Z.9-Formel (Aktienveräußerungsgewinne/-verluste) nutzte fälschlich Cashflow-Vorzeichen statt echter FIFO-Nachrechnung — gefixt und gegen Axels echte PWC German Tax Reports 2023-2025 validiert (2023/2025 exakt, 2024 auf 0,03% genau). Details: `ahsub/refundex/docs/ROADMAP.md` Abschnitt „✅ BEFUND 10.08.2026 — Z.8/Z.9-Formel Aktien (2.17, GESCHLOSSEN)".
 
 ---
 
@@ -993,6 +993,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.13 | 10.08.2026 | Refundex-Befund 2.17 als geschlossen markiert (PWC-Gegenprüfung erfolgreich, Fix live). |
 | 4.12 | 10.08.2026 | §4-Wirbelsäulen-Warnpflicht ausgeübt: kritischer offener Befund Refundex verlinkt (Z.8/Z.9-Aktienformel unvalidiert, s. ROADMAP.md 2.17). Kontext: Ausnahme vom Refundex-Maintenance-Modus (Trade-Detail-Report, bereits in ROADMAP.md 2.5 dokumentiert) deckte beim Debuggen zufällig einen zweiten, unabhängigen und potenziell steuerlich relevanten Befund auf. |
 | 4.11 | 10.08.2026 | §7 Backlog №51–53 ergänzt (Axel-Vorschlagsliste Konsum-/Makro-Indikatoren zur Füllung der №50-Lücke): №51 Klasse A tägliche Ratios (XLP/XLY, Growth/Value, XLP/XLY-SPX-Korrelation, 2Y/10Y `T10Y2Y`; P/C-Ratio verbleibt №47), №52 Macro Context Layer (FRED-Pipeline monatlich/wöchentlich: Heavy Trucks, UNRATE/Sahm-Rule-Option, UMCSENT, Core CPI, NFCI; eigener KV-Eintrag `macro_context_{month}`, Bias-Faktor statt Tages-Z-Score), №53 Grundsatzentscheidung NFCI vs. §2.6 (Composite-Input-Präzedenz, Axel-Entscheidung). Alle drei mit Feature-Freeze-Vermerk — nur Backlog, kein Bau. Testpflicht dokumentiert: Endpoints (FRED-IDs, CBOE-Feeds) vor Sprint real prüfen (Claude-Trainingswissen unverifiziert); Backtest-Pflicht: 2Y/10Y, Heavy Trucks, UNRATE als Rezessionsindikatoren auf inkrementellen Wert vs. MSE-STRESS-Duplikation prüfen (2007–2026). Zudem veralteten Versionskopf korrigiert (stand fälschlich auf 3.1/03.08.2026 trotz Changelog 4.10). |
 | 4.4 | 08.08.2026 | §7 Backlog №31 präzisiert: roic.ai als unabhängige Fundamentaldaten-Quelle identifiziert (Refundex-Session, kap.html-Arbeit) — Stufe 3 aufgeteilt in 3a (Fundamentaldaten via roic.ai, vorziehbar ~Q4 2026) und 3b (Short Interest, bleibt CP-API-gebunden, Q2 2027). Rate-Limit-Check gegen 711-Ticker-Universum vor Bau offen. |
