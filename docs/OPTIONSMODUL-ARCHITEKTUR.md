@@ -371,11 +371,23 @@ Defaults bei Gegen-Trend-Strategien).
    | POST_PANIC_REVERSION | Hoch, fallend | **Beste Selling-Phase:** Bull Put Spreads, CSP, Covered Calls | 🟢 P1 (CSP/Wheel, CSP ATM/NA), 🟢 P1 (Mean Reversion) | IV-Crush-Ernte, deckt sich mit VIX/VIX3M-Fund (№46) und der Coverage-Matrix — stärkste Übereinstimmung aller vier Regimes. |
    | STRESS_UNSTABLE | Hoch, weiter steigend/volatil | **Selektiv defensiv:** generisches CSP/Wheel weit OTM/lang möglich, ATM/Weekly gesperrt | 🟡 CSP/Wheel, Covered Call; 🔴 CSP ATM/NA, CSP Weekly | Boden noch nicht gefunden — aber nicht pauschal „nichts geht", sondern strukturabhängig. |
 
-   **Weiterhin offen — jetzt präziser gefasst:** Muss vor Bau gegen den
-   quantitativen 2007–2026-Backtest laufen (Gate-A-Infrastruktur bereits
-   vorhanden), da beide bisherigen Analysen qualitativ sind. Zusätzlich:
-   VCP fehlt laut Coverage-Analyse komplett in `getStrategyGates()` —
-   nicht direkt Teil des Optionsmoduls, aber verwandter offener Punkt.
+   **10.08.2026 — Quantitativ validiert** (s.
+   `docs/REGIME-BACKTEST-VALIDIERUNG.md` für vollständige Methodik/Zahlen).
+   Kurzfassung: Krisentag-Erkennung 11/13 (84,6%), POST_PANIC_REVERSION als
+   "beste Selling-Phase" bei kurzen Horizonten (5-10 Handelstage) stark
+   bestätigt (CBOE PUT/BXM/CLL-Indizes, Sharpe bis 2,53 — höchster Wert
+   aller Regimes), zerfällt aber bis Tag 21 fast vollständig — Empfehlung
+   sollte kurzen Aktions-Horizont betonen. BULL_FRAGILE/Collar bei 21 Tagen
+   bestätigt (Sharpe 1,11), bei kurzen Horizonten uneinheitlich. Wichtige
+   Nuance: der 2022er-Bärenmarkt (zinsgetrieben, keine Terminstruktur-
+   Inversion) löst STRESS_UNSTABLE nicht zuverlässig aus — Klassifikator
+   erkennt spezifisch Gamma-Panik-Dynamik, nicht "Markt fällt stark"
+   allgemein. Datenbasis 2011-2025 (nicht der volle 2007-2026-Bereich,
+   aus Datenverfügbarkeitsgründen), öffentliche Quellen statt Primärlizenz —
+   Details und Einschränkungen im verlinkten Dokument.
+   Zusätzlich: VCP fehlt laut Coverage-Analyse komplett in
+   `getStrategyGates()` — nicht direkt Teil des Optionsmoduls, aber
+   verwandter offener Punkt.
 
    **Merksatz:** Man verkauft Prämie nicht, wenn die IV hoch *ist* —
    sondern wenn sie hoch *war* und der Markt sich zu beruhigen beginnt.
