@@ -329,7 +329,51 @@ Defaults bei Gegen-Trend-Strategien).
    - **Noch offen:** Konkrete Sprint-Einordnung (UIQ oder Refundex als
      Ziel-Repo für den API-Client) — Vorschlag: `ko-ibkr-live.js` in
      UIQ (da Live-Daten primär für Entry-Entscheidung gebraucht werden),
-     Refundex konsumiert die Daten für Journal-Anreicherung.
+     Refundex konsumiert die Daten für Journal-Anreicherung. **Noch nicht
+     final bestätigt von Axel (10.08.2026: "erst besprechen").**
+
+   **Recherche 10.08.2026 — zwei externe Tools geprüft, Bau selbst noch
+   NICHT begonnen (eigenständiges Vorhaben, für separate Session
+   vorgesehen):**
+
+   - **Grundsatzentscheidung Schnittstelle:** Axel präferiert **Client
+     Portal Web API** (REST-basiert) gegenüber der klassischen TWS API
+     (Socket-basiert, braucht laufende Desktop-App). Kernproblem beider
+     Wege: anders als die heutigen CBOE/SqueezeMetrics-Anbindungen (simpler
+     zustandsloser HTTP-Fetch) braucht IBKR einen **dauerhaft laufenden,
+     authentifizierten Gateway-Prozess** mit periodischer Re-Authentifizierung
+     (Client Portal Gateway: Session läuft nach ~24h ab).
+
+   - **`Voyz/ibeam`** (Python, Apache-2.0, 845 Stars, aktiv gepflegt,
+     zuletzt aktualisiert 10.08.2026) — Auth-/Maintenance-Tool speziell für
+     die Client Portal Web API Gateway. Löst genau das Kernproblem:
+     **PyOTP-Handler ermöglicht vollautomatisierte 2FA** (Time-based
+     One-Time Password über Base32-Secret aus IBKRs Secure Login System),
+     kombiniert mit automatisierter Credential-Injection und
+     Headless-Docker-Betrieb — der komplette Login-Flow lässt sich damit
+     ohne manuelles Eingreifen dauerhaft am Laufen halten. Verweist selbst
+     auf `Voyz/ibind` (Python) als schlanken Web-API-Client, falls kein
+     eigener Client gebaut werden soll.
+     **Hosting-Empfehlung:** eigener Rechner scheidet aus (nicht 24/7 an,
+     würde genau dann fehlen, wenn der Aggregator planmäßig läuft) — ein
+     kleiner dauerhaft laufender VPS (~5€/Monat) mit IBeam+Gateway als
+     Docker-Container ist das in der Community übliche, bewährte Muster.
+
+   - **`sparkstartconsulting/IBKR-API-Rust`** (Rust, MIT, 175 Stars, aktiv
+     gepflegt) — vollständiger Port der **klassischen TWS API** (nicht
+     Client Portal Web API), verbindet sich direkt per Socket zu einer
+     laufenden TWS/Gateway-Desktop-Instanz (`127.0.0.1:4002`). Nicht direkt
+     nutzbar für den präferierten Client-Portal-Web-API-Weg (anderes
+     Protokoll, andere Sprache als unser ES6-Zielstack) — aber als
+     **Plan-B-Referenz** vorgemerkt, falls sich beim Bauen zeigt, dass die
+     Client Portal Web API bei Greeks/Optionsketten-Feldern Lücken
+     gegenüber der klassischen TWS API hat (kommt in der Praxis vor, nicht
+     alle Datenfelder sind 1:1 gespiegelt — noch nicht selbst geprüft).
+
+   - **Beide Lizenzen unproblematisch** (Apache-2.0 bzw. MIT) für Nutzung/
+     Referenz in V2, analog zur Lizenz-Klärung für
+     `uebber/ibkr-german-tax-declaration-engine` (s. Refundex ROADMAP.md
+     2.18).
 
 3. **Volatilitäts-Kegel-Datenquelle — ENTSCHIEDEN (09.08.2026):**
    2-Phasen-Ansatz, s. §5 im Detail. Phase 1 (Realized-Vol-Proxy aus
