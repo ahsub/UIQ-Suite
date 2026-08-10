@@ -1,7 +1,7 @@
 # Investment-Suite — Dachdokument
 
-**Version:** 3.1
-**Stand:** 03.08.2026
+**Version:** 4.11
+**Stand:** 10.08.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
 **Fortschreibung:** Claude, versioniert, analog den Modul-Strategiedokumenten.
@@ -687,6 +687,71 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     (nicht jede Makro-Kennzahl ist für Optionsstrategie-Timing brauchbar),
     dann als Kandidat für №44 einordnen.
 
+51. **Konsum-/Rotations-Ratios (Klasse A — täglich, marktbasiert)** *(10.08.2026, Axel-Vorschlagsliste zur Füllung der №50-Lücke)* — **Feature-Freeze gilt weiterhin: nur Backlog-Vermerk, kein Bau.**
+
+    Kandidaten, die in den bestehenden täglichen Aggregator-Lauf passen
+    (Preisdaten voraussichtlich bereits im Twelve-Data-Universum, Z-Score-Logik
+    der Unified Metric Foundation №44 direkt anwendbar):
+
+    - **XLP/XLY-Ratio (Consumer Staples vs. Discretionary):** klassischer
+      Risk-off-Proxy, Ratio + Z-Score fast kostenlos berechenbar.
+    - **Growth vs. Value (z. B. IWF/IWD oder VUG/VTV):** Style-Rotation,
+      konzeptionell verwandt mit XLP/XLY — **vor Aufnahme Korrelationsprüfung
+      gegen XLP/XLY, sonst Doppelzählung im Composite (§2.6-Geist).**
+    - **XLP/XLY-Korrelation mit SPX (rollierend):** abgeleitete Metrik,
+      Redundanzgefahr mit der reinen Ratio — als optionale Verfeinerung
+      geparkt, erst nach Bewährung der Basis-Ratio prüfen.
+    - **2Y/10Y-Inversion (FRED `T10Y2Y`, täglich):** Rezessions-Vorlaufindikator
+      mit 12–18 Monaten Lead — taugt als struktureller MSE-Kontext, nicht als
+      Tagessignal; die handelbare Information ist oft die *Re-Steepening* nach
+      Inversion, nicht die Inversion selbst.
+    - Put/Call Ratio SPX: **kein neuer Punkt — bereits №47 (Prio 1).**
+      CBOE-Feed-Verfügbarkeit im Sprint zu klären.
+
+    **Vor dem Sprint: Endpoints real testen.** FRED-Serien-IDs und
+    CBOE-Feed-Lage stammen aus Claude-Trainingswissen (Stand Anfang 2026),
+    nicht aus Live-Prüfung.
+
+    *Verwandt mit: №44, №46/47, №50, №52.*
+
+52. **Macro Context Layer (Klasse B — monatlich/wöchentlich, FRED-Pipeline)** *(10.08.2026, Axel-Vorschlagsliste)* — **Feature-Freeze gilt weiterhin: nur Backlog-Vermerk, kein Bau.**
+
+    Makro-Indikatoren mit niedriger Frequenz passen nicht in die tägliche
+    Z-Score-Logik → eigene Architektur: KV-Eintrag `macro_context_{month}`,
+    wöchentlicher/monatlicher Refresh per FRED-API (kostenlos, ein API-Key),
+    Einfluss aufs MSE als langsam drehender Bias-Faktor statt täglicher Z-Score.
+
+    Kandidaten (FRED-Serien-IDs unverifiziert, s. Testpflicht in №51):
+    - **Heavy Truck Sales** (`HTRUCKSSAAR`, monatlich, Publikationsverzug) —
+      zyklischer Frühindikator
+    - **Arbeitslosenrate** (`UNRATE`, monatlich) — Prüfoption: statt Rohrate
+      die **Sahm-Rule** (3M-Durchschnitt vs. 12M-Tief) als schärferer binärer
+      Rezessionstrigger
+    - **UMich Consumer Sentiment** (`UMCSENT`, monatlich + Preliminary Mid-Month)
+    - **Core CPI** (`CPILFESL`, monatlich)
+    - **NFCI** (`NFCI`, wöchentlich) — **Aufnahme erst nach Grundsatzentscheidung
+      №53**
+
+    **Backtest-Pflicht vor Aufnahme:** №51-Punkt 2Y/10Y, Heavy Truck Sales und
+    Arbeitslosenrate sind allesamt Rezessionsindikatoren — im Backtest 2007–2026
+    prüfen, ob sie *inkrementellen* Wert über das bestehende MSE liefern oder
+    nur dessen STRESS-Erkennung duplizieren.
+
+    *Verwandt mit: №44, №50, №51, №53.*
+
+53. **Grundsatzentscheidung NFCI vs. Regime-Singularität (§2.6)** *(10.08.2026)* — **Axel-Entscheidung erforderlich, kein Bau vorher.**
+
+    NFCI (Chicago Fed National Financial Conditions Index) ist selbst ein
+    Composite aus ~105 Indikatoren. Abgrenzung zum ausgeschlossenen ChartPrime
+    Bayesian Trend: dieser war ein *Regime-Klassifikator* (direkte
+    §2.6-Verletzung), NFCI ist "nur" ein Zustandsindex ohne eigene
+    Regime-Zuordnung. Claude-Einschätzung: zulässig — aber die Grenzziehung
+    (dürfen externe Composites als MSE-Input dienen, solange sie nicht selbst
+    Regime klassifizieren?) ist eine Grundsatzentscheidung mit
+    Präzedenzwirkung für künftige Datenquellen und liegt bei Axel.
+
+    *Verwandt mit: №50, №52, CODING-RULES §2.6/§2.4.*
+
 38. **Counterfactual Performance Engine — "Was wäre wenn"** *(07.08.2026, aus Analyse Flex-XML-Datenbasis)*
 
    Performance-Analyse auf drei Ebenen:
@@ -926,6 +991,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.11 | 10.08.2026 | §7 Backlog №51–53 ergänzt (Axel-Vorschlagsliste Konsum-/Makro-Indikatoren zur Füllung der №50-Lücke): №51 Klasse A tägliche Ratios (XLP/XLY, Growth/Value, XLP/XLY-SPX-Korrelation, 2Y/10Y `T10Y2Y`; P/C-Ratio verbleibt №47), №52 Macro Context Layer (FRED-Pipeline monatlich/wöchentlich: Heavy Trucks, UNRATE/Sahm-Rule-Option, UMCSENT, Core CPI, NFCI; eigener KV-Eintrag `macro_context_{month}`, Bias-Faktor statt Tages-Z-Score), №53 Grundsatzentscheidung NFCI vs. §2.6 (Composite-Input-Präzedenz, Axel-Entscheidung). Alle drei mit Feature-Freeze-Vermerk — nur Backlog, kein Bau. Testpflicht dokumentiert: Endpoints (FRED-IDs, CBOE-Feeds) vor Sprint real prüfen (Claude-Trainingswissen unverifiziert); Backtest-Pflicht: 2Y/10Y, Heavy Trucks, UNRATE als Rezessionsindikatoren auf inkrementellen Wert vs. MSE-STRESS-Duplikation prüfen (2007–2026). Zudem veralteten Versionskopf korrigiert (stand fälschlich auf 3.1/03.08.2026 trotz Changelog 4.10). |
 | 4.4 | 08.08.2026 | §7 Backlog №31 präzisiert: roic.ai als unabhängige Fundamentaldaten-Quelle identifiziert (Refundex-Session, kap.html-Arbeit) — Stufe 3 aufgeteilt in 3a (Fundamentaldaten via roic.ai, vorziehbar ~Q4 2026) und 3b (Short Interest, bleibt CP-API-gebunden, Q2 2027). Rate-Limit-Check gegen 711-Ticker-Universum vor Bau offen. |
 | 4.5 | 08.08.2026 | §7 Backlog №45 ergänzt: Beta-Kostenkontrolle — KI-Feature-Klassifizierung (A/B) + Cache-Layer (Refundex-Session, Ausgangsfrage Token-Kosten bei 10–20 Betausern). Modell-Verifikation `ko-ai.js`: `claude-sonnet-4-6`/`claude-haiku-4-5-20251001`, nicht retired. Kernerkenntnis: 6/8 Actions sind tagesweise teilbar (nicht user-multipliziert), `deep_dive` ticker+tag-cachebar statt user-cachebar. `RATE_LIMITS.morning` 20→2-3 vorgemerkt (deckt sich mit Axels eigener TODO-Notiz im Code). |
 | 4.6 | 09.08.2026 | §7 Backlog №46+47 ergänzt aus Pine-Script-Review-Session (Bear Put Spread v1/PROv2 Bugfixes committed nach PINE-Skripts, ChartPrime Bayesian Trend NaN-Fix) + gezielter Marktsichtung Options-Indikatoren: №46 VIX/VIX3M Term Structure (Contango/Backwardation, reale Ticker, Prio 1, Anschluss an 4-Regime-Engine/STRESS_UNSTABLE) und №47 Put/Call Ratio CBOE CPC/PCC (reale Daten, Prio 1, zweite Sentiment-Dimension neben DIX). Beide als Kandidaten für Backlog №44 Data Foundation vorgemerkt, kein Bau vor Architektur-Entscheidung (Regime-Singularität §2.6 bzw. Doppelzählungs-Vermeidung). Architektur-Fund: Pine Script ohne Echtzeit-Optionsketten-Zugriff, GEX/IV-Rank-Pine-Indikatoren daher Prio 2/ungeeignet. Details: `docs/UEBERGABE-2026-08-09-pine-review.md`. |
