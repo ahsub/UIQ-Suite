@@ -1,6 +1,6 @@
 # Investment-Suite — Dachdokument
 
-**Version:** 4.14
+**Version:** 4.15
 **Stand:** 10.08.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
@@ -816,6 +816,56 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
     *Verwandt mit: №44, №46/47, №50-53, `docs/REGIME-BACKTEST-VALIDIERUNG.md`.*
 
+55. **UIQ-Erscheinungsbild — Anzeigemodus-Konzept für V2** *(10.08.2026, Auslöser: UX-Feedback von Axels Tochter — "Wolf im Grizzlypelz statt Wolf im Schafspelz")* — **Kein Bau jetzt, Teil der V2-Modularisierung (verwandt mit Refundex ROADMAP.md 2.18, dieselbe Session).**
+
+    **Befund (Live-Walkthrough der Produktions-App durch Claude, nicht nur
+    behauptet):** Übersicht, Makro, Alpha Desk und Scanner wurden mit echten
+    Klicks durchlaufen. Bestätigte Kritikpunkte: unerklärter Fachjargon
+    (Markov 2.0, TVA, Chop, σ:roh/σ:σ, SEPA/IBP/Sticky/OBV/MTF/PDH-PDL),
+    13 gleich gewichtete Strategie-Buttons ohne Rangfolge, die zentrale
+    "KI-Strategieempfehlung" optisch nicht von Nebenfunktionen
+    unterscheidbar, viele Leerzustände direkt nach Login ("Lädt...", "—"),
+    sichtbare Versionsnummer im Header, "Hilfe"-Button ohne erkennbare
+    Wirkung, manuelle Fachdaten-Eingabefelder (Anleihe-Auktionsdaten) auf
+    der Makro-Seite. **Widerspricht dem eigenen Leitprinzip in Abschnitt 0
+    ("muss für jeden Nutzer funktionieren") — kein Nebenwiderspruch,
+    sondern eine echte Lücke zwischen Anspruch und Live-Zustand.**
+
+    **Mockups gebaut und von Axel bestätigt ("wirklich ansprechend"):** drei
+    HTML-Prototypen (Übersicht, Alpha Desk, Scanner) nach denselben
+    Prinzipien — Klartext-Satz statt Kennzahlwand als Erstkontakt, ein
+    einziger farblich hervorgehobener Button pro Seite (die KI-Empfehlung),
+    Fachbegriffe hinter explizitem "Technische Details"-Toggle statt
+    dauerhaft sichtbar, keine Leerzustände ohne echten Inhalt, keine
+    Entwickler-Artefakte. Extern zur Prüfung weitergegeben.
+
+    **Technische Prüfung — bestehender EIC/Expert-Umschalter im
+    Produktivcode (`axel-scanner/index.html`, `toggleExpertMode()`)
+    untersucht, bevor irgendetwas zugesagt wurde:** Der Umschalter existiert
+    bereits (PIN-gated, `localStorage`-persistent), steuert aktuell aber nur
+    eine schmale regulatorische Dimension (Public/BaFin-konform vs.
+    explizite KI-Empfehlungen + Track-Record-Tab) — NICHT die generelle
+    visuelle Dichte. Historisch fragil: 5 dokumentierte Bugfix-Runden
+    (v255-v260, Onchange-Loops/Event-Races) für genau diesen schmalen
+    Umfang. Datei selbst: 1,48 MB, 25.756 Zeilen, ein einziger Monolith
+    (bekannte Altlast, s. `ko-aggregator/docs/STRATEGIE.md`: "1266
+    hardcodierte font-size-Angaben").
+
+    **Axel-Entscheidung (10.08.2026):** Nicht in den fragilen Monolithen
+    nachrüsten. Stattdessen: **"Anzeigemodus" (Einfach/Standard vs.
+    Experte) wird von Anfang an als Kernkonzept in die V2-`reporting/
+    ko-screen-renderer.js`-Schicht eingebaut** (s. §9 des UIQ-V2-
+    Architektur-Entwurfs in `docs/OPTIONSMODUL-ARCHITEKTUR.md` bzw. das
+    ES6-Modul-Konzept in Refundex ROADMAP.md 2.18) — nicht als nachträglich
+    aufgesetzter Umschalter wie der bestehende EIC-Mechanismus, sondern als
+    strukturelle Eigenschaft jeder Komponente von Beginn an.
+
+    **Kein Zeitpunkt festgelegt** — reine Konzept-/Architektur-Notiz für
+    den V2-Kickoff, analog zu №54 und der IBKR-Live-API-Recherche.
+
+    *Verwandt mit: Abschnitt 0 (Leitprinzip), §9 UIQ-V2-Architektur-Vision
+    in `OPTIONSMODUL-ARCHITEKTUR.md`, Refundex ROADMAP.md 2.18.*
+
 38. **Counterfactual Performance Engine — "Was wäre wenn"** *(07.08.2026, aus Analyse Flex-XML-Datenbasis)*
 
    Performance-Analyse auf drei Ebenen:
@@ -1055,6 +1105,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.15 | 10.08.2026 | Backlog №55: UIQ-Erscheinungsbild/Anzeigemodus-Konzept. Ausgelöst durch UX-Feedback von Axels Tochter, per Live-Walkthrough der Produktions-App bestätigt (Jargon, undifferenzierte Buttons, Leerzustände, sichtbare Versionsnummer). Drei Redesign-Mockups gebaut und von Axel bestätigt. Bestehender EIC/Expert-Umschalter im Produktivcode geprüft (schmale regulatorische Funktion, historisch fragil, 5 Bugfix-Runden) — Axel-Entscheidung: kein Nachrüsten im Monolithen, stattdessen "Anzeigemodus" als Kernkonzept in V2-Architektur (reporting-Schicht) einbauen. |
 | 4.14 | 10.08.2026 | Architektur-Diagramme (Suite-Gesamt, UIQ V2, Refundex V2) als SVG-Bildreferenzen in Abschnitt 1 ergänzt. Backlog №54: Markt-Indikatoren-Wunschliste (37 Positionen) kritisch gegen `ko-indicators.json` und №50-Kategorien-Tabelle gefiltert — nur 3 genuin neue Kandidaten identifiziert (SPX-ATR, NYSE-A/D-Line, Hindenburg Omen), 23 Punkte als bereits abgedeckt erkannt, Rest als redundant verworfen. Feature-Freeze respektiert, Pareto-Prinzip angewendet. |
 | 4.13 | 10.08.2026 | Refundex-Befund 2.17 als geschlossen markiert (PWC-Gegenprüfung erfolgreich, Fix live). |
 | 4.12 | 10.08.2026 | §4-Wirbelsäulen-Warnpflicht ausgeübt: kritischer offener Befund Refundex verlinkt (Z.8/Z.9-Aktienformel unvalidiert, s. ROADMAP.md 2.17). Kontext: Ausnahme vom Refundex-Maintenance-Modus (Trade-Detail-Report, bereits in ROADMAP.md 2.5 dokumentiert) deckte beim Debuggen zufällig einen zweiten, unabhängigen und potenziell steuerlich relevanten Befund auf. |
