@@ -1,6 +1,6 @@
 # Investment-Suite — Dachdokument
 
-**Version:** 4.13
+**Version:** 4.14
 **Stand:** 10.08.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
@@ -79,6 +79,16 @@ Die Suite bildet den vollständigen Lebenszyklus eines selbstentscheidenden Priv
 | **Vorsorgen** | Ruhestandsmodul — Entnahmeplanung | — | Zukunftsprojekt, hohe Prio; StBerG-sensibelstes Modul der Suite, eigenes Gate zwingend |
 
 **Der Kreislauf-Gedanke:** Bilanzieren füttert Entscheiden — die ehrliche Netto-EUR-Bilanz je Strategie ist der Input für die nächste Strategie-Router-Entscheidung. Erst mit DepotIQ wird aus der Werkzeugkiste ein lernendes System.
+
+**Architektur-Visualisierung (10.08.2026):**
+
+![UIQ-Suite Gesamtarchitektur](docs/images/uiq_suite_gesamtarchitektur.svg)
+
+Die fünf Module als Pipeline über einer gemeinsamen Datenbasis — Farbe/Rahmen zeigen den aktuellen Status (aktiv/Wartung/pausiert/gefroren) gemäß der Prioritäten-Wirbelsäule (Abschnitt 4). Detailansichten der beiden aktiven Kern-Repos, jeweils als V2-Zielbild (Entwurf, kein Bau begonnen — Details in `docs/OPTIONSMODUL-ARCHITEKTUR.md` §9 bzw. `refundex/docs/ROADMAP.md` 2.18):
+
+![UIQ V2 Architektur](docs/images/uiq_v2_architektur.svg)
+
+![Refundex V2 Architektur](docs/images/refundex_v2_architektur.svg)
 
 **Funnel-Strategie (Axel + Claude, 16.07.2026 — strategische Klarstellung, hohe Architektur-Relevanz):** UIQ und die tieferen Suite-Module verfolgen bewusst unterschiedliche Zielgruppen-Logiken, die nicht vermischt werden dürfen:
 
@@ -754,6 +764,58 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
     *Verwandt mit: №50, №52, CODING-RULES §2.6/§2.4.*
 
+54. **Markt-Indikatoren-Wunschliste — kritisch gefiltert** *(10.08.2026, Axel-Vorlage `docs/Markt-Indikatoren (UIQ) - Wunschliste.md`, 37 Positionen in 5 Kategorien)* — **Feature-Freeze gilt weiterhin: nur Backlog-Vermerk, kein Bau. Vor jeder Aufnahme: Redundanz-Prüfung gegen bestehende Indikatoren-Registry (`ko-indicators.json`) UND Backtest-Pflicht wie bei №52 — Pareto-Prinzip, kein Over-Engineering.**
+
+    **Methodik:** Jeder der 37 Punkte gegen die live implementierte Registry
+    (`ko-modules/ko-indicators.json`, 32 Einträge) UND gegen die №50-
+    Kategorien-Tabelle geprüft — nicht pauschal übernommen.
+
+    **Bereits abgedeckt, keine Dopplung (23 von 37 Punkten):**
+    - Sentiment (PCR) → `pcr` bereits implementiert.
+    - VIX Backwardation, VIX/VIX-Ratio → beide in `vix_term`
+      (Terminstruktur) enthalten — genau das, was `STRESS_UNSTABLE` im
+      MSE-Regime triggert (s. `docs/REGIME-BACKTEST-VALIDIERUNG.md`).
+    - Komplette Konjunktur-Kategorie (2Y/10Y, Consumer Staples/Discretionary
+      inkl. SPX-Korrelation, Growth/Value, Heavy Trucks, Arbeitslosenrate,
+      UMich Sentiment, Core CPI, NFCI) → deckt sich fast 1:1 mit №51-53,
+      keine neuen Punkte.
+    - 10 charttechnische SPX-Indikatoren (SMA 20/50/200, Aroon, Trend-EMA,
+      SuperTrend, Half Trend, Wave Trend, MACD, RSI, Momentum, Elder
+      Impulse) → laut №50-Tabelle deckt "Momentum" bereits ADX/chopIndex/
+      trendScore (TVA Sprint A, implementiert) ab. Diese 10 sind
+      größtenteils untereinander redundant (mehrere Trendfolge- und
+      Momentum-Varianten desselben Prinzips) — **keine Aufnahme
+      empfohlen**, echte Over-Engineering-Gefahr.
+
+    **Genuin neu, aber nur mit Backtest-Vorprüfung aufnehmenswert (3
+    Kandidaten):**
+    - **S&P500 ATR** — einzige echte Lücke bei Volatilität: misst
+      realisierte Kursspanne, nicht implizite Vola wie VIX-Familie.
+      Nicht redundant zu `vix_term`/`vvix`.
+    - **NYSE Advance/Decline-Line** (kumulierte Rohreihe, nicht Oszillator)
+      — `breadth_osc` (McClellan) ist bereits ein A/D-Oszillator, misst
+      aber kurzfristige Beschleunigung. Die rohe A/D-Line misst
+      längerfristigen Trend — unterschiedliche Zeitebene, potenziell
+      komplementär statt redundant.
+    - **Hindenburg Omen** (nicht zusätzlich Titanic Syndrome — beide sind
+      sich strukturell zu ähnlich, nur eines aufnehmen bei Bedarf).
+
+    **Verworfen als redundant oder zu geringer Grenznutzen:** Titanic
+    Syndrome (Dopplung zu Hindenburg Omen), %Stocks>SMA(20/50/100/200 +
+    Composite) (5 Varianten desselben Prinzips, `ndx_breadth` deckt
+    verwandtes Konzept teilweise ab), NYSE New-High/Low, NYSE Up/Down-
+    Volume, VIX MACD (Zusatz-Overlay auf bereits granular erfasste
+    VIX-Dynamik), VIX Composite (Namens-Überschneidung mit `vix`, Mehrwert
+    unklar).
+
+    **Kein Bau jetzt** — Feature-Freeze hat Vorrang, wie bei №50-53. Bei
+    Aufhebung des Freeze: die 3 Kandidaten zuerst gegen den 2011-2025-
+    Datensatz aus `docs/REGIME-BACKTEST-VALIDIERUNG.md` prüfen (inkrementeller
+    Wert über bestehende MSE-Inputs, exakt wie bei №52 gefordert), bevor
+    irgendetwas gebaut wird.
+
+    *Verwandt mit: №44, №46/47, №50-53, `docs/REGIME-BACKTEST-VALIDIERUNG.md`.*
+
 38. **Counterfactual Performance Engine — "Was wäre wenn"** *(07.08.2026, aus Analyse Flex-XML-Datenbasis)*
 
    Performance-Analyse auf drei Ebenen:
@@ -993,6 +1055,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.14 | 10.08.2026 | Architektur-Diagramme (Suite-Gesamt, UIQ V2, Refundex V2) als SVG-Bildreferenzen in Abschnitt 1 ergänzt. Backlog №54: Markt-Indikatoren-Wunschliste (37 Positionen) kritisch gegen `ko-indicators.json` und №50-Kategorien-Tabelle gefiltert — nur 3 genuin neue Kandidaten identifiziert (SPX-ATR, NYSE-A/D-Line, Hindenburg Omen), 23 Punkte als bereits abgedeckt erkannt, Rest als redundant verworfen. Feature-Freeze respektiert, Pareto-Prinzip angewendet. |
 | 4.13 | 10.08.2026 | Refundex-Befund 2.17 als geschlossen markiert (PWC-Gegenprüfung erfolgreich, Fix live). |
 | 4.12 | 10.08.2026 | §4-Wirbelsäulen-Warnpflicht ausgeübt: kritischer offener Befund Refundex verlinkt (Z.8/Z.9-Aktienformel unvalidiert, s. ROADMAP.md 2.17). Kontext: Ausnahme vom Refundex-Maintenance-Modus (Trade-Detail-Report, bereits in ROADMAP.md 2.5 dokumentiert) deckte beim Debuggen zufällig einen zweiten, unabhängigen und potenziell steuerlich relevanten Befund auf. |
 | 4.11 | 10.08.2026 | §7 Backlog №51–53 ergänzt (Axel-Vorschlagsliste Konsum-/Makro-Indikatoren zur Füllung der №50-Lücke): №51 Klasse A tägliche Ratios (XLP/XLY, Growth/Value, XLP/XLY-SPX-Korrelation, 2Y/10Y `T10Y2Y`; P/C-Ratio verbleibt №47), №52 Macro Context Layer (FRED-Pipeline monatlich/wöchentlich: Heavy Trucks, UNRATE/Sahm-Rule-Option, UMCSENT, Core CPI, NFCI; eigener KV-Eintrag `macro_context_{month}`, Bias-Faktor statt Tages-Z-Score), №53 Grundsatzentscheidung NFCI vs. §2.6 (Composite-Input-Präzedenz, Axel-Entscheidung). Alle drei mit Feature-Freeze-Vermerk — nur Backlog, kein Bau. Testpflicht dokumentiert: Endpoints (FRED-IDs, CBOE-Feeds) vor Sprint real prüfen (Claude-Trainingswissen unverifiziert); Backtest-Pflicht: 2Y/10Y, Heavy Trucks, UNRATE als Rezessionsindikatoren auf inkrementellen Wert vs. MSE-STRESS-Duplikation prüfen (2007–2026). Zudem veralteten Versionskopf korrigiert (stand fälschlich auf 3.1/03.08.2026 trotz Changelog 4.10). |
