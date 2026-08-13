@@ -1,155 +1,244 @@
 # UERBERGABE-2026-08-12
 
-**Session-Schwerpunkt:** Integritätscheck Versionierung · Track-Record-Absicherung
-**Repos berührt:** `ahsub/ko-aggregator` (2 Commits) · `ahsub/ko-modules` (nur Analyse)
-**Status Phase 0:** unverändert Lead. Alle Arbeiten heute waren Bugfixes (§4-konform).
+## PFLICHT-HEADER — an den Anfang jedes neuen Übergabeprotokolls stellen
 
 ---
 
-## 1. Durchgeführte Änderungen (verifiziert)
+**Bevor du irgendetwas aus diesem Protokoll als gegeben behandelst:**
 
-### `tr_layer.py`
+1. **Dieses Dokument beschreibt einen behaupteten Zustand, keinen verifizierten.**
+   Jede Zeile hier ("v456 deployed", "X funktioniert", "Y ist erledigt") ist eine
+   Aussage der letzten Session über sich selbst — nicht dein eigenes Wissen.
+   Du hast das nicht gesehen. Du hast es nicht getestet. Behandle es wie eine
+   Behauptung eines Kollegen, nicht wie dein eigenes Gedächtnis.
 
-| Ort | Änderung |
-|---|---|
-| Zeile 45 | `AGG_SHA = (os.environ.get("GITHUB_SHA") or "local")[:12]` |
-| Zeile 194 | Feld `"aggSha": AGG_SHA` im Snapshot-Dict von `build_snapshot()` |
+2. **Bei jedem neuen Feature/jeder neuen Registry/jedem neuen Datenpfad:
+   Prüfe die Verbindung, nicht nur die Existenz.**
 
-### `market_aggregator.py`
+3. **Eine Behauptung, die du nicht geprüft hast, markierst du als ungeprüft.**
 
-| Ort | Änderung |
-|---|---|
-| Zeile 3 | Docstring-Header `v4.7` → `v5.36.0` |
-| Zeile 157 | `AGGREGATOR_VERSION = "5.30.0"` → `"5.36.0"` |
-| Zeile ~154 | Warnkommentar zur erneuten Drift ergänzt |
+4. **Skepsis ist keine Unhöflichkeit gegenüber der Vorsession.**
 
-**Verifikation (nicht übernommen, sondern geprüft):** Repo-Stand nach Commit erneut
-gezogen, `py_compile` für beide Dateien fehlerfrei, Fallback-Verhalten von `AGG_SHA`
-getestet (ohne `GITHUB_SHA` → `"local"`, mit → 12-stelliger Hex).
+5. **Wenn Axel eine Diskrepanz meldet: das ist immer Grund für Deep-Debug, nie
+   für eine schnelle Plausibilitäts-Antwort.**
 
-**Offene Kontrolle:** Ersten gestempelten Snapshot `tr:snap:2026-08-13` nach dem
-Nachtlauf (04:00 UTC) prüfen. Erwartung: 12-stelliger Hex-Wert, nicht `"local"`.
+**Kurzform, die für den Rest der Session gilt:**
+*Verifiziert vor behauptet. Geprüft vor plausibel. Gezeigt vor versprochen.*
 
 ---
 
-## 2. Befund, der die Änderung ausgelöst hat
+# UEBERGABE-2026-08-12-nachmittag-trade-doktor
 
-`AGGREGATOR_VERSION` stand auf `5.30.0`, während die Commits **v5.31.0 – v5.36.0**
-(07./08.08.2026) bereits in `main` lagen. Die Zeichenfolgen `5.32`–`5.36` kamen im
-**gesamten Repository nicht vor** — die Versionen existierten ausschließlich in
-Commit-Messages.
-
-Betroffen sind Commits, die den Track Record inhaltlich verändert haben:
-
-- **v5.32.0** — `regimeMeta` in `tr:snap` (Snapshot-Struktur)
-- **v5.33.0** — T3 Survivorship-Fix
-- **v5.35.0** — Earnings-Gate in allen 4 Options-Scorern (Empfehlungslogik)
-
-**Konsequenz:** Alle Snapshots ab dem 07.08.2026 tragen `aggVersion: "5.30.0"`,
-stammen faktisch aber aus mindestens fünf verschiedenen Codeständen mit
-unterschiedlicher Scoring-Logik. Anhand des Versionsfelds nicht unterscheidbar.
-
-**Keine Rückwirkung geplant.** Nachträgliche Rekonstruktion wäre geraten. Stattdessen
-Fußnote in `docs/TRACK_RECORD_SPEC.md` (siehe §5).
-
-**Wiederholungsfall:** Der Kommentar über `AGGREGATOR_VERSION` dokumentiert bereits
-denselben Fehler vom 30.06.2026 (`meta["version"]` hartcodiert, aus dem Gleichschritt
-gelaufen). Die damalige Lösung — eine zentrale Konstante — hat sechs Wochen gehalten.
-Deshalb jetzt `aggSha`: von GitHub Actions gesetzt, kann nicht vergessen werden.
+**Session-Schwerpunkt:** Fortsetzung nach dem Vormittags-Integritätscheck
+(s. UEBERGABE-2026-08-12.md) — kritischer Aggregator-Fund, Fund-1-Fix
+verifiziert, neues Trade-Doktor-Konzept vollständig ausgearbeitet.
+**Repos berührt:** `ahsub/ko-aggregator` (2 Commits), `ahsub/axel-scanner`
+(4 Commits), `ahsub/ko-modules` (1 Commit), `ahsub/UIQ-Suite` (1 neue Datei,
+2 Updates).
+**Status Phase 0:** Lead-Projekt unverändert. Trade-Doktor ist Konzeptarbeit
+(Dokument, kein Code) — SUITE.md §4 erlaubt Research/Dokumentation jederzeit,
+kein Verstoß gegen Bauprio.
+**Zugriffsweg heute:** `git clone` in Sandbox (öffentliche Repos, kein PAT) +
+`claude-in-chrome` für GitHub-Actions-Läufe/Workflow-Trigger-Verifikation
+(Axels eingeloggter Browser-Tab, keine Credentials angefasst). Dateiänderungen
+weiterhin per GitHub-Web-Editor durch Axel selbst committet (kein Schreibzugriff
+für Claude).
 
 ---
 
-## 3. Weitere Funde (nicht behoben)
+## 1. Kritischer Fund: Aggregator lief seit 07.08. bei jedem Run ab
 
-| # | Fund | Schwere | Aufwand |
-|---|---|---|---|
-| 1 | `window.KoPrompts` wird von **ko-prompts.js UND ko-strategies.js** belegt. Ladereihenfolge entscheidet; bei falscher Reihenfolge fehlen `getSystemPrompt()`, `getMorningPrompt()`, `getLbKey()`, `stratFromLb()`. Beide setzen zudem `KoPromptsLoaded = true`. | **Bug** | 10 Min |
-| 2 | ko-strategies.js (01.07.2026) ist gegenüber ko-prompts.js (v2.6.0, 05.08.2026) veraltet: 13 statt 14 Strategien, alte Sammel-ID `options` statt `csp_wheel`/`cc`, kein `lbKey`. Vermutlich toter Code. | Hygiene | Prüfen |
-| 3 | Versionsangaben uneinheitlich: ko-strategies.js (Header 2.1.0 / Konstante 2.4.0), ko-prompts.js (Header 2.5.0 / Changelog 2.6.0), ko-trackrecord.js (Header 1.0.2 / `TR_VERSION` 1.0.0). 10 von 16 Modulen ohne jede Versionsangabe. | Hygiene | Backlog |
-| 4 | Kommentar in ko-strategies.js erklärt `dividend`/`value` für am 17.07.2026 entfernt — beide Objekte stehen weiterhin vollständig im Code. | Hygiene | Backlog |
+**Root Cause:** `_load_ex_iwv_tickers()` (eingeführt Commit `5aa3430`, v5.33.0,
+07.08.2026 17:26 UTC) nutzt `Path(__file__)`, aber `pathlib.Path` war nirgends
+importiert — `NameError`, `main()` stürzt fast am Anfang ab, vor jeder
+Scan-/Track-Record-Aktivität.
 
-**Zu Fund 1 zuerst klären:** Wird ko-strategies.js in `index.html` überhaupt noch
-eingebunden? Wenn nein → löschen, Risiko erledigt.
+**Ausmaß (verifiziert über GitHub-Actions-UI, nicht nur behauptet):** 7 von 7
+Runs seit Einführung (#198–204) fehlgeschlagen, ca. 4,5 Tage durchgehend kein
+`master_market_data.json`, vermutlich keine Track-Record-Snapshots in diesem
+Zeitraum.
+
+**Fix:** `from pathlib import Path` ergänzt (Zeile 150, `market_aggregator.py`),
+Commit `c219c3e`. **Run #205 danach live verifiziert: erfolgreich, 6m55s**
+(Laufzeit im Bereich der früheren guten Runs, nicht mehr die 30-70s der
+Absturz-Läufe) — Erfolg über GitHub-Actions-UI direkt bestätigt, nicht nur
+Commit-Vorhandensein geprüft.
+
+**Wichtig für nächste Session:** Der gestrige `aggSha`-Fix (aus dem
+Vormittags-Protokoll) konnte dadurch bisher **nie unter echten Bedingungen
+laufen** — Run #205 ist der erste erfolgreiche Lauf seit dessen Einführung.
+`tr:snap`-Eintrag für den 12.08.-Run auf validen `aggSha` prüfen (Feld `aggSha`,
+nicht `"local"`) — heute nicht mehr gemacht, offen für nächste Session.
+
+## 2. Daten-Frische-Banner gebaut (axel-scanner)
+
+Neuer Banner `#data-staleness-banner` im Topbar, `checkDataFreshness(meta)`
+vergleicht `meta.last_trading_day` gegen den über `isTradingDay()` berechneten
+erwarteten Handelstag. Bei Abweichung: sichtbare Warnung statt stillem
+Veralten. 3 Edits (HTML-Banner, Funktion, Aufruf in `loadKVMasterData()`),
+alle über GitHub-Web-Editor von Axel committet, von mir per `git pull` + `grep`
+verifiziert.
+
+## 3. `window.KoPrompts`-Kollision behoben (ko-modules)
+
+**Root Cause:** `ko-strategies.js` ist `type="module"` (deferred, läuft nach
+komplettem Parsing), `ko-prompts.js` ist normales `<script>` (läuft synchron
+an seiner Position). Der Rückwärtskompat-Alias `window.KoPrompts = KoStrategies`
+in `ko-strategies.js` überschrieb dadurch **immer** den echten, bereits
+geladenen `KoPrompts` aus `ko-prompts.js` — seit dem v415-Sprint (30.07.,
+"Single Source of Truth"-Umbau) lautlos aktiv.
+
+**Empirisch bestätigt (Axels Konsolen-Check vor dem Fix):**
+`KoPrompts.VERSION` → `"2.4.0"` (KoStrategies, falsch), `typeof
+KoPrompts.getLbKey` → `"undefined"`. Betroffen: Alpha-Desk-Leaderboard-Mapping
+(`getLbKey`/`stratFromLb`/`getStratToLbMap`), `getIntermarketPrompt`,
+`getOversoldPrompt`, `getMetaAnalysisPrompt`, vermutlich `getSystemPrompt`/
+`getMorningPrompt` — alle als `TypeError` zur Laufzeit, seit ca. zwei Wochen.
+
+**Fix:** Alias-Zeile in `ko-strategies.js` entfernt (Commit `ccad16b`), CDN-Hash
+in `axel-scanner/index.html` von `@57c6f91` auf `@ccad16b` aktualisiert.
+**Live verifiziert (nach anfänglichem Cache-Fehlalarm — Axels erster Check
+zeigte noch `2.4.0`/`undefined`, war aber ein alter, nicht neu geladener Tab):
+auf frisch geladener Seite bestätigt `KoPrompts.VERSION` → `"2.5.0"`, `typeof
+KoPrompts.getLbKey` → `"function"`, `KoStrategies.VERSION` weiterhin `"2.4.0"`
+eigenständig erreichbar.** Vollständig erledigt.
+
+**Bekannter Nebeneffekt:** `KoPrompts.get()` nutzt jetzt wieder `STRATEGIES`
+aus `ko-prompts.js` statt `Strategies` aus `ko-strategies.js` — falls beide
+Strategie-Listen inzwischen auseinandergelaufen sind, kann sich sichtbarer
+KI-Text ändern. Stichprobenartig in der App prüfen, nicht als Non-Issue
+annehmen.
+
+## 4. Versionierung (axel-scanner)
+
+v454 → v457 im Tagesverlauf, durchgehend synchron zwischen Meta-Tag und
+Changelog gehalten (zwischenzeitlich einmal auseinandergelaufen, von Axel
+selbst korrigiert nach Hinweis). v456 = KoPrompts-Kollisionsfix, v457 =
+schedulerStart-Scope-Fix (s. §7).
+
+## 5. Trade-Doktor — vollständiges Konzeptdokument
+
+Neu: `UIQ-Suite/docs/TRADE-DOKTOR-KONZEPT.md` (Commits `d12ec57`, `ebb1411`).
+
+**Zweck:** Persönliches Analyse-Werkzeug für Axel — fremde Trade-Ideen aus
+Discord-Optionstrader-Gruppen gegen UIQ-eigene Regeln prüfen, ausführlich
+begründete Einschätzung. **Kein Public-Output, kein Discord-Post-Automatismus,
+UIQ bleibt in der Ansprache unerwähnt** (Leitplanke, mehrfach bestätigt).
+
+**Architektur-Kernentscheidung:** Zwei-Schichten-Prinzip nach dem in
+OPTIONSMODUL-ARCHITEKTUR.md §9 dokumentierten Grundsatz "Verdict wird
+konsumiert, nie vom LLM erzeugt" — deterministische Bewertungsfunktion
+(`evaluateOptionsTradeAgainstUIQRules()`) getrennt von der KI-Erklärschicht.
+
+**Wichtigste Design-Entscheidung des Nachmittags:** Kein eigenständiger
+`CSP_MANAGEMENT_PLAYBOOK`-Datensatz (Dual-Source-of-Truth-Risiko), sondern
+**geteiltes `rules`-Feld direkt in `Strategies[stratId]`** (`ko-strategies.js`)
+— maschinenlesbar, getrennt von den bestehenden Prosa-/Prompt-Feldern. Trägt
+Delta-/DTE-Zielbereiche (strategie-spezifisch, nicht global — `atmna` z.B.
+`deltaRange: null`, ATM per Definition), Profit-Taking-Stufen, Roll-Regeln.
+Dieses Feld ist als geteiltes Modul gedacht, das UIQ, Trade-Doktor und jedes
+künftige strategieabhängige Programmteil gemeinsam nutzt.
+
+**Weitere Kernpunkte:**
+- Schweregrad-Enum im Bewertungsergebnis: `GATE_VERSTOSS` /
+  `PARAMETER_ABWEICHUNG` / `IM_ZIELBEREICH` — verhindert Gleichgewichtung von
+  "Regime sperrt komplett" vs. "Delta weicht leicht ab".
+- Eingabe: Freitext-Parser (bewusst kein Formular, Axels Vorgabe: Tool soll
+  "im Hintergrund bleiben") + neuer Screenshot-Eingabeweg (Referenzfall: DDOG
+  Short Call, Delta 0.412) — beide münden in dieselbe Downstream-Pipeline.
+- IV-Rank-Quelle geklärt: weder CBOE (nur Index-weite Benchmarks) noch
+  CapTrader/IBKR (Live-API laut §7 OPTIONSMODUL-ARCHITEKTUR.md "Bau selbst
+  noch NICHT begonnen") liefern heute Pro-Ticker-IV. Start mit Phase-1-Proxy
+  (Realized Vol, Twelve Data), muss im Output als Näherung gekennzeichnet sein.
+
+**Bewusst zurückgestellt/entschieden, nicht vergessen:**
+- CapTrader-Live-Auslesen (API/Flex-XML) für Trade-Doktor — überschneidet mit
+  bereits geplantem `OptionsDoktor` (Refundex, ROADMAP 2.12, Trigger
+  01.10.2026). **Entscheidung offen, ob Trade-Doktor das vorzieht.**
+- Ein "Discord-Vorsicht-Reminder" am Ende der KI-Erklärschicht wurde
+  vorgeschlagen, von Axel begründet abgelehnt (gelebte Forum-Praxis: jeder
+  handelt auf eigenes Risiko). Nicht erneut vorschlagen.
+- DTE-Zielbereich uneinheitlich im Code (`DEFAULT_OPTS_CFG.dte = 30` vs.
+  EIC-System-Prompt "21–45") — vor Block D vereinheitlichen.
+
+**Sprint-Bausteine (A–G), Status:**
+- A (Architektur) ✅ geklärt
+- B (Freitext-Parser) — Design fertig, Bau offen
+- C (Scan-Universum-Matching) — offen
+- D (Bewertungsfunktion, `rules`-Feld anlegen) — offen, DTE-Werte vorher
+  vereinheitlichen
+- E (neuer Prompt-Zweig in `ko-prompts.js`) — offen
+- F (UI-Panel) — offen
+- G (Screenshot-Eingabe) — Design fertig, Bau offen
+
+## 6. Sonstiges
+
+- E-Mail-Entwurf für Leo Ji (Stanford, Autor `nuglifeleoji/Options-Analytics-
+  Agent`, Kontakt aus Session 11.08.2026) rekonstruiert und Axel zum Review
+  vorgelegt — ursprünglicher exakter Wortlaut aus 11.08. war per Volltextsuche
+  nicht mehr vollständig rekonstruierbar (Suchergebnis-Trunkierung), daher
+  neuer Text nach derselben freigegebenen Linie (keine Kommerzialisierung, nur
+  Integrationswunsch, volle Transparenz zur Inspirationsquelle).
+  **Von Axel bestätigt: bereits verschickt (12.08.2026 abends).** Erledigt,
+  keine offene Aktion mehr.
+
+## 7. Zweiter kritischer Fund (spätabends): `schedulerStart`-Scope-Bruch
+
+Beim Einfügen von `checkDataFreshness()` (§2, Schritt 2) landete die Zeile
+`function schedulerStart() {` versehentlich doppelt im Code. Kein
+Syntax-Fehler (daher unsichtbar in der Konsole, `document.readyState` zeigte
+"complete", keine Exception beim Laden) — aber die äußere, nie geschlossene
+Klammer verschob den gesamten nachfolgenden Code im selben Script-Block
+(`toggleExpertMode`, `_optionsMaxPrice`, vermutlich weiteren) aus dem
+globalen in einen lokalen Geltungsbereich innerhalb der verschachtelten
+Funktion.
+
+**Symptom:** EIC-Expert-Modus-Schalter tot (`ReferenceError: toggleExpertMode
+is not defined` bei jedem Klick, keine Reaktion, kein PIN-Modal). Zusätzlich
+betroffen: `_optionsMaxPrice`-Kursrahmen-Filter beim App-Start
+(`_initUICache()` warf `ReferenceError`, brach `unlockApp()` vorzeitig ab —
+`initExpertMode()` und `updateScannerHint()` liefen dadurch beim Start
+ebenfalls nicht).
+
+**Diagnoseweg (live, über claude-in-chrome auf Axels verbundenem Browser):**
+Konsolen-Fehler zeigten nur die Symptome (`toggleExpertMode is not defined`),
+nicht die Ursache. Eigener Klammer-Balance-Scanner (Regex/String/Kommentar-
+bewusst) auf den rohen Script-Tag-Inhalt angewendet fand die unausgeglichene
+`{` — anschließend Inhalt zeilenweise über Zeichencodes extrahiert (direkte
+Textausgabe wurde vom Werkzeug als "Cookie/Query-String-Daten" geblockt), da
+bestätigt.
+
+**Fix:** Doppelte `function schedulerStart() {`-Kopfzeile entfernt. **Live
+verifiziert von Axel: EIC-Schalter funktioniert wieder.** v457 (Meta-Tag +
+Changelog, von mir noch nicht per `git pull` gegengeprüft — nächste Session
+sollte das nachholen, bevor es als abgeschlossen gilt).
+
+**Wichtig für nächste Session:** Dieser Bug war eine **direkte Folge** der
+eigenen Vormittags-Änderung (Daten-Frische-Banner, §2), keine unabhängige
+Altlast. Bei künftigen Copy-Paste-Einfügungen dieser Art (Axel fügt Code über
+GitHub-Web-Editor ein) lohnt sich ein kurzer Blick auf die Zeile *unmittelbar
+nach* dem eingefügten Block, nicht nur auf den eingefügten Block selbst —
+genau dort ist die Duplizierung diesmal passiert.
+
+## 8. Nicht bearbeitet / offen für nächste Session
+
+- `tr:snap`-Eintrag vom 12.08.-Nachtlauf auf validen `aggSha` prüfen (s. §1)
+- Stichprobe: haben sich `Strategies`- und `STRATEGIES`-Listen (ko-strategies.js
+  vs. ko-prompts.js) inhaltlich auseinanderentwickelt? (Nebeneffekt aus §3,
+  KoPrompts-Kollisionsfix selbst ist erledigt und verifiziert)
+- Trade-Doktor Block B (Parser) im Detail bauen
+- DTE-Zielbereich-Inkonsistenz vor Block D auflösen
+- v457 (schedulerStart-Fix): Axel hat den EIC-Schalter live bestätigt
+  (funktioniert), aber Meta-Tag/Changelog-Versionsstand wurde von mir noch
+  nicht separat per `git pull` gegengeprüft
+- Stichprobe: gibt es im selben Script-Block noch weitere Stellen mit
+  ähnlichem Scope-Bruch (z.B. andere kürzlich per Web-Editor eingefügte
+  Blöcke)? Heute nur der eine Fund geprüft, nicht systematisch nach weiteren
+  gesucht
 
 ---
 
-## 4. Neu festzuschreibende Regeln
-
-> Gehören nach `docs/CODING-RULES.md`; R1 zusätzlich nach `SUITE.md` (§4-Umfeld).
-
-### R1 — Versionsnummern sind keine Protokollinhalte
-
-Versionsnummern werden **nicht** in Übergabeprotokolle geschrieben. Sie werden bei
-Bedarf aus dem Code gelesen. Steht in einem Protokoll dennoch eine Version, gilt sie
-als **Behauptung, nicht als Fakt**, und ist vor Verwendung zu prüfen.
-
-*Begründung:* Die Angabe „v5.36" wurde über mehrere Sessions fortgeschrieben, ohne
-dass jemand die Konstante prüfte. Weder Axel noch Claude konnten am 12.08.2026 sagen,
-welcher Stand produktiv lief.
-
-### R2 — Verifikationspflicht bei Handover-Übernahme
-
-Claude kennzeichnet jede aus einem Handover übernommene Aussage als solche und fragt
-aktiv nach: **„Hast du das verifiziert oder übernommen?"** Das gilt insbesondere für
-Versionen, Dateipfade, Feature-Stände und Roadmap-Positionen.
-
-### R3 — Repo-Zugriff ohne Token
-
-Öffentliche Repos werden über `codeload.github.com/{owner}/{repo}/zip/refs/heads/main`
-gelesen. Kein PAT nötig. **Klartext-Credentials im Chat sind unzulässig** — auch nicht
-mit anschließendem Widerruf.
-
-*Hinweis:* `api.github.com` ist von geteilten IPs regelmäßig rate-limited. Der
-Archiv-Weg ist der zuverlässige.
-
-### R4 — Codestand-Zuordnung über SHA, nicht über Konstanten
-
-Alles, was einem Codestand zugeordnet werden muss (insbesondere Track-Record-Artefakte),
-trägt `GITHUB_SHA`. Handgepflegte Versionskonstanten sind **Dokumentation**, keine
-Herkunftsangabe. Zweimal gedriftet (30.06. und 07.08.2026) — das Muster ist belegt.
-
-### R5 — Behauptung vs. Prüfung in Claudes Antworten
-
-Aussagen über den Repo-Stand werden nur getroffen, wenn sie im selben Zug geprüft
-wurden. Sonst ausdrücklich als Vermutung kennzeichnen.
-
-*Anlass:* Claude schloss aus der fehlenden Zeichenfolge `5.36` im Code, die Version
-habe „nie existiert" — die Commit-Historie belegte das Gegenteil. Zweiter Fall:
-Verortung von Änderung „1c" auf einem Aggregat-Block, wo sie inhaltlich falsch gewesen
-wäre. Beide Male korrigierte erst der Blick ins Repo.
-
----
-
-## 5. To-do für die nächste Session
-
-1. `tr:snap:2026-08-13` auf gültigen `aggSha` prüfen (nicht `"local"`)
-2. `docs/TRACK_RECORD_SPEC.md` (v1.2): Feld `aggSha` dokumentieren + Fußnote
-   *„Snapshots vom 07.08.2026 bis 12.08.2026 tragen `aggVersion: 5.30.0`, stammen
-   tatsächlich aus den Ständen 5.31.0–5.36.0. Zur Unterscheidung ab 12.08.2026
-   `aggSha` verwenden."*
-3. Fund 1 (`window.KoPrompts`-Kollision) klären und beheben
-4. **Trade-Doktor Block A** — offen: `KoPrompts.get()`-Aufrufstelle im Frontend prüfen.
-   Zwischenstand: Erweiterungspunkt ist `ko-prompts.js` (**nicht** ko-strategies.js);
-   `buildPrompt(strat, ctx)` ist vom Screening entkoppelt (`ctx.marktkontext` ist ein
-   opaker String), daher kein Eingriff in die Scoring-Suite nötig. Scope-Vorschlag:
-   Ticker muss im Scan-Universum liegen — kein On-Demand-Enrichment.
-
----
-
-## 6. Backlog-Zugänge
-
-- CI-Guard: Konstante gegen höchsten Changelog-Eintrag prüfen, Build bricht bei Drift
-- Versionsangaben in allen ko-modules vereinheitlichen (10 Module ohne Version)
-- `dividend`/`value`: Kommentar oder Code korrigieren
-- Lokaler Repo-Klon als unabhängige Kontrollinstanz (kein Sprint, aber überlegenswert)
-
----
-
-## 7. Nicht bearbeitet (bewusst)
-
-- **Beta-Recruiting / Trade-Doktor-Ausbau** — Phase 1, nach Go/No-Go. Reputationsaufbau
-  in Foren läuft über Axels eigenes Fachwissen (Steuerrecht US-Optionen, Post-mortems,
-  Methodenfragen) und braucht UIQ nicht. Kein Systemoutput in öffentlichen Threads;
-  UIQ bleibt in der Ansprache unerwähnt.
-- **Voller Repo-Hygiene-Audit** — bewusst auf den Integritätscheck (Track-Record-Bezug)
-  eingegrenzt.
+*Verifiziert vor behauptet. Diese Session hat #1–#4 und #7 live über
+GitHub-UI bzw. Konsolen-Checks bestätigt, #5-Bausteine sind Design/
+Dokumentation, kein Code — entsprechend als "offen" markiert, nicht
+"erledigt".*
