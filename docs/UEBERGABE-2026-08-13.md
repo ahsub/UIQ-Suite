@@ -291,7 +291,57 @@ zusätzliches Regime-Feature aufgenommen wird, und ob FlashAlpha-Basic-Tier-
 Aktivierung (Kosten? SPY/QQQ-Abdeckung) für GEX überhaupt priorisiert
 werden soll.
 
-## 7. Nicht bearbeitet / offen für nächste Session
+## 7. Referenzmaterial für spätere Phasen — Options-Strategiewahl-Literatur
+
+Axel suchte am Abend nach einer guten Referenz für systematische Options-
+strategiewahl in Abhängigkeit von der Marktsituation. Claude fand per
+Websuche `tastylive.com` (IV-Level → Strategie-Klasse-Mapping: hohe IV →
+Short-Premium/Credit-Spreads/Covered-Calls, niedrige IV → Long-Premium/
+Debit-Spreads/Diagonals — deckt sich mit UIQs bestehender HVP-Regel) als
+solide, kostenlose Quelle, sowie eine CFA-Institute-Refresher-Reading
+"Options Strategies" (Level-III-Curriculum, vermutlich paywalled, nicht
+tiefer geprüft).
+
+**Ergiebiger:** Axel hat zwei einschlägige Fachbücher als PDF/EPUB in
+eigenen Unterlagen — **"The Options Workbook" (3rd Edition, Anthony J.
+Saliba)** und **"Selling Option Strangles for Earnings Announcements"
+(Royal Ellinger)** — und hat KI-generierte Zusammenfassungen davon im Chat
+geteilt (NICHT die Originalwerke selbst, s. Warnung unten).
+
+**Was diese Zusammenfassungen inhaltlich hergeben (ungeprüft gegen Primär-
+quelle, s. Warnhinweis):**
+- Saliba: 2-stufige Entscheidungsmatrix (Marktumfeld: Richtung + IV-Position
+  auf einem laufzeitabhängigen "Volatilitäts-Kegel" → Strategiewahl).
+  Bestätigt methodisch UIQs bestehenden HVP-Percentile-Ansatz — DREI
+  unabhängige Quellen (Saliba, tastylive, UIQ-Code) nutzen dieselbe
+  Grundidee. Liefert aber eine ECHTE, bei UIQ noch fehlende Verfeinerung:
+  IV-Percentile getrennt nach Laufzeit-Bucket (30/60/90 Tage) statt ein
+  einzelner globaler HVP-Wert unabhängig von der gewählten DTE — würde sich
+  sauber in die heute entworfene Registry einfügen (`rules` könnte pro
+  Strategie/DTE-Bucket unterschiedliche HVP-Schwellen tragen).
+- Ellinger: konkrete, datengetriebene Filter für Earnings-Short-Strangles
+  (16-Delta-Regel statt Expected-Move-Strike, IVR/IVP-Ausschluss bei >85%,
+  Formel für "Bad Actor"-Ticker anhand Earnings-Move-Varianz, BPR-Quotient
+  als Risikofilter, Wochentag-Effekt). Bewusst NICHT im Detail geprüft oder
+  übernommen — s. Warnhinweis.
+- Beide Werke behandeln primär Multi-Leg-Strukturen (Butterfly, Condor,
+  Ratio Spread, Backspread, Earnings-Strangle) — passt zur heute getroffenen
+  "schmal beginnen"-Priorisierung (§5) als Referenzmaterial für PHASE 2,
+  nicht für die aktuellen vier Strategien.
+
+**WARNHINWEIS, unbedingt vor Codeübernahme beachten:** Die geteilten Texte
+sind KI-generierte Zusammenfassungen der Bücher, NICHT von Claude selbst
+gegen die Originalwerke verifiziert — eine Zusammenfassung einer
+Zusammenfassung. Qualitative Konzepte (IV-Percentile-Logik, Greeks-
+Bedeutung) sind risikoarm, da Standard-Optionstheorie, die sich mit
+tastylive/CFA-Konventionen deckt. Die KONKRETEN Zahlen/Formeln (Ellingers
+`y = 0.648x + 0.295`-Formel, "16-Delta"-Wert, "BPR < 3,5%"-Schwelle) sind
+NICHT verifiziert — vor jeder Codeübernahme gegen die Originalquelle
+prüfen. **Axel hat die Originalwerke als PDF/EPUB vorliegen** — gezielte
+Analyse der Primärquellen für eine spätere Session vorgesehen, keine
+Umsetzung heute.
+
+## 8. Nicht bearbeitet / offen für nächste Session
 
 - **Punkt-6-Plan aus §4 vollständig umsetzen** — DTE 21→30, Delta-
   Strukturierung, Registry-Werte korrigieren. Das ist die konkrete
