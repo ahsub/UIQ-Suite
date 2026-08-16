@@ -131,6 +131,46 @@ während diese statische Bulk-Historie frei zugänglich ist. **Lohnt sich für
 UIQ separat zu verifizieren** — könnte den dokumentierten Datenlücken-Punkt
 in SUITE.md auflösen. Nicht in dieser Session weiter untersucht.
 
+## Nebenfund 2 — Anschlussfrage 16.08.2026: können die MCM-Paritäts-Faktoren
+   den Klassifikator verbessern?
+
+**Auslöser:** Im Rahmen der UIQ-Session vom 16.08.2026 wurde eine
+MCM-Paritäts-Lücke geschlossen (4 Faktoren — `move_index`, `skew_vvix_div`,
+`breadth_osc`, `distribution_days` — waren im Client seit Wochen registriert,
+aber nie server-seitig implementiert, s. `MCM-PARITAET-KONZEPT.md`). Axel
+fragte, ob diese fehlenden Faktoren das hier dokumentierte Backtest-Ergebnis
+beeinträchtigt haben könnten und ob eine Neuauflage mit erweitertem Datensatz
+angezeigt ist.
+
+**Antwort (geprüft, nicht vermutet):** Nein, keine Kontamination. Die vier
+Faktoren waren nie Input des hier getesteten Regime-Klassifikators
+(`determineRegime()` — Inputs sind ausschließlich VVIX-Z-Score,
+GEX/DIX-Z-Score-Proxies, SKEW-Perzentil, VIX-Termstruktur-Ratio). Sie wirken
+strukturell erst auf der nachgelagerten Strategie-Gates/Ampel-Ebene, nicht
+auf die hier validierte Regime-Klassifikation selbst. `dix_z20`/`gex_z20`
+(ebenfalls am 16.08. Gegenstand eines Live-App-Feldpfad-Bugfixes) sind zwar
+echte Klassifikator-Inputs — aber dieser Backtest bezog DIX/GEX aus einem
+unabhängigen historischen Archiv (`marcusdrewry/gex-forward-returns`), nicht
+aus der betroffenen Live-Pipeline. Der Live-App-Bug betraf daher mit hoher
+Wahrscheinlichkeit nicht diesen Backtest.
+
+**Aber — eigenständige, lohnende Folgefrage (keine Korrektur, echte neue
+Forschung):** Könnten `distribution_days` (O'Neil/IBD, institutioneller
+Abverkauf) und `breadth_osc` (McClellan) als ZUSÄTZLICHE Klassifikator-
+Inputs den dokumentierten Schwachpunkt oben beheben — die beiden
+Fehlklassifikationen 2022-09-13/2022-10-13 (grindender, backwardation-freier
+Bärenmarkt, fälschlich NEUTRAL statt STRESS_UNSTABLE)? Beide Metriken
+erkennen Breiten-/Distributionsschwäche unabhängig von Terminstruktur-
+Inversion — genau die Signalart, die dem Klassifikator in diesem Szenario
+fehlte. **Für eine spätere, eigene Session:** historische Distribution-Days-
+und Breadth-Oszillator-Zeitreihen für 2011-2025 beschaffen (Distribution
+Days aus SPY/QQQ-OHLCV selbst rekonstruierbar, s. `compute_distribution_days()`
+in `market_aggregator.py`; Breadth-Oszillator schwieriger — braucht
+Advance/Decline auf Scan-Universum-Ebene, nicht trivial aus öffentlichen
+Archiven), dann `determineRegime()`-Portierung um diese zwei Inputs
+erweitern und Ergebnis 1 (Krisentag-Erkennung) speziell für die 2022er-
+Fehlklassifikationen erneut prüfen. Nicht in dieser Session begonnen.
+
 ## Reproduzierbarkeit
 
 Alle Skripte und Rohdaten-Zwischenstände liegen in der Claude-Sandbox dieser
