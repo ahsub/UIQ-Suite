@@ -73,6 +73,38 @@ Bestätigt methodisch das bereits erfolgte `oecd_cli`-Rauswurf-Vorgehen (Kolline
 
 ---
 
+## Eintrag 4 (Status: erster Testlauf durchgeführt): Deflated Sharpe Ratio im Backtest-Reporting
+
+**Quelle:** siehe Eintrag 1 (Pagliaro 2026), Abschnitt 3.8.2; Formel nach Bailey & López de Prado (2014)
+
+**Was:** Eigenständige Python-Funktion `compute_dsr()` (Datei `deflated_sharpe_ratio.py`), die Sharpe Ratio, Lo-korrigierten Standardfehler und die erwartete Maximal-Sharpe unter Mehrfachtest-Korrektur berechnet. Lauffähig getestet.
+
+**Erster Testlauf (2026-08-18) — mit echten Marktdaten, vereinfachter Strategie:**
+
+Datenbasis: hochgeladene DIX/GEX-Zeitreihe (`1787079564340_DIX.csv`), 2011-05-03 bis 2026-08-14, 3.844 Handelstage.
+
+Nachgebaute Strategie (**vereinfachte Stand-in-Version**, nicht identisch mit Produktions-`regime_v2_backtest.py`): Long im Preis, wenn GEX am Vortag ≥ 0, sonst Cash. Kein Positionsmanagement, keine Transaktionskosten, `n_trials=10` geschätzt (nicht gezählt).
+
+| | Sharpe Ratio | DSR | Signifikant (>0.95)? |
+|---|---|---|---|
+| GEX<0-Override (vereinfacht) | 0,76 | 0,00 | Nein |
+| Buy & Hold (Referenz, n_trials=1) | 0,75 | 1,00 | Ja |
+
+**Befund:** Die vereinfachte Override-Regel unterscheidet sich kaum von Buy & Hold (91 % der Tage "long", da GEX selten <0 war im Vortagswert) — die Sharpe Ratios liegen praktisch gleichauf. Nach Mehrfachtest-Korrektur (DSR) verliert die Strategie dadurch ihre Signifikanz gegenüber der Referenz. Deckt sich mit dem Befund aus der Voranalyse, dass GEX zwar Rang 2 bei der Regime-*Klassifikation* ist, das aber nicht automatisch einen Mehrwert als alleiniger Long/Cash-Trigger bedeutet.
+
+**Wichtige Einschränkungen dieses Testlaufs:**
+- Stark vereinfachte Nachbildung — kein Ersatz für den echten Produktions-Backtest
+- `n_trials=10` ist geschätzt, nicht aus der tatsächlichen Anzahl getesteter Konfigurationen in `regime_v2_backtest.py` gezählt
+- Kein Vergleich mit den tatsächlichen Reduktionsstufen/Zeitfenster-Varianten
+
+**Nächster konkreter Schritt:** `compute_dsr()` auf den echten Output von `regime_v2_backtest.py` anwenden (echte Returns + echte Anzahl getesteter Varianten), sobald dieser vorliegt. Skript ist dafür bereits vorbereitet (nur Dateneinlesung anpassen).
+
+**Aufwand bereits investiert:** ~1h (Funktion + erster Testlauf mit Realdaten)
+
+**Status:** Erster Plausibilitätstest abgeschlossen — wartet auf echten Backtest-Output für belastbare Aussage.
+
+---
+
 ## Hinweis zur weiteren Verwendung
 
 Alle drei Einträge referenzieren dieselbe Primärquelle (Pagliaro 2026), die im Gespräch am 2026-08-18 über Claude in Chrome direkt am Volltext (MDPI/Electronics) verifiziert wurde — kein Gemini-Sekundärzitat. Zwei weitere im selben Gespräch geprüfte Quellen (Haase & Neuenkirch 2021, CESifo WP 8828, AUC 0,828 für S&P-500-Regime-Klassifikation; Xie et al. 2025, De Gruyter, Realized Probability Index) wurden bereits in vorheriger Sitzung besprochen, sind aber nicht Teil dieses Backlogs — bei Bedarf separat aufnehmen.
