@@ -217,6 +217,14 @@ Client). determine_mse_regime() (Python-Port des 5-Faktor-Modells,
 Tage behalten die alte Klassifikation, ab Umstellungsdatum gilt regime_v2)
 statt rueckwirkendem Umlabeln, zum Schutz der Track-Record-Integritaet.
 
-**Reproduzierbarkeit:** Analyse-Skripte unter `analysis/regime_compare/`
-(build_panel.py, classify.py, separation_test.py, economic_test.py) —
-nutzen ausschliesslich committete Rohdaten, kein Live-API-Call noetig.
+**Reproduzierbarkeit dieses Nachtrags:** Die vier Analyse-Skripte
+(`build_panel.py`, `classify.py`, `separation_test.py`, `economic_test.py`)
+liegen — wie der Rest dieser Session — bisher NUR in der Claude-Sandbox
+dieser Session, NICHT committed (s. Reproduzierbarkeits-Hinweis weiter
+oben in diesem Dokument, der für den gesamten Nachtrag ebenso gilt).
+Ohne Nachreichung dieser Skripte ist nur das Ergebnis dokumentiert, nicht
+die Berechnung selbst reproduzierbar. **Korrektur (23.08.2026, nach
+Doku-Review):** eine frühere Fassung dieses Nachtrags behauptete
+fälschlich, die Skripte lägen bereits committed unter
+`analysis/regime_compare/` — das war zum Zeitpunkt der Erstfassung nicht
+der Fall und ist hiermit richtiggestellt.
