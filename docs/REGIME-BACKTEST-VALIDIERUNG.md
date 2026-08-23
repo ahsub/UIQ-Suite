@@ -177,3 +177,46 @@ Alle Skripte und Rohdaten-Zwischenstände liegen in der Claude-Sandbox dieser
 Session (nicht committed — Ergebnistabellen oben sind der persistente
 Nachweis). Bei Bedarf für eine spätere Session neu aufsetzbar: Datenquellen
 und Methodik sind oben vollständig dokumentiert für Reproduktion.
+
+## Nachtrag — 23.08.2026: Faire Neuvalidierung regime_v1 vs. regime_v2 vs. 5-Faktor-Modell
+
+**Anlass:** Die Notiz "Sharpe 1,66 vs. 0,63 — regime_v2 validiert" (vielfach in
+Uebergabeprotokollen und SUITE.md-Umfeld zitiert) ist eine Fehlzuordnung.
+Der Sharpe-1,66-Wert gehoert zum DCE-Score-Ranking-Backtest (Gate A,
+Go-Kriterium 2) und hat keine Regime-Dimension — das steht bereits weiter
+oben in diesem Dokument (Abschnitt "Datengrundlage"), wurde aber seither
+in mehreren Sessions faelschlich als regime_v2-Validierung weitergereicht.
+**Korrektur: regime_v2 wurde vor dem 23.08.2026 nie quantitativ validiert.**
+
+**Neuvalidierung (23.08.2026):** regime_v1 (= market_regime_str-Formel),
+regime_v2 (= v1 + validierte GEX<0-Override-Regel) und das hier oben
+dokumentierte 5-Faktor-Modell auf identischer, primaerquellenbasierter
+Datenbasis (CBOE-CDN: VIX/VIX3M/VVIX/SKEW-History, SqueezeMetrics:
+DIX/GEX-Bulk-History, alle committet in data/raw_data/) und identischem
+Zeitraum (2011-05-02 bis 2026-08-19, 3.843 Handelstage) verglichen —
+gleiche Methodik wie oben (echte CBOE-Strategie-Indizes PUT/BXM/CLL,
+Sharpe-artige Kennzahl je Regime/Horizont).
+
+**Ergebnis:**
+- regime_v2 schlaegt regime_v1 konsistent bei BULL_FRAGILE (PUT h21:
+  3,72 vs. 2,82; BXM h21: 2,96 vs. 2,14) — die GEX-Override-Regel filtert
+  die schwaecheren BULL_FRAGILE-Tage zuverlaessig heraus.
+- regime_v2 schlaegt das 5-Faktor-Modell bei BULL_FRAGILE ebenfalls
+  (dessen PUT h21: 2,61, BXM h21: 2,01).
+- Das 5-Faktor-Modell zeigt bei BULL_QUIET durchgehend schwaechere Werte
+  als v1/v2 (z.B. BXM h21: 0,47 vs. 0,55-0,56).
+- STRESS_UNSTABLE/POST_PANIC_REVERSION vergleichbar ueber alle drei Modelle.
+- DSR-Check (echte n_trials=3, einfache Long-ausser-STRESS_UNSTABLE-Regel):
+  keines der drei Modelle statistisch robust gegenueber Buy & Hold nach
+  Mehrfachtest-Korrektur — aber regime_v2 hat von den dreien die hoechste
+  rohe Sharpe Ratio (0,80 vs. 0,76 [v1] vs. 0,62 [5-Faktor]).
+
+**Entscheidung:** regime_v2 ersetzt market_regime_str UIQ-weit (Server +
+Client). determine_mse_regime() (Python-Port des 5-Faktor-Modells,
+19.08.2026) wird verworfen. Track-Record-Handling: harter Schnitt (alte
+Tage behalten die alte Klassifikation, ab Umstellungsdatum gilt regime_v2)
+statt rueckwirkendem Umlabeln, zum Schutz der Track-Record-Integritaet.
+
+**Reproduzierbarkeit:** Analyse-Skripte unter `analysis/regime_compare/`
+(build_panel.py, classify.py, separation_test.py, economic_test.py) —
+nutzen ausschliesslich committete Rohdaten, kein Live-API-Call noetig.
