@@ -182,3 +182,26 @@ nicht committed):
 
 `ko-aggregator/analysis/regime_compare/` — vollständig committet und aus
 frischem Checkout verifiziert, README mit Ablaufreihenfolge vorhanden.
+
+---
+
+## Nachtrag — Plan für 24.08.2026 (Abendabsprache)
+
+**Schwerpunkt morgen: Options-Modul weiter, zwei zusammenhängende Stränge:**
+
+1. **Zweistufiges Sieb-Verfahren für Multi-Leg-Kandidaten** (löst das
+   "alle 700+ Ticker brauchen Volatilitätsdaten"-Problem):
+   - Stufe 1 (günstig, alle Ticker): Vorfilterung rein aus bereits
+     vorhandenen Aggregator-Daten (HVP, Score, Regime-Kompatibilität) —
+     analog zum bestehenden CSP/Wheel-Filter (`HVP≥50%` etc.)
+   - Stufe 2 (teuer, nur Shortlist): Erst hier echte Optionsketten-Daten
+     laden (Delta/Strike, IV-Skew, Bid/Ask, OI) — löst direkt "Abschnitt 0"
+     aus `multileg-strategien-konzept.md` (fehlende Chain-Daten)
+2. **CapTrader-Anbindung etablieren:**
+   - Klärungspunkt: CapTrader ist IBKR-Introducing-Broker, keine eigene
+     API — läuft über TWS-API (`ib_insync`/`ib_async`, braucht laufendes
+     TWS/IB Gateway) oder IBKR Web API (REST, Client Portal Gateway)
+   - Wichtig für die Einbindung in den bestehenden GHA-Lauf (headless,
+     läuft nicht auf Axels eigenem Rechner) — welcher Weg ist
+     GHA-tauglich?
+   - Sobald etabliert: direkte Grundlage für Stufe 2 des Siebs oben
