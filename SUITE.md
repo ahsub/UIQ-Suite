@@ -1,6 +1,6 @@
 # Investment-Suite — Dachdokument
 
-**Version:** 4.17
+**Version:** 4.18
 **Stand:** 26.08.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
@@ -319,6 +319,43 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 33. ✅ **ERLEDIGT (bereits 07.08.2026, verifiziert 24.08.2026) — Ratio-Konvention härten** *(SWOT W2, 07.08.2026)* — `vix_term['ratio']` umbenennen zu `vix_term['ratio_vix_vix3m']` (oder zweites Feld `ratio_3m_1m` ergänzen). Dem Bug-Klasse den Namen wegnehmen: aktuell koexistieren VIX/VIX3M (fetch_vix_term) und VIX3M/VIX (Regime-Klassifikation) im selben Datenobjekt — jede neue Funktion die `ratio` konsumiert kann den v4.3-Bug reproduzieren. **Kleiner PR, große Wirkung. Umsetzung:** zweites Feld `ratio_3m_spot` ergänzt statt Umbenennung (Kompatibilität gewahrt), mit explizitem Warnkommentar im Code. **Verifikation 24.08.2026:** vollstaendiger Codebase- + Client-Grep (`ko-market-state.js`, `axel-scanner/index.html`) bestaetigt — das alte, mehrdeutige `ratio`-Feld hat aktuell null echte Konsumenten (Client berechnet sein `vixRatio` sogar unabhaengig selbst aus Live-Yahoo-Daten).
 
 34. **Backtest-Skript 2007–2026** *(SWOT W7/O2/Go-Kriterium 2, 07.08.2026)* — Historischer Regime-Backtest auf VIX3M-Historie (Yahoo: ^VIX3M ab 2007). Metrik: hätte die Regime-Gate-Logik eine naive Baseline (200T-Momentum × Volatilität) über rollende 12M-Fenster geschlagen? Ersetzt den unterpowerten prospektiven Validierungsrahmen (Ebene 1 braucht n=20 je Kategorie — historisch sofort verfügbar). Output: Equity-Kurve je Regime, Trefferquote, Max-Drawdown. **Go-Kriterium 2 für Kommerzialisierung.**
+
+    **✅ ERLEDIGT (26.08.2026)** — `refundex/engine/backtest_2007_2026.py` tatsächlich
+    ausgeführt (VIX/VIX3M aus CBOE-Rohdaten, `data/raw_data/VIX3M_History.csv`;
+    SPY via yfinance). Ergebnis:
+
+    | Strategie | CAGR | Max DD | Sharpe | % investiert |
+    |---|---|---|---|---|
+    | Buy-and-Hold SPY (Baseline) | 14,45% | -33,7% | 0,88 | 99,7% |
+    | Regime-Gate A (kein STRESS) | 26,19% | -23,3% | **1,76** | 94,8% |
+    | Regime-Gate B (nur BULL_QUIET) | 37,26% | -8,5% | 3,26 | 76,3% |
+
+    Gate-A schlägt die Baseline im Sharpe (1,76 vs. 0,88); in den Krisenfenstern
+    greift die Sperre sichtbar (Eurokrise: SPY -4,4% vs. Gate-A +20,7%; COVID:
+    -9,2% vs. +3,2%). **Go-Kriterium 2 damit erfüllt.**
+
+    **Zwei Einschränkungen, bewusst nicht geglättet:**
+    - **Zeitraum real 18.09.2009–05.08.2026, nicht 2007–2026.** Die "ab 2007"-
+      Annahme im obigen Original-Eintrag stützte sich auf eine nie
+      gegengeprüfte Yahoo-Notiz; CBOE hat VIX3M nachweislich erst ab
+      18.09.2009 berechnet (offizielles First Value Date). Damit fehlt die
+      Finanzkrise 2008/09 komplett — die schwerste Stress-Episode, für die
+      STRESS_UNSTABLE ursprünglich gedacht ist, ist nicht im Test. Das
+      relativiert die Aussagekraft spürbar. Eine geprüfte Drittanbieter-Quelle
+      für 2006–2009 (`rtkyboba/vrp-regime-detection-strategy`) wurde bewusst
+      NICHT eingebunden, da unklar ist, ob es sich um echte CBOE-Historie oder
+      eine nachträgliche Rekonstruktion handelt — eine Naht zwischen zwei
+      unterschiedlich konstruierten Datenreihen genau an der Finanzkrise wäre
+      ein neues, unkontrolliertes Risiko für die Aussagekraft. Käme allenfalls
+      als separat gekennzeichnete Explorationsanalyse infrage, nie als Teil
+      dieses offiziellen Ergebnisses.
+    - **Sharpe 1,76 ist ein neuer, unabhängiger Wert** — nicht zu verwechseln
+      mit dem älteren, falsch zugeordneten "1,66" aus dem DCE-Score-Ranking-
+      Backtest (siehe `docs/REGIME-BACKTEST-VALIDIERUNG.md`, Nachtrag
+      23.08.2026: jener Wert gehört zu Gate A des DCE-Backtests, hat keine
+      Regime-Dimension und war fälschlich als Regime-Validierung zitiert
+      worden — reiner Namenszufall zwischen den beiden "Gate A"-Bezeichnungen).
+
 
 35. ✅ **ERLEDIGT (24.08.2026) — yfinance pinnen + Degradations-Pfad** *(SWOT W4/T2, 07.08.2026)* — Zwei Maßnahmen: (a) `pip install yfinance==X.Y.Z` im GHA-Workflow (aktuell ungepinnt → Breaking-Changes schlagen ungefiltert durch); (b) Bei yfinance-Fetch-Fehlern: Vortages-KV weiterverwenden statt Lauf-Abbruch (`degraded_mode: true` im Output). Ein yfinance-Ausfall ist heute Totalausfall, nicht degradierter Lauf. **Defensive Maßnahme, ~1h. Stand 24.08.2026:** (a) war bereits erledigt (`yfinance==1.5.2` gepinnt, 07.08.2026). (b) war zur Haelfte erledigt: KV-Erhalt + sauberer Exit funktionierten bereits, aber das versprochene `master['meta']['degraded']`-Flag war strukturell nie erreichbar (Exit passiert vor Bau des master-Dicts) — Frontend hatte keine Moeglichkeit, veraltete Daten zu erkennen. Fix: separater KV-Key `degraded_status` (gesetzt bei Degradation, zurueckgesetzt bei naechstem Erfolg) + Frontend-Erweiterung von `checkDataFreshness()` mit praeziser Meldung statt der irrefuehrenden generischen Warnung. Aggregator-Commit `3e62d94ed754e83d9e8d2239a417af53f632d820`, Frontend-Commit `537b206784457ef601510ca39ccc43b2c116e6e2` — beide verifiziert.
 
@@ -1169,6 +1206,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.18 | 26.08.2026 | Backlog №34 (Go-Kriterium 2) auf ✅ ERLEDIGT gesetzt: Regime-Gate-Backtest tatsächlich ausgeführt (CBOE VIX/VIX3M-Rohdaten + yfinance SPY), Sharpe Gate-A 1,76 vs. Baseline 0,88. Effektiver Zeitraum korrigiert auf 18.09.2009–05.08.2026 (VIX3M-Erstdatum bei CBOE, nicht 2007 wie im Original-Eintrag unverifiziert angenommen) — Finanzkrise 2008/09 dadurch nicht abgedeckt, als Einschränkung dokumentiert statt geglättet. Klarstellung: neuer Sharpe-1,76-Wert ist unabhängig vom älteren, bereits am 23.08. korrigierten Fehlzuordnungs-Wert "1,66" (DCE-Score-Backtest, keine Regime-Dimension). |
 | 4.17 | 26.08.2026 | Backlog №57: `renderHomeLanding()`-Altcode-Hinweis (veraltete DOM-Lese-Logik, durch `_refreshHomeStatusTiles()` abgelöst, GEX-Edge-Case, kein akuter Patch). №58: `kvToScannerState`/`loadScannerFromKV`-Fallback-Sync-Hinweis (bewusst duplizierte Kopien, aktuell synchron, Beobachtungsposten). Beide aus erster Anwendung des Backlog-Punkt-19-Analyse-Skripts (neues statisches Analyse-Tool für Funktionsaufrufe/DOM-IDs/Duplikate, kein Code-Fix an UIQ selbst). |
 | 4.16 | 24.08.2026 | Backlog-Bereinigung nach Ende-zu-Ende-Verifikation (Claude): №32 GEX-Override-Testluecke gefunden+geschlossen (6 neue Tests, 31/31 gruen); №33 verifiziert bereits erledigt (07.08.), zusaetzlich bestaetigt: alte `vix_term['ratio']` hat null Live-Konsumenten mehr; №35 Frontend-Signal-Luecke gefunden+geschlossen (`degraded_status`-KV-Key + `checkDataFreshness()`-Erweiterung, Server+Client committed); №13b verifiziert erledigt, anders als beschrieben (Leaderboard statt Ampel-Gate, konsistent mit 17.07-Entscheidung); №13c/f verifiziert vollstaendig eingehaengt seit 25.07. (DeepDive-Renderer + KI-Prompt); №13e verifiziert vollstaendig erledigt (alle 10 Sektor-ETFs), Staleness-Nachfolgepunkt №56 ergaenzt (Erinnerungsfunktion + Quellenreferenz-Tabelle, 3/10 UCITS-Proxy-Ticker verifiziert). |
 | 4.15 | 10.08.2026 | Backlog №55: UIQ-Erscheinungsbild/Anzeigemodus-Konzept. Ausgelöst durch UX-Feedback von Axels Tochter, per Live-Walkthrough der Produktions-App bestätigt (Jargon, undifferenzierte Buttons, Leerzustände, sichtbare Versionsnummer). Drei Redesign-Mockups gebaut und von Axel bestätigt. Bestehender EIC/Expert-Umschalter im Produktivcode geprüft (schmale regulatorische Funktion, historisch fragil, 5 Bugfix-Runden) — Axel-Entscheidung: kein Nachrüsten im Monolithen, stattdessen "Anzeigemodus" als Kernkonzept in V2-Architektur (reporting-Schicht) einbauen. |
