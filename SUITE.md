@@ -1,7 +1,7 @@
 # Investment-Suite — Dachdokument
 
-**Version:** 4.16
-**Stand:** 24.08.2026
+**Version:** 4.17
+**Stand:** 26.08.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
 **Fortschreibung:** Claude, versioniert, analog den Modul-Strategiedokumenten.
@@ -900,7 +900,37 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     im selben Frontend-Banner-Mechanismus mit auftauchen könnte; (b) rein
     prozessual — Eintrag in `docs/RUNBOOK.md` Steuerjahr-Update-Checkliste
     (analog Refundex-Vorbild) als monatlicher Erinnerungspunkt, ohne Code.
-    **Nicht entschieden, welche Variante — nächste Session.** — "Was wäre wenn"** *(07.08.2026, aus Analyse Flex-XML-Datenbasis)*
+    **Nicht entschieden, welche Variante — nächste Session.**
+
+57. **Aufräumen: veraltete DOM-Lese-Logik in `renderHomeLanding()`** *(26.08.2026,
+    aus Backlog-Punkt-19-Analyse-Skript, erste Anwendung)* — Niedrige Priorität,
+    nicht blockiert. `renderHomeLanding()` liest Regime/VIX/F&G/PCR-GEX zu Beginn
+    noch direkt aus DOM-Kopien anderer Tabs (Alt-Logik vor v334, 15.07.2026) und
+    überschreibt sie danach im selben Funktionsdurchlauf mit
+    `_refreshHomeStatusTiles()` aus dem MCM-Cache — der eigentlich vorgesehenen
+    Ablösung. Alte Logik ist seit v334 tote Vorarbeit, mit einer bekannten
+    Ausnahme: Für das GEX-Feld überschreibt `_refreshHomeStatusTiles()` nicht,
+    wenn kein MCM-Faktor vorhanden ist (`"—"`-Fall) — dort könnte theoretisch ein
+    veralteter DOM-Kopie-Wert stehen bleiben. **Empfehlung:** alte Lese-Logik
+    (`axel-scanner/index.html`, ca. Zeilen 2120–2138) entfernen, sobald ohnehin
+    an dieser Funktion gearbeitet wird. Kein akuter Patch.
+
+58. **Beobachten: `kvToScannerState`/`loadScannerFromKV`-Fallback-Kopien
+    synchron halten** *(26.08.2026, aus Backlog-Punkt-19-Analyse-Skript)* — Kein
+    Handlungsbedarf, nur Merkposten. Beide Funktionen existieren als bewusst
+    duplizierte Fallback-Kopien (Kommentar im Code: "hier kopiert für
+    Scope-Isolation") in zwei verschiedenen `<script>`-Blöcken von
+    `axel-scanner/index.html`, mit `window._kvToScannerStateFn` aus
+    `ko-kv-state.js` als eigentlicher Primärquelle. Am 26.08.2026 noch
+    byte-identisch. Risiko: falls künftig nur eine der beiden Fallback-Kopien
+    angepasst wird, driften sie auseinander (analog zum historischen
+    Ampel-Renderer-Muster vom 14.07.2026). Bei künftigen Änderungen an einer der
+    beiden Stellen: immer beide synchron halten.
+
+59. **"Was wäre wenn"-Analyse** *(07.08.2026, aus Analyse Flex-XML-Datenbasis —
+    Hinweis: Titel-Anfang dieses Punkts fehlte bereits vor dieser Bearbeitung
+    im Dokument, evtl. bei einer früheren Session verlorengegangen; hier nur
+    Markdown-Syntax repariert, kein Inhalt ergänzt)*
 
    Performance-Analyse auf drei Ebenen:
 
@@ -1139,6 +1169,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.17 | 26.08.2026 | Backlog №57: `renderHomeLanding()`-Altcode-Hinweis (veraltete DOM-Lese-Logik, durch `_refreshHomeStatusTiles()` abgelöst, GEX-Edge-Case, kein akuter Patch). №58: `kvToScannerState`/`loadScannerFromKV`-Fallback-Sync-Hinweis (bewusst duplizierte Kopien, aktuell synchron, Beobachtungsposten). Beide aus erster Anwendung des Backlog-Punkt-19-Analyse-Skripts (neues statisches Analyse-Tool für Funktionsaufrufe/DOM-IDs/Duplikate, kein Code-Fix an UIQ selbst). |
 | 4.16 | 24.08.2026 | Backlog-Bereinigung nach Ende-zu-Ende-Verifikation (Claude): №32 GEX-Override-Testluecke gefunden+geschlossen (6 neue Tests, 31/31 gruen); №33 verifiziert bereits erledigt (07.08.), zusaetzlich bestaetigt: alte `vix_term['ratio']` hat null Live-Konsumenten mehr; №35 Frontend-Signal-Luecke gefunden+geschlossen (`degraded_status`-KV-Key + `checkDataFreshness()`-Erweiterung, Server+Client committed); №13b verifiziert erledigt, anders als beschrieben (Leaderboard statt Ampel-Gate, konsistent mit 17.07-Entscheidung); №13c/f verifiziert vollstaendig eingehaengt seit 25.07. (DeepDive-Renderer + KI-Prompt); №13e verifiziert vollstaendig erledigt (alle 10 Sektor-ETFs), Staleness-Nachfolgepunkt №56 ergaenzt (Erinnerungsfunktion + Quellenreferenz-Tabelle, 3/10 UCITS-Proxy-Ticker verifiziert). |
 | 4.15 | 10.08.2026 | Backlog №55: UIQ-Erscheinungsbild/Anzeigemodus-Konzept. Ausgelöst durch UX-Feedback von Axels Tochter, per Live-Walkthrough der Produktions-App bestätigt (Jargon, undifferenzierte Buttons, Leerzustände, sichtbare Versionsnummer). Drei Redesign-Mockups gebaut und von Axel bestätigt. Bestehender EIC/Expert-Umschalter im Produktivcode geprüft (schmale regulatorische Funktion, historisch fragil, 5 Bugfix-Runden) — Axel-Entscheidung: kein Nachrüsten im Monolithen, stattdessen "Anzeigemodus" als Kernkonzept in V2-Architektur (reporting-Schicht) einbauen. |
 | 4.14 | 10.08.2026 | Architektur-Diagramme (Suite-Gesamt, UIQ V2, Refundex V2) als SVG-Bildreferenzen in Abschnitt 1 ergänzt. Backlog №54: Markt-Indikatoren-Wunschliste (37 Positionen) kritisch gegen `ko-indicators.json` und №50-Kategorien-Tabelle gefiltert — nur 3 genuin neue Kandidaten identifiziert (SPX-ATR, NYSE-A/D-Line, Hindenburg Omen), 23 Punkte als bereits abgedeckt erkannt, Rest als redundant verworfen. Feature-Freeze respektiert, Pareto-Prinzip angewendet. |
