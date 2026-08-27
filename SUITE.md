@@ -1,7 +1,7 @@
 # Investment-Suite — Dachdokument
 
-**Version:** 4.18
-**Stand:** 26.08.2026
+**Version:** 4.19
+**Stand:** 27.08.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
 **Fortschreibung:** Claude, versioniert, analog den Modul-Strategiedokumenten.
@@ -900,8 +900,22 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     **Kein Zeitpunkt festgelegt** — reine Konzept-/Architektur-Notiz für
     den V2-Kickoff, analog zu №54 und der IBKR-Live-API-Recherche.
 
+    **Korrektur (27.08.2026, aus Legal-Briefing-Audit №60–62):** Die
+    10.08.-Abwägung war rein aufwandsgetrieben und hat die
+    Vertraulichkeitsdimension nicht berücksichtigt — dass der bestehende
+    EIC-Umschalter rein clientseitig ist (selbstgesetzter PIN,
+    `expert_mode` als ungeprüftes Client-Flag) und damit jeder aktuelle
+    Beta-Tester sich selbst freischalten und Axels reale Portfoliodaten
+    (NAV, Positionen) aus den Expert-Prompts einsehen könnte. Diese
+    Dimension bleibt hier auf V2 verschoben nur für die UX-/Anzeigemodus-
+    Frage gültig — die Vertraulichkeitsabsicherung selbst wird als
+    eigener, vorgezogener Punkt behandelt (s. №60), da sie **nicht** am
+    fragilen Monolithen ansetzt, sondern am separaten `ko-ai.js`-Worker.
+    Axel-Bestätigung: Entscheidung vom 10.08. war in dieser Hinsicht
+    fehlerhaft.
+
     *Verwandt mit: Abschnitt 0 (Leitprinzip), §9 UIQ-V2-Architektur-Vision
-    in `OPTIONSMODUL-ARCHITEKTUR.md`, Refundex ROADMAP.md 2.18.*
+    in `OPTIONSMODUL-ARCHITEKTUR.md`, Refundex ROADMAP.md 2.18, №60.*
 
 56. **Sektor-Holdings-Update-Erinnerung + Quellenreferenz** *(24.08.2026, aus
     Backlog-№13e-Verifikation)* — Alle 10 `data/holdings_{ETF}.xlsx`-Dateien
@@ -1201,9 +1215,77 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
    - `f_sellProbability`: Sigmoid für `score_short_breakdown()` — analog dem bereits in v5.23.0 aktiven Minervini-Sigmoid
    **Offene Lücken für vollständige f_buyProbability:** ADX-Wert fehlt noch in `process_ticker()`; `distToAvwapPct` (seit v5.22.0 live!) als Support-Distanz-Faktor in Minervini eintragen. **Kein Bau vor Backlog-Priorisierungs-Session** — reine Verankerung damit der Sprint nicht in Vergessenheit gerät. Quelle: TVA MathLibrary (Pine Script v6 Library), analysiert 02.08.2026.
 
+60. **Vorgezogen: Server-seitige Prüfung des `expert_mode`-Flags im
+    `ko-ai.js`-Worker** *(27.08.2026, aus Legal-Briefing-Audit, s.
+    `docs/UEBERGABE-2026-08-27-legal-audit.md` falls angelegt)* —
+    **Priorität: zeitnah, nicht erst vor Phase 3.**
+
+    **Befund:** `expert_mode` wird vom Client als reines Boolean gesendet
+    und im Worker ungeprüft zur Prompt-Auswahl verwendet
+    (`selectSystemPrompt(action, expert_mode)`, bereits im Code selbst als
+    bekannte Phase-1-Grenze dokumentiert: "harte Trennung erst mit
+    Phase-2-JWT"). Der EIC-PIN-Gate davor ist rein clientseitig
+    (`localStorage`, selbstgesetzt) — keine echte Identitäts-/
+    Qualifikationsprüfung. Die Expert-Prompts (`eic`, `ki_briefing_expert`,
+    `deep_dive_expert`, `morning_expert`) enthalten Axels reale
+    Portfoliodaten im Klartext (NAV ~€212K, aktive Positionen: DDOG, AMSC,
+    IREN, PBR, CLSK, NVO, MMM, HOOD, ENVX u.a.).
+
+    **Warum zeitnah statt V2:** Laut `ko-aggregator/docs/STRATEGIE.md`
+    sind bereits mehrere echte Beta-Tester parallel aktiv ("5+
+    Beta-Tester" im Kontext der KI-Kontingent-Skalierung dokumentiert).
+    Das ist kein regulatorisches Vor-Launch-Thema, sondern ein aktuelles
+    Vertraulichkeitsrisiko in der laufenden Beta.
+
+    **Abgrenzung zu №55:** Die 10.08.-Entscheidung (kein Nachrüsten im
+    Monolithen) bleibt für die UX-/Anzeigemodus-Frage gültig. Dieser Punkt
+    hier setzt bewusst **nicht** am fragilen `axel-scanner/index.html`-
+    Toggle an, sondern ausschließlich am separaten, sauber versionierten
+    `ko-aggregator/workers/ko-ai.js`.
+
+    **Lösungsskizze (kein Bau, nur Vormerkung):** Server-seitig gepflegte
+    Allowlist (z.B. KV-Eintrag mit erlaubten Token-Hashes), gegen die der
+    Worker das `expert_mode`-Flag validiert, bevor er einen Expert-Prompt
+    auswählt — kein volles Auth-/Rollensystem, keine Registrierung, kein
+    Login-Flow. Deutlich kleiner als Phase-2-JWT (№0-Vorgabe unten).
+
+    *Verwandt mit: №55 (Korrektur), №61, №62, Phase-2-JWT-Notiz in
+    `ko-ai.js` Z. 153–156.*
+
+61. **Aggregator-KI-Enrichment ohne Public/Expert-Trennung** *(27.08.2026,
+    aus Legal-Briefing-Audit)* — `enrich_shortlist_with_ai()` und
+    `enrich_options_watchlist_with_ai()` (`market_aggregator.py`) erzeugen
+    im nächtlichen Batch für **alle** Nutzer gleichermaßen konkrete
+    Trade-Parameter (trigger, stopLoss, target, positionPct, leverageRec,
+    strikeSuggestion, dte, deltaTarget) — kein Modus-Split im Code. Diese
+    Felder landen unconditional in Master Shortlist und Options Desk.
+
+    **Lösungsskizze:** Serving-Layer-Filter — die konkreten Parameterfelder
+    für Public-Antworten aus der Auslieferung entfernen (nur Score/Note
+    bleiben sichtbar), ohne die Enrichment-Logik selbst oder den
+    Expert-Kontext anzutasten. Kein doppelter API-Call-Aufwand nötig.
+
+    *Verwandt mit: №60, №62.*
+
+62. **UI-Terminologie "Empfehlung"/"Handlungsempfehlung"** *(27.08.2026,
+    aus Legal-Briefing-Audit)* — Durchgängige Verwendung von
+    "Empfehlung"/"Handlungsempfehlung" als feste UI-Labels (Buttons,
+    Badges, Modulnamen wie "KI-Empfehlungs-Qualitätskontrolle") in
+    `axel-scanner/index.html`, unabhängig davon wie deskriptiv der
+    dahinterliegende KI-Text im Public-Modus tatsächlich formuliert ist.
+
+    **Lösungsskizze:** Reine Label-Umbenennung (z.B. Richtung
+    "Modellbewertung"/"regelbasierte Einschätzung", analog zur
+    Neufassung in Abschnitt 11 des Legal Briefings). Kein
+    Architektur-Eingriff — niedrigster Aufwand der drei Audit-Punkte,
+    unabhängig von №60/61 umsetzbar.
+
+    *Verwandt mit: №60, №61.*
+
 
 ## Fortschreibungshistorie
 
+| 4.19 | 27.08.2026 | Legal-Briefing-Audit (Anwalts-Vorabeinschätzung: KI-Texte zu nah an Handlungsempfehlungen) — Backlog №60–62 ergänzt: №60 (vorgezogen, zeitnah statt V2) server-seitige `expert_mode`-Prüfung im `ko-ai.js`-Worker statt Client-Flag-Vertrauen, ausdrücklich am Worker statt am fragilen Monolithen ansetzend; №61 Aggregator-KI-Enrichment (Master Shortlist/Options Desk) ohne Public/Expert-Trennung im Code — Serving-Layer-Filter für Public-Antworten vorgeschlagen; №62 UI-Terminologie "Empfehlung"-Labels — reine Umbenennung, niedrigster Aufwand. Korrektur zu №55 (10.08.2026): die dortige Entscheidung, den EIC-Umschalter nicht nachzurüsten, war rein aufwandsgetrieben und hatte die Vertraulichkeitsdimension (Beta-Tester könnten sich selbst freischalten und Axels reale Portfoliodaten einsehen) nicht berücksichtigt — von Axel als fehlerhaft bestätigt. Bleibt für die UX-/Anzeigemodus-Frage gültig, gilt aber nicht für №60. |
 | Version | Datum | Änderung |
 |---|---|---|
 | 4.18 | 26.08.2026 | Backlog №34 (Go-Kriterium 2) auf ✅ ERLEDIGT gesetzt: Regime-Gate-Backtest tatsächlich ausgeführt (CBOE VIX/VIX3M-Rohdaten + yfinance SPY), Sharpe Gate-A 1,76 vs. Baseline 0,88. Effektiver Zeitraum korrigiert auf 18.09.2009–05.08.2026 (VIX3M-Erstdatum bei CBOE, nicht 2007 wie im Original-Eintrag unverifiziert angenommen) — Finanzkrise 2008/09 dadurch nicht abgedeckt, als Einschränkung dokumentiert statt geglättet. Klarstellung: neuer Sharpe-1,76-Wert ist unabhängig vom älteren, bereits am 23.08. korrigierten Fehlzuordnungs-Wert "1,66" (DCE-Score-Backtest, keine Regime-Dimension). |
