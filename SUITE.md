@@ -1,6 +1,6 @@
 # Investment-Suite — Dachdokument
 
-**Version:** 4.19
+**Version:** 4.20
 **Stand:** 27.08.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
@@ -360,6 +360,55 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 35. ✅ **ERLEDIGT (24.08.2026) — yfinance pinnen + Degradations-Pfad** *(SWOT W4/T2, 07.08.2026)* — Zwei Maßnahmen: (a) `pip install yfinance==X.Y.Z` im GHA-Workflow (aktuell ungepinnt → Breaking-Changes schlagen ungefiltert durch); (b) Bei yfinance-Fetch-Fehlern: Vortages-KV weiterverwenden statt Lauf-Abbruch (`degraded_mode: true` im Output). Ein yfinance-Ausfall ist heute Totalausfall, nicht degradierter Lauf. **Defensive Maßnahme, ~1h. Stand 24.08.2026:** (a) war bereits erledigt (`yfinance==1.5.2` gepinnt, 07.08.2026). (b) war zur Haelfte erledigt: KV-Erhalt + sauberer Exit funktionierten bereits, aber das versprochene `master['meta']['degraded']`-Flag war strukturell nie erreichbar (Exit passiert vor Bau des master-Dicts) — Frontend hatte keine Moeglichkeit, veraltete Daten zu erkennen. Fix: separater KV-Key `degraded_status` (gesetzt bei Degradation, zurueckgesetzt bei naechstem Erfolg) + Frontend-Erweiterung von `checkDataFreshness()` mit praeziser Meldung statt der irrefuehrenden generischen Warnung. Aggregator-Commit `3e62d94ed754e83d9e8d2239a417af53f632d820`, Frontend-Commit `537b206784457ef601510ca39ccc43b2c116e6e2` — beide verifiziert.
 
 36. **Rechtsgutachten beauftragen** *(SWOT T1/Go-Kriterium 1, 07.08.2026)* — WpHG/WpIG-Grenze: Finanzanalyse vs. Anlageberatung. Laut STRATEGIE.md ~800 €, laut SWOT billigster existenzieller Risiko-Abbau der gesamten Roadmap. Muss vor dem ersten zahlenden Kunden stehen — kein Grund zu warten da unabhängig vom Feature-Stand. **Nicht-technisch, aber Kommerzialisierungs-Blocker.**
+
+    **Konkrete Fragen für den Fachanwalt (ergänzt 27.08.2026, aus Legal-Briefing-Audit
+    und Folgediskussion — Kontext: Draft 1.0 des Legal Briefings + mündliche
+    Vorabeinschätzung eines Nicht-Fachanwalts-Freundes, der Abschnitte 9–11 als
+    korrekturbedürftig einstufte):**
+
+    a) **Reicht "regelbasiert + offengelegte Kriterien" als Abgrenzung?** Wo genau
+    verläuft die Linie zwischen einem zulässigen Scanner/Screener (Ranking nach
+    transparenten technischen Kriterien wie RSI, MACD, HVP, Minervini-Score,
+    EMA-Abstand — Analogie: Finviz, TradingView-Screener) und einer "Finanzanalyse"
+    bzw. "Anlageempfehlung" i.S.d. Art. 3 Abs. 1 Nr. 34/35 MAR? Reicht es, dass die
+    Selektion/Rankierung nach objektiven, dem Nutzer offengelegten Regeln erfolgt,
+    unabhängig von der sprachlichen Rahmung ("Top-Kandidat" vs. neutraler Score)?
+
+    b) **Verschärft oder entschärft eine namentliche Ticker-Selektion aus einem
+    großen Universum (z.B. "Top-15 von 700+ Tickern") die Einordnung**, selbst wenn
+    keine explizite Kauf-/Verkaufssprache verwendet wird?
+
+    c) **"Bring-your-own-AI"-Idee (von Axel aufgeworfen, von Claude als riskant
+    eingeschätzt, aber nicht rechtsverbindlich zu klären):** Wäre es zulässig, dem
+    Nutzer einen reinen Metriken-Block (ohne UIQ-seitige Interpretation) plus von
+    UIQ vorformulierte "Prompt-Empfehlungen" zur Weiterverarbeitung in einer
+    eigenen, externen KI-Umgebung des Nutzers mitzugeben — mit dem Ziel, dass der
+    Nutzer darüber selbst zu einer Kauf-/Verkaufsentscheidung kommt? Oder ist das
+    eine Umgehungskonstruktion, die die Einordnung eher verschärft, weil die
+    erkennbare Zweckrichtung (Kauf-/Verkaufsentscheidung) unverändert bleibt und
+    UIQ die dafür nötige Anleitung aktiv mitliefert?
+
+    d) **Wo genau darf die Grenze zwischen "Datenlage beschreiben" und
+    "Interpretation/Schlussfolgerung anbieten" für Public-User liegen**, ohne dass
+    das Produkt seinen entscheidungsunterstützenden Wert verliert? Insbesondere:
+    sind Formulierungen wie "Score X/100 — erfüllt Y von Z Kriterien" oder
+    "beobachtenswert, da [Kriterium]" bereits unproblematisch, oder wo beginnt die
+    Grauzone?
+
+    e) Sind die aktuell laut Prompt-Text bereits BaFin-konform gehaltenen §1-WpHG-
+    Klauseln in den Public-Prompts (`ki_briefing_public`, `morning_public`,
+    `deep_dive_public` in `ko-ai.js`, sowie der serverseitige `daily_market_snapshot`-
+    Prompt in `market_aggregator.py`) inhaltlich ausreichend, oder fehlt dort etwas
+    Grundsätzliches?
+
+    **Kontext für den Anwalt:** UIQ befindet sich in geschlossener Beta (kein
+    öffentlicher Launch), Go/No-Go-Termin für Kommerzialisierung Dezember 2026. Ein
+    parallel begonnener technischer Refactoring-Pass (Backlog №60–62) entfernt
+    bereits konkrete Trade-Parameter (Entry/Stop/Ziel/Positionsgröße/Strike/DTE/
+    Delta) und werbliche Sprache ("beste Chance", "Handlungsempfehlung") aus der
+    Public-Version, unabhängig vom Ausgang dieses Gutachtens — die obigen Fragen
+    entscheiden, wie weit dieser Rückbau gehen muss bzw. gehen darf, ohne den
+    Public-User-Nutzen zu entwerten.
 
 
 
@@ -1215,12 +1264,10 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
    - `f_sellProbability`: Sigmoid für `score_short_breakdown()` — analog dem bereits in v5.23.0 aktiven Minervini-Sigmoid
    **Offene Lücken für vollständige f_buyProbability:** ADX-Wert fehlt noch in `process_ticker()`; `distToAvwapPct` (seit v5.22.0 live!) als Support-Distanz-Faktor in Minervini eintragen. **Kein Bau vor Backlog-Priorisierungs-Session** — reine Verankerung damit der Sprint nicht in Vergessenheit gerät. Quelle: TVA MathLibrary (Pine Script v6 Library), analysiert 02.08.2026.
 
-60. **Vorgezogen: Server-seitige Prüfung des `expert_mode`-Flags im
-    `ko-ai.js`-Worker** *(27.08.2026, aus Legal-Briefing-Audit, s.
-    `docs/UEBERGABE-2026-08-27-legal-audit.md` falls angelegt)* —
-    **Priorität: zeitnah, nicht erst vor Phase 3.**
+60. **✅ ERLEDIGT (27.08.2026): Server-seitige Prüfung des `expert_mode`-Flags
+    im `ko-ai.js`-Worker** *(aus Legal-Briefing-Audit)*
 
-    **Befund:** `expert_mode` wird vom Client als reines Boolean gesendet
+    **Befund:** `expert_mode` wurde vom Client als reines Boolean gesendet
     und im Worker ungeprüft zur Prompt-Auswahl verwendet
     (`selectSystemPrompt(action, expert_mode)`, bereits im Code selbst als
     bekannte Phase-1-Grenze dokumentiert: "harte Trennung erst mit
@@ -1234,57 +1281,132 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     **Warum zeitnah statt V2:** Laut `ko-aggregator/docs/STRATEGIE.md`
     sind bereits mehrere echte Beta-Tester parallel aktiv ("5+
     Beta-Tester" im Kontext der KI-Kontingent-Skalierung dokumentiert).
-    Das ist kein regulatorisches Vor-Launch-Thema, sondern ein aktuelles
+    Das war kein regulatorisches Vor-Launch-Thema, sondern ein aktuelles
     Vertraulichkeitsrisiko in der laufenden Beta.
 
     **Abgrenzung zu №55:** Die 10.08.-Entscheidung (kein Nachrüsten im
     Monolithen) bleibt für die UX-/Anzeigemodus-Frage gültig. Dieser Punkt
-    hier setzt bewusst **nicht** am fragilen `axel-scanner/index.html`-
-    Toggle an, sondern ausschließlich am separaten, sauber versionierten
+    setzte bewusst **nicht** am fragilen `axel-scanner/index.html`-Toggle
+    an, sondern ausschließlich am separaten, sauber versionierten
     `ko-aggregator/workers/ko-ai.js`.
 
-    **Lösungsskizze (kein Bau, nur Vormerkung):** Server-seitig gepflegte
-    Allowlist (z.B. KV-Eintrag mit erlaubten Token-Hashes), gegen die der
-    Worker das `expert_mode`-Flag validiert, bevor er einen Expert-Prompt
-    auswählt — kein volles Auth-/Rollensystem, keine Registrierung, kein
-    Login-Flow. Deutlich kleiner als Phase-2-JWT (№0-Vorgabe unten).
+    **Umsetzung (`ko-ai.js` v1.11, Commit `63aa38c`):**
+    `expert_mode` wird jetzt hart auf `expertModeRequested && isOwner`
+    geprüft — `OWNER_TOKEN` ist das einzig verfügbare Merkmal, das Axel
+    persönlich von den STATIC_TOKEN-Beta-Testern unterscheidet (Token-Hash-
+    Allowlist wurde verworfen: STATIC_TOKEN ist für alle Nutzer identisch,
+    liefert also keinen Einzelnutzer-Hash). Zusatzfund beim Umsetzen: die
+    `eic`-Action hatte gar keinen Public/Expert-Split im Code und war
+    unabhängig vom Flag über die API erreichbar — jetzt ebenfalls hart auf
+    `isOwner` gesperrt (403 für Nicht-Owner). Abgelehnte Expert-Anfragen
+    werden als `<action>_EXPERT_DENIED` geloggt.
 
-    *Verwandt mit: №55 (Korrektur), №61, №62, Phase-2-JWT-Notiz in
-    `ko-ai.js` Z. 153–156.*
+    **Deploy-Verifikation:** `OWNER_TOKEN`-Secret im Cloudflare-Dashboard
+    für `ko-ai` gesetzt, Worker-Code v1.11 manuell über "Edit code"
+    deployed (kein CI/CD-Workflow für diesen Worker vorhanden) — inkl.
+    Stolperstein "Version committed ≠ auf 100% Traffic befördert"
+    (Cloudflare legt bei Secret-Änderungen automatisch eine neue Version
+    an, die erst nach explizitem "Promote" aktiv wird). Funktional
+    bestätigt: CSP-ATM/NA-Live-Abfrage liefert für Axel (Owner) weiterhin
+    die vollständige Expert-Ausgabe — Zugriff für den Owner unverändert,
+    Public/Expert-Trennung für alle anderen Token-Inhaber jetzt serverseitig
+    hart statt Client-Flag-basiert.
 
-61. **Aggregator-KI-Enrichment ohne Public/Expert-Trennung** *(27.08.2026,
-    aus Legal-Briefing-Audit)* — `enrich_shortlist_with_ai()` und
-    `enrich_options_watchlist_with_ai()` (`market_aggregator.py`) erzeugen
-    im nächtlichen Batch für **alle** Nutzer gleichermaßen konkrete
+61. **✅ ERLEDIGT (27.08.2026): Aggregator-KI-Enrichment ohne Public/Expert-
+    Trennung** *(aus Legal-Briefing-Audit)* — `enrich_shortlist_with_ai()`
+    und `enrich_options_watchlist_with_ai()` (`market_aggregator.py`)
+    erzeugen im nächtlichen Batch für alle Nutzer gleichermaßen konkrete
     Trade-Parameter (trigger, stopLoss, target, positionPct, leverageRec,
-    strikeSuggestion, dte, deltaTarget) — kein Modus-Split im Code. Diese
-    Felder landen unconditional in Master Shortlist und Options Desk.
+    strikeSuggestion, dte, deltaTarget) — kein Modus-Split im Code.
 
-    **Lösungsskizze:** Serving-Layer-Filter — die konkreten Parameterfelder
-    für Public-Antworten aus der Auslieferung entfernen (nur Score/Note
-    bleiben sichtbar), ohne die Enrichment-Logik selbst oder den
-    Expert-Kontext anzutasten. Kein doppelter API-Call-Aufwand nötig.
+    **Zusatzfund beim Umsetzen (schwerwiegender als ursprünglich vermutet):**
+    Die Auslieferung dieser Daten lief über drei `/public/*`-Endpunkte im
+    `ko-sync`-Worker (`master_market_data`, `options_watchlist`,
+    `daily_market_snapshot[_us]`), die **komplett unauthentifiziert** waren
+    ("öffentlich, kein Token nötig" stand wörtlich im Code) — nicht nur für
+    Beta-Tester mit `STATIC_TOKEN` einsehbar, sondern für jeden im Internet,
+    der die URL kennt. Vermutlich der konkreteste Einzelfall dessen, was der
+    Anwalt in Abschnitt 9–11 kritisiert hat.
 
-    *Verwandt mit: №60, №62.*
+    **Umsetzung:**
+    - `ko-sync-worker.js` v2.0 → v2.1: alle drei `/public/*`-Endpunkte
+      verlangen jetzt `Authorization: Bearer <STATIC_TOKEN|OWNER_TOKEN>`
+      (gleiches Schema wie `ko-ai.js`). Zusätzlich werden
+      `masterShortlist[].ki` und `optionsWatchlist[].ki` für Nicht-Owner
+      gefiltert: `trigger/stopLoss/target/crv/holdingDays/positionPct/
+      leverageRec` bzw. `strikeSuggestion/dte/deltaTarget/premiumEstimate`
+      entfernt, `strategy/riskClass/keyRisk/note` bleiben erhalten (Badge
+      "✓ KI-angereichert" + Strategie-Einordnung bleiben für alle sichtbar,
+      nur ohne konkrete Zahlen). Owner (`OWNER_TOKEN`) erhält weiterhin die
+      vollständigen Rohdaten.
+    - `axel-scanner/index.html` v480/v481: neue Helper-Funktion
+      `_publicKvAuthHeaders()`, an allen sechs Aufrufstellen der drei
+      Endpunkte ergänzt.
+    - **Übersehen beim ersten Durchgang, per Live-Fehler entdeckt:**
+      `ko-modules/ko-market-state.js::loadHistoryFromAggregator()` (siebte
+      Aufrufstelle, separates CDN-verteiltes Repo) rief `master_market_data`
+      ebenfalls ohne Header auf → `KV 401`, Regime-History fiel auf
+      inkrementellen Fallback zurück (kein Absturz, aber Datenverlust bei
+      der 30-Tage-History). Fix in v2.5, `index.html`-CDN-Hash-Pin auf
+      `a834eb47fa34fb588b15b3cdef7f483e0d33f112` aktualisiert (v481).
+    - **`ko-sync`-Worker hatte zusätzlich noch gar keine `STATIC_TOKEN`/
+      `OWNER_TOKEN`-Secrets** (separater Worker von `ko-ai`, keine
+      gemeinsame Secret-Verwaltung) — nachträglich mit denselben Werten wie
+      bei `ko-ai` ergänzt, plus erneut das "Promote-auf-100%"-Stolperstein
+      von №60.
 
-62. **UI-Terminologie "Empfehlung"/"Handlungsempfehlung"** *(27.08.2026,
-    aus Legal-Briefing-Audit)* — Durchgängige Verwendung von
-    "Empfehlung"/"Handlungsempfehlung" als feste UI-Labels (Buttons,
-    Badges, Modulnamen wie "KI-Empfehlungs-Qualitätskontrolle") in
-    `axel-scanner/index.html`, unabhängig davon wie deskriptiv der
-    dahinterliegende KI-Text im Public-Modus tatsächlich formuliert ist.
+    **Begründung für Token-Pflicht statt Beibehaltung als unauthentifiziert:**
+    Axels ursprüngliche Kostenkontrolle (kein teures Neu-Generieren pro
+    Beta-Tester-Abruf) hängt am einmal-täglichen Aggregator-Batch, nicht am
+    fehlenden Login — ein reiner Lesezugriff auf fertige KV-Daten kostet
+    nichts zusätzlich, mit oder ohne Token.
 
-    **Lösungsskizze:** Reine Label-Umbenennung (z.B. Richtung
-    "Modellbewertung"/"regelbasierte Einschätzung", analog zur
-    Neufassung in Abschnitt 11 des Legal Briefings). Kein
-    Architektur-Eingriff — niedrigster Aufwand der drei Audit-Punkte,
-    unabhängig von №60/61 umsetzbar.
+    **Verifikation (Konsole, nach vollständigem Fix):** `[MSE v2] History
+    aus Aggregator geladen — 175 Tage`, `[KV-Scanner] 732 Ticker geladen`,
+    Morning Briefing lädt sauber aus KV-Cache — keine 401er mehr. Zwei
+    unabhängig bestehende, nicht durch diese Änderung verursachte
+    Restmeldungen bewusst nicht weiterverfolgt: `[HomeSektorKondensat]
+    nicht verfügbar` (vermutlich weiterer, noch ungeprüfter KV-Key-Aufruf
+    ohne Header) und `[Auth] ko-auth nicht erreichbar — Fallback admin`
+    (totes Code-Gerüst für ein künftiges Tier-System, `getUserFeatures()`
+    wird aktuell nirgends gelesen — faktisch folgenlos, s. Beobachtungsposten
+    unten).
 
-    *Verwandt mit: №60, №61.*
+62. **🔧 VORSCHLAG VORLIEGEND (27.08.2026): UI-Terminologie
+    "Empfehlung"/"Handlungsempfehlung"** *(aus Legal-Briefing-Audit)* —
+    Durchgängige Verwendung von "Empfehlung"/"Handlungsempfehlung" als feste
+    UI-Labels (Buttons, Badges, Modulnamen) in `axel-scanner/index.html`,
+    unabhängig davon wie deskriptiv der dahinterliegende KI-Text im
+    Public-Modus tatsächlich formuliert ist. Systematische Durchsicht aller
+    Fundstellen abgeschlossen (Entwickler-Changelog-Kommentare und
+    Expert/EIC-only-Text bewusst ausgenommen — dort ist direktive Sprache
+    seit №60 korrekt auf den Owner beschränkt). Konkrete Umbenennungsliste
+    mit Axel abgestimmt (u.a. "HANDLUNGSEMPFEHLUNGEN"-Badge →
+    "MODELLBEWERTUNG", "Beste Chance über alle Strategien finden" →
+    "Höchste Modellkompatibilität über alle Strategien finden"). **Noch
+    nicht umgesetzt** — zurückgestellt zugunsten der Rechtsgutachten-Fragen
+    (№36-Ergänzung), da die grundsätzliche regulatorische Grenze
+    (Interpretation vs. Datenbereitstellung) erst dort geklärt wird und das
+    Ergebnis die endgültige Wortwahl mitbestimmen kann.
+
+    *Verwandt mit: №60, №61, №36.*
+
+63. **Beobachtungsposten, kein akuter Punkt (27.08.2026, Nebenfund bei
+    №61-Verifikation):** `ko-auth`-Worker existiert noch nicht;
+    `verifyUserToken()` fällt bei Nichterreichbarkeit auf Tier `admin` mit
+    allen Features zurück (`TIER_FEATURES_DEFAULT.admin`, inkl.
+    `expertMode: true`). Aktuell folgenlos, da `_userTier`/`getUserFeatures()`
+    nirgends im Code gelesen werden — totes Vorbereitungs-Gerüst für ein
+    künftiges Free/Pro/Premium-Abomodell. **Wichtig für später:** Sobald
+    `ko-auth` gebaut und `getUserFeatures()` erstmals verdrahtet wird, muss
+    der "Fallback admin bei Nichterreichbarkeit" bewusst überdacht werden —
+    sonst entsteht dort ein neues, dem heutigen №60-Fund strukturell
+    ähnliches Problem (Fail-Open statt Fail-Closed bei Auth-Ausfall).
 
 
 ## Fortschreibungshistorie
 
+| 4.20 | 27.08.2026 | №60 auf ✅ ERLEDIGT gesetzt (Code + `OWNER_TOKEN`-Secret + funktionale Verifikation). №61 auf ✅ ERLEDIGT gesetzt — dabei schwerwiegenderen Zusatzfund entdeckt: drei `/public/*`-Endpunkte im `ko-sync`-Worker waren komplett unauthentifiziert (nicht nur Beta-intern, sondern für jeden im Internet); behoben über `ko-sync-worker.js` v2.1 + `index.html` v480/v481 (6 Aufrufstellen) + `ko-modules/ko-market-state.js` v2.5 (7. Aufrufstelle, per Live-401-Fehler entdeckt, inkl. CDN-Hash-Pin-Update) + nachträglich gesetzte `STATIC_TOKEN`/`OWNER_TOKEN`-Secrets beim bis dahin komplett ungesicherten `ko-sync`-Worker; vollständig verifiziert (keine 401er mehr, History/Ticker laden normal). №62: Umbenennungsliste mit Axel abgestimmt, Umsetzung zurückgestellt bis Klärung der Grundsatzfrage. **№36 (Rechtsgutachten) um 5 konkrete Fragen ergänzt**, ausgelöst durch Axels Vorschlag einer "Bring-your-own-AI"-Konstruktion — Claude schätzt dies als eher risikoverschärfend ein, daher explizite Anwaltsfrage statt eigenmächtiger Umsetzung. **№63 neu angelegt** (Beobachtungsposten, kein akuter Punkt): `ko-auth` fehlt noch, Fallback bei Nichterreichbarkeit ist aktuell folgenlos (totes Tier-System-Gerüst), aber sobald verdrahtet muss "Fail-Open auf admin" bewusst überdacht werden. |
 | 4.19 | 27.08.2026 | Legal-Briefing-Audit (Anwalts-Vorabeinschätzung: KI-Texte zu nah an Handlungsempfehlungen) — Backlog №60–62 ergänzt: №60 (vorgezogen, zeitnah statt V2) server-seitige `expert_mode`-Prüfung im `ko-ai.js`-Worker statt Client-Flag-Vertrauen, ausdrücklich am Worker statt am fragilen Monolithen ansetzend; №61 Aggregator-KI-Enrichment (Master Shortlist/Options Desk) ohne Public/Expert-Trennung im Code — Serving-Layer-Filter für Public-Antworten vorgeschlagen; №62 UI-Terminologie "Empfehlung"-Labels — reine Umbenennung, niedrigster Aufwand. Korrektur zu №55 (10.08.2026): die dortige Entscheidung, den EIC-Umschalter nicht nachzurüsten, war rein aufwandsgetrieben und hatte die Vertraulichkeitsdimension (Beta-Tester könnten sich selbst freischalten und Axels reale Portfoliodaten einsehen) nicht berücksichtigt — von Axel als fehlerhaft bestätigt. Bleibt für die UX-/Anzeigemodus-Frage gültig, gilt aber nicht für №60. |
 | Version | Datum | Änderung |
 |---|---|---|
