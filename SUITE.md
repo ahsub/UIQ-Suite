@@ -1,6 +1,6 @@
 # Investment-Suite — Dachdokument
 
-**Version:** 4.21
+**Version:** 4.22
 **Stand:** 28.08.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
@@ -1404,9 +1404,72 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     sonst entsteht dort ein neues, dem heutigen №60-Fund strukturell
     ähnliches Problem (Fail-Open statt Fail-Closed bei Auth-Ausfall).
 
+64. **Axel-Entscheidung (28.08.2026):** Eigener Ticker-Score
+    `score_options_atmna()` für CSP(ATM/NA) soll gebaut werden — aktuell
+    existiert nur ein regime-weiter Ampel-Tag (grün/gelb/rot fürs gesamte
+    Regime), kein Score pro Einzeltitel wie bei anderen Strategien
+    (`sDividend`, `sValue` etc.). **Separate Session, kein Nachmittagsprojekt**
+    — reine Vormerkung. Hängt inhaltlich mit №65 zusammen (beide betreffen
+    die ATM/NA-Aufbereitung), aber unabhängig planbar.
+
+65. **✅ ERLEDIGT (Kernfund), 🔧 Nacharbeit offen (28.08.2026): Clientseitig
+    eingebetteter EIC-Instruktionsblock unabhängig vom serverseitigen
+    isOwner-Gate** *(Legal-Briefing-Audit, wichtigster Folgefund zu №60/61)*
+
+    **Befund:** `getKiSystemPrompt()`/`getMorningBriefingPrompt()`
+    (`ko-prompts.js::_getSystemPrompt()`/`_getMorningPrompt()`) bauten
+    clientseitig einen kompletten "EIC-Instruktions-Block" (u.a. "gib
+    KONKRETE, DIREKTE Handlungsempfehlungen") **direkt in den User-Prompt-
+    Text** ein — gesteuert allein durch `_expertModeActive`/`_eicUnlocked`
+    (Client-Variablen, selbstgesetzter PIN, s. №60). Das lief am
+    serverseitigen `isOwner`-Gate in `ko-ai.js` komplett vorbei: Der Worker
+    wählt zwar korrekt den Public-Systemprompt für Nicht-Owner, aber der
+    eingebettete User-Prompt-Text enthielt trotzdem die EIC-Instruktion —
+    live beobachtet an einer Covered-Call-Analyse im Public-Toggle-Zustand,
+    die trotzdem konkrete Strike/Delta/Prämien-Zahlen + Rangfolge
+    ("AFL > GOOG >> CIFR") enthielt.
+
+    **Fix (`ko-prompts.js` v2.5.6→v2.5.7, `index.html` v483):**
+    `_getSystemPrompt()`/`_getMorningPrompt()` liefern jetzt IMMER die
+    deskriptive Coaching-Variante, unabhängig vom `eic`-Parameter. Die
+    Public/Expert-Unterscheidung liegt ausschließlich noch serverseitig
+    (bereits isOwner-gehärtet). Für Axel als Owner keine Änderung der
+    Ausgabequalität. `getKiSystemPrompt()`-Fallback-Kopie in `index.html`
+    mitgezogen. Vollständig committed und verifiziert (0 Treffer für die
+    gefährliche Instruktion, CDN-Pin korrekt auf neuen Commit-Hash).
+
+    **Noch offen — strukturell verwandter, separater Befund:** Die
+    Options-Desk-Strategie-Templates selbst (`ko-prompts.js`: `cc`, `atmna`,
+    `csp_wheel`, `weekly_income`, ggf. weitere von den 14 Strategien)
+    verlangen in ihrer `AUFGABE`-Sektion **unabhängig vom eic-Fix oben**
+    explizit konkrete Strike-Empfehlung/Prämien-Schätzung/TOP-3-Rangfolgen —
+    das ist ein anderer Mechanismus (Aktions-spezifisches Prompt-Template,
+    kein `_getSystemPrompt()`-Aufruf) und war nicht Teil dieses Fixes.
+    `atmna` hat zusätzlich einen fest einprogrammierten Text-Marker
+    "⛔⛔⛔ EIC-MODUS ⛔⛔⛔" im Template selbst. **Vollständige 14-Template-
+    Bestandsaufnahme (von Axel angefordert) wurde nur teilweise
+    durchgeführt** (csp_wheel, atmna, weekly_income, cc, collar, momentum
+    gesichtet; ko, breakout, vcp, swing, meanrev, dividend, value,
+    fading_short nur per Keyword-Scan grob klassifiziert, nicht einzeln
+    gelesen) — Fortsetzung für morgen vorgemerkt.
+
+    **Zu klären, bevor hier weitergebaut wird:** Axel hat parallel heute
+    (Commit-Historie zeigt v482 in `index.html`, `ko-sync-worker.js` v2.2,
+    `market_aggregator.py` v5.38.0) bereits ein Options-Desk-Redesign mit
+    `t.ki_eic`-Feld umgesetzt (serverseitig gefilterte Owner-only-Zahlen,
+    passend zur Entscheidung "gemeinsame Analyseschicht + numerischer
+    Owner-Extra-Layer"). Unklar, ob dieses Redesign die Prompt-Text-Ebene
+    (`ko-prompts.js`-Templates) bereits mit abdeckt oder nur die
+    Daten-/Rendering-Schicht (`market_aggregator.py`, `ko-sync-worker.js`,
+    Karten-Darstellung) — **erste Aufgabe morgen: Abgleichen, was von №65
+    durch das bereits umgesetzte Redesign erledigt ist.**
+
+    *Verwandt mit: №60, №61, №62, №64, №36.*
+
 
 ## Fortschreibungshistorie
 
+| 4.22 | 28.08.2026 | №64 (neu) formalisiert: `score_options_atmna()`-Ticker-Score für separate Session vorgemerkt. №65 (neu): wichtigster Folgefund des Tages — clientseitig eingebetteter EIC-Instruktionsblock (`getKiSystemPrompt()`/`getMorningBriefingPrompt()`) lief unabhängig vom serverseitigen isOwner-Gate (№60) und wurde live an einer Covered-Call-Analyse im Public-Toggle-Zustand nachgewiesen (enthielt trotzdem Strike/Delta/Prämien-Zahlen + Rangfolge); gefixt in `ko-prompts.js` v2.5.7 + `index.html` v483, vollständig verifiziert. Separater, noch offener Teilbefund dokumentiert: die Options-Desk-Strategie-Templates selbst (cc/atmna/csp_wheel/weekly_income) verlangen unabhängig davon konkrete Handlungsparameter — 14-Template-Bestandsaufnahme nur teilweise abgeschlossen, Fortsetzung morgen vorgemerkt inkl. Abgleich gegen das von Axel parallel umgesetzte Options-Desk-Redesign (`t.ki_eic`, `ko-sync-worker.js` v2.2, `market_aggregator.py` v5.38.0). |
 | 4.21 | 28.08.2026 | Neues Suite-Grundgesetz №10 (Sync- und Versionierungs-Pflicht) ergänzt — Reaktion auf zwei Vorfälle derselben Sitzung: (a) `ko-market-state.js`- und `ko-prompts.js`-CDN-Pins wurden nicht im selben Schritt wie die zugrundeliegende Modul-Änderung aktualisiert, was live zu 401-Fehlern bzw. kurzzeitig reaktivierten Sicherheitslücken führte; (b) Versionsnummern-Kollision (v482 zweifach vergeben), weil vor einer Änderung nicht gegen `origin/main` synchronisiert wurde. Regel: `git fetch`/`log`-Check vor jeder Änderung an bereits versionierten Dateien verpflichtend; jede geänderte Datei bekommt im selben Schritt Versions-Header, Changelog-Eintrag und (bei CDN-gepinnten Dateien) den aktualisierten Hash-Pin — nicht als Nacharbeit. |
 | 4.20 | 27.08.2026 | №60 auf ✅ ERLEDIGT gesetzt (Code + `OWNER_TOKEN`-Secret + funktionale Verifikation). №61 auf ✅ ERLEDIGT gesetzt — dabei schwerwiegenderen Zusatzfund entdeckt: drei `/public/*`-Endpunkte im `ko-sync`-Worker waren komplett unauthentifiziert (nicht nur Beta-intern, sondern für jeden im Internet); behoben über `ko-sync-worker.js` v2.1 + `index.html` v480/v481 (6 Aufrufstellen) + `ko-modules/ko-market-state.js` v2.5 (7. Aufrufstelle, per Live-401-Fehler entdeckt, inkl. CDN-Hash-Pin-Update) + nachträglich gesetzte `STATIC_TOKEN`/`OWNER_TOKEN`-Secrets beim bis dahin komplett ungesicherten `ko-sync`-Worker; vollständig verifiziert (keine 401er mehr, History/Ticker laden normal). №62: Umbenennungsliste mit Axel abgestimmt, Umsetzung zurückgestellt bis Klärung der Grundsatzfrage. **№36 (Rechtsgutachten) um 5 konkrete Fragen ergänzt**, ausgelöst durch Axels Vorschlag einer "Bring-your-own-AI"-Konstruktion — Claude schätzt dies als eher risikoverschärfend ein, daher explizite Anwaltsfrage statt eigenmächtiger Umsetzung. **№63 neu angelegt** (Beobachtungsposten, kein akuter Punkt): `ko-auth` fehlt noch, Fallback bei Nichterreichbarkeit ist aktuell folgenlos (totes Tier-System-Gerüst), aber sobald verdrahtet muss "Fail-Open auf admin" bewusst überdacht werden. |
 | 4.19 | 27.08.2026 | Legal-Briefing-Audit (Anwalts-Vorabeinschätzung: KI-Texte zu nah an Handlungsempfehlungen) — Backlog №60–62 ergänzt: №60 (vorgezogen, zeitnah statt V2) server-seitige `expert_mode`-Prüfung im `ko-ai.js`-Worker statt Client-Flag-Vertrauen, ausdrücklich am Worker statt am fragilen Monolithen ansetzend; №61 Aggregator-KI-Enrichment (Master Shortlist/Options Desk) ohne Public/Expert-Trennung im Code — Serving-Layer-Filter für Public-Antworten vorgeschlagen; №62 UI-Terminologie "Empfehlung"-Labels — reine Umbenennung, niedrigster Aufwand. Korrektur zu №55 (10.08.2026): die dortige Entscheidung, den EIC-Umschalter nicht nachzurüsten, war rein aufwandsgetrieben und hatte die Vertraulichkeitsdimension (Beta-Tester könnten sich selbst freischalten und Axels reale Portfoliodaten einsehen) nicht berücksichtigt — von Axel als fehlerhaft bestätigt. Bleibt für die UX-/Anzeigemodus-Frage gültig, gilt aber nicht für №60. |
