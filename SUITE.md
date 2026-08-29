@@ -1,7 +1,7 @@
 # Investment-Suite — Dachdokument
 
-**Version:** 4.22
-**Stand:** 28.08.2026
+**Version:** 4.23
+**Stand:** 29.08.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
 **Fortschreibung:** Claude, versioniert, analog den Modul-Strategiedokumenten.
@@ -1412,7 +1412,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     — reine Vormerkung. Hängt inhaltlich mit №65 zusammen (beide betreffen
     die ATM/NA-Aufbereitung), aber unabhängig planbar.
 
-65. **✅ ERLEDIGT (Kernfund), 🔧 Nacharbeit offen (28.08.2026): Clientseitig
+65. **✅ VOLLSTÄNDIG ERLEDIGT (29.08.2026, Kernfund 28.08.2026): Clientseitig
     eingebetteter EIC-Instruktionsblock unabhängig vom serverseitigen
     isOwner-Gate** *(Legal-Briefing-Audit, wichtigster Folgefund zu №60/61)*
 
@@ -1464,11 +1464,101 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     Karten-Darstellung) — **erste Aufgabe morgen: Abgleichen, was von №65
     durch das bereits umgesetzte Redesign erledigt ist.**
 
-    *Verwandt mit: №60, №61, №62, №64, №36.*
+    **✅ VOLLSTÄNDIG ERLEDIGT (29.08.2026):** 14-Template-Bestandsaufnahme
+    abgeschlossen — die 8 gestern nur grob klassifizierten Templates (`ko`,
+    `breakout`, `vcp`, `swing`, `meanrev`, `dividend`, `value`,
+    `fading_short`) verlangten alle ebenfalls konkrete Handlungsparameter,
+    exakt wie bei den bereits bekannten fünf Options-Templates. Fix:
+    `ko-prompts.js` v2.5.7→v2.6.0 — jede der 14 `.prompt(ctx)`-Funktionen
+    prüft jetzt `ctx.isEic`; ohne explizites `true` läuft einer von zwei
+    neuen geteilten Public-Buildern (`_publicEquityPrompt`/
+    `_publicOptionsPrompt`, deskriptiv, keine Kursziele/Stops/Strikes/
+    Deltas/Prämien, basierend auf dem je Strategie bereits vorhandenen
+    `focus`-Array). `ctx.isEic` wird jetzt einheitlich in `openKiBriefing()`
+    und `runOptionsKiBriefing()` gesetzt (`index.html` v484) — vorher nur
+    bei `value`. Das zum Options-Desk-Redesign parallel gebaute `t.ki_eic`
+    (Backlog oben) ist ein separater, unabhängiger Mechanismus (filtert
+    nächtliche Batch-Zahlen server-seitig über `ko-sync-worker.js`) und
+    deckte die hier gefixte Live-Prompt-Ebene nicht ab — beide Mechanismen
+    bleiben nebeneinander bestehen, keiner ersetzt den anderen.
+
+    **Drei Zusatzfunde beim Umsetzen, alle mitbehoben:** (a) hart
+    verdrahtetes `strat === 'atmna'` in `runOptionsKiBriefing()` sendete
+    unconditional `expert_mode:true` an `ko-ai.js`, unabhängig vom
+    tatsächlichen EIC-Status des Nutzers — folgenlos für die
+    Vertraulichkeit (isOwner-Gate seit №60 hält das ab), aber fachlich
+    falsch, jetzt korrigiert. (b) `runValueKiBriefing()` rief die Action
+    `'value_briefing'` auf, die in `ko-ai.js`/`ACTION_CONFIG` nicht
+    existiert — der Call schlug dadurch **immer** fehl und die Funktion
+    lief **permanent** über einen Direkt-Anthropic-API-Fallback im Browser
+    (eigener API-Key des Nutzers), komplett außerhalb der
+    BaFin-Compliance-Architektur (kein System-Prompt, kein isOwner-Gate,
+    kein Rate-Limiting) — korrigiert auf `'ki_briefing'`. (c) im
+    `value`-Template wurde `ctx.tickers` (von `index.html` übergebene
+    Kandidatenliste) nie serialisiert — Value bekam praktisch keine
+    Einzeltitel-Daten, nur den kurzen Datums/Regime/VIX-Header; jetzt
+    behoben, inkl. Feldnamen-Mismatch zwischen den zwei Aufrufstellen
+    (`rs`/`rsRating`, `hvp`/`ivp`).
+
+    **Bewusst NICHT angefasst — Axel-Entscheidung (29.08.2026):** der
+    `ki_briefing_expert`-System-Prompt in `ko-ai.js` (Direktiv-Sprache
+    "Handeln:"/"priorisieren"/"militärisch präzise", Quelle der vom
+    externen Reviewer kritisierten ATM/NA-Ausgabe) bleibt für den
+    EIC/Owner-Zugriff unverändert. Begründung: EIC ist rein persönlicher
+    Eigengebrauch (kein Kunden-/Beratungsverhältnis, keine Verbreitung an
+    Dritte) — MAR/WpHG-Anlageberatungstatbestände setzen beide eine
+    Drittwirkung voraus, die hier architektonisch ausgeschlossen ist
+    (isOwner-Gate seit №60). Axel möchte im EIC-Modus ausdrücklich die
+    vollen, nicht entschärften regelbasierten Strike-/DTE-/Roll-Empfehlungen
+    weiter nutzen. Diese Entscheidung gilt spezifisch für die Action
+    `ki_briefing` (Options-Desk-Buttons) — s. №66 für die separate,
+    unverdrahtete `eic`-Action.
+
+    *Verwandt mit: №60, №61, №62, №64, №36, №66.*
+
+66. **Entscheidung (29.08.2026): `eic`-Action bleibt unverändert und
+    unverdrahtet — Warnpflicht bei künftiger Anbindung** *(Legal-Briefing-
+    Audit, Anschlussfrage zu №65)*
+
+    **Kontext:** Nach der externen Review des ATM/NA-Outputs (harsche
+    Kritik an "Handeln: WMT priorisieren"-Sprache, Quelle:
+    `ki_briefing_expert`-System-Prompt) wurde geprüft, ob die noch
+    schärfere, separate `eic`-Action (eigener System-Prompt, baut Axels
+    reale Portfolio-Charakteristika — NAV ~€212K, aktive Positionen
+    namentlich, Delta-Budget-Regeln — direkt ein; PFLICHT-Output u.a.
+    `AKTION: KAUFEN/VERKAUFEN/HALTEN`, Entry/Stop/Ziel in $, Positionsgröße
+    in % und €, abschließendes "EIC-FAZIT: klare Empfehlung ohne
+    Einschränkung") ebenfalls Handlungsbedarf hat.
+
+    **Befund:** (a) Zugriff bereits vollständig gehärtet seit №60
+    (`action === 'eic' && !isOwner` → 403). (b) Vollständige Codesuche
+    (`index.html`, `ko-modules/*`, restlicher `ko-aggregator`) bestätigt:
+    **keine einzige Aufrufstelle** für `action: 'eic'` existiert aktuell
+    irgendwo im Frontend — totes, aber vollständig zugriffsgeschütztes
+    Backend-Feature.
+
+    **Entscheidung (Axel, 29.08.2026):** So lassen, kein Umbau. Begründung
+    (Claude-Empfehlung, von Axel übernommen): MAR (Investment Recommendation)
+    und WpHG/MiFID (Anlageberatung) setzen beide eine Verbreitung an Dritte
+    bzw. ein Kunden-/Beratungsverhältnis voraus — ein Tool, das ausschließlich
+    dem Betreiber selbst anzeigt, was es aus dessen eigenen Regeln berechnet,
+    fällt nicht darunter. Zusammen mit dem toten Frontend-Pfad kein
+    Handlungsbedarf; vorsorgliche Entschärfung ohne aktiven Nutzungspfad wäre
+    Aufwand ohne Wirkung (Pareto-Prinzip). Axel nutzt EIC-Modus bewusst und
+    regulatorisch unabhängig für die vollen, nicht entschärften
+    regelbasierten Strike-/DTE-/Roll-Empfehlungen.
+
+    **Warnpflicht (verbindlich):** Falls die `eic`-Action jemals eine
+    UI-Anbindung bekommt (Button, Menüpunkt, o.ä.), muss sie vorher densel­ben
+    Public/EIC-Review durchlaufen wie ATM/NA in №65 — diese Entscheidung gilt
+    nur für den aktuellen, unverdrahteten Zustand.
+
+    *Verwandt mit: №60, №65, №36.*
 
 
 ## Fortschreibungshistorie
 
+| 4.23 | 29.08.2026 | №65 vollständig abgeschlossen: 14-Template-Bestandsaufnahme fertig — alle 8 gestern nur grob klassifizierten Templates verlangten ebenfalls konkrete Handlungsparameter, gefixt in `ko-prompts.js` v2.6.0 (`ctx.isEic`-Weiche + zwei geteilte Public-Builder) + `index.html` v484 (`ctx.isEic` einheitlich gesetzt). Drei Zusatzfunde mitbehoben: hart verdrahtetes `strat === 'atmna'`→`expert_mode:true`; `runValueKiBriefing()` rief nicht-existente Action `'value_briefing'` auf und lief dadurch permanent über einen ungeschützten Direkt-API-Fallback am Compliance-Worker vorbei; `value`-Template serialisierte `ctx.tickers` nie. Externe Review des ATM/NA-EIC-Outputs ausgelöst (Reviewer kritisiert "Handeln:/priorisieren"-Sprache aus `ki_briefing_expert`-System-Prompt) — Axel-Entscheidung: EIC/Owner-Zugriff bewusst unverändert lassen (reiner Eigengebrauch, keine Drittwirkung i.S.v. MAR/WpHG). №66 (neu): separate `eic`-Action geprüft — zugriffsgehärtet (№60) UND aktuell nirgends im Frontend verdrahtet (Codesuche bestätigt), daher ebenfalls unverändert belassen; Warnpflicht dokumentiert für den Fall künftiger UI-Anbindung. |
 | 4.22 | 28.08.2026 | №64 (neu) formalisiert: `score_options_atmna()`-Ticker-Score für separate Session vorgemerkt. №65 (neu): wichtigster Folgefund des Tages — clientseitig eingebetteter EIC-Instruktionsblock (`getKiSystemPrompt()`/`getMorningBriefingPrompt()`) lief unabhängig vom serverseitigen isOwner-Gate (№60) und wurde live an einer Covered-Call-Analyse im Public-Toggle-Zustand nachgewiesen (enthielt trotzdem Strike/Delta/Prämien-Zahlen + Rangfolge); gefixt in `ko-prompts.js` v2.5.7 + `index.html` v483, vollständig verifiziert. Separater, noch offener Teilbefund dokumentiert: die Options-Desk-Strategie-Templates selbst (cc/atmna/csp_wheel/weekly_income) verlangen unabhängig davon konkrete Handlungsparameter — 14-Template-Bestandsaufnahme nur teilweise abgeschlossen, Fortsetzung morgen vorgemerkt inkl. Abgleich gegen das von Axel parallel umgesetzte Options-Desk-Redesign (`t.ki_eic`, `ko-sync-worker.js` v2.2, `market_aggregator.py` v5.38.0). |
 | 4.21 | 28.08.2026 | Neues Suite-Grundgesetz №10 (Sync- und Versionierungs-Pflicht) ergänzt — Reaktion auf zwei Vorfälle derselben Sitzung: (a) `ko-market-state.js`- und `ko-prompts.js`-CDN-Pins wurden nicht im selben Schritt wie die zugrundeliegende Modul-Änderung aktualisiert, was live zu 401-Fehlern bzw. kurzzeitig reaktivierten Sicherheitslücken führte; (b) Versionsnummern-Kollision (v482 zweifach vergeben), weil vor einer Änderung nicht gegen `origin/main` synchronisiert wurde. Regel: `git fetch`/`log`-Check vor jeder Änderung an bereits versionierten Dateien verpflichtend; jede geänderte Datei bekommt im selben Schritt Versions-Header, Changelog-Eintrag und (bei CDN-gepinnten Dateien) den aktualisierten Hash-Pin — nicht als Nacharbeit. |
 | 4.20 | 27.08.2026 | №60 auf ✅ ERLEDIGT gesetzt (Code + `OWNER_TOKEN`-Secret + funktionale Verifikation). №61 auf ✅ ERLEDIGT gesetzt — dabei schwerwiegenderen Zusatzfund entdeckt: drei `/public/*`-Endpunkte im `ko-sync`-Worker waren komplett unauthentifiziert (nicht nur Beta-intern, sondern für jeden im Internet); behoben über `ko-sync-worker.js` v2.1 + `index.html` v480/v481 (6 Aufrufstellen) + `ko-modules/ko-market-state.js` v2.5 (7. Aufrufstelle, per Live-401-Fehler entdeckt, inkl. CDN-Hash-Pin-Update) + nachträglich gesetzte `STATIC_TOKEN`/`OWNER_TOKEN`-Secrets beim bis dahin komplett ungesicherten `ko-sync`-Worker; vollständig verifiziert (keine 401er mehr, History/Ticker laden normal). №62: Umbenennungsliste mit Axel abgestimmt, Umsetzung zurückgestellt bis Klärung der Grundsatzfrage. **№36 (Rechtsgutachten) um 5 konkrete Fragen ergänzt**, ausgelöst durch Axels Vorschlag einer "Bring-your-own-AI"-Konstruktion — Claude schätzt dies als eher risikoverschärfend ein, daher explizite Anwaltsfrage statt eigenmächtiger Umsetzung. **№63 neu angelegt** (Beobachtungsposten, kein akuter Punkt): `ko-auth` fehlt noch, Fallback bei Nichterreichbarkeit ist aktuell folgenlos (totes Tier-System-Gerüst), aber sobald verdrahtet muss "Fail-Open auf admin" bewusst überdacht werden. |
