@@ -1,6 +1,6 @@
 # Investment-Suite — Dachdokument
 
-**Version:** 4.23
+**Version:** 4.25
 **Stand:** 29.08.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
@@ -31,6 +31,14 @@ UIQ entscheidet über drei Dinge — in dieser Reihenfolge:
 ```
 
 **Die Reihenfolge ist Architektur, nicht Konvention.** Gate 1 (Ob) ist ein echter Filter: wenn der Marktkontext gegen aktives Handeln spricht, werden Gate 2 und 3 nicht geöffnet. Die stärkste Aussage, die UIQ machen kann, ist manchmal eine leere Liste.
+
+### Interne vs. öffentliche Beschreibung (ergänzt 29.08.2026, externe Rechtsberatung — Regulatory/Architecture Review SUITE.md 4.24)
+
+Die OB/WIE/WAS-Formulierung oben ist als **interne Architekturphilosophie unverändert gültig** — sie beschreibt korrekt, wie die Decision Pyramid funktioniert, und wird intern (Code-Kommentare, Entwicklungsdokumente, Claude-Sessions) so verwendet. Für die **öffentliche Beschreibung von UIQ** (Marketing, Onboarding, Legal Briefing) gilt jedoch eine bewusst andere, regulatorisch sauberere Formulierung derselben Architektur:
+
+> **UIQ strukturiert die Entscheidungsfindung des Nutzers, indem es Marktkontext, Strategiekriterien und Wertpapiermerkmale systematisch zusammenführt. Die Entscheidung über eine konkrete Transaktion verbleibt vollständig beim Nutzer.**
+
+Das ist keine inhaltliche Verwässerung — es beschreibt präziser, was UIQ tatsächlich tut, ohne die Sprache eines Investment-Decision-Systems zu verwenden, die ein Jurist bei einem BaFin/ESMA-Review aufmerksam liest. **Design-Prinzip, ab sofort verbindlich für jede Public-Formulierung:** UIQ analysiert, gewichtet, vergleicht und begründet — es soll nie den Eindruck erzeugen, es habe für den Nutzer entschieden. "UIQ hat für dich entschieden" ist in keinem Public-Kontext eine zulässige Selbstbeschreibung, auch nicht sinngemäß.
 
 ### Die Design-Regel (fast heilig)
 
@@ -104,13 +112,29 @@ Die fünf Module als Pipeline über einer gemeinsamen Datenbasis — Farbe/Rahme
 1. **Streng-modularer Aufbau.** Kein Modul kennt Interna eines anderen; Austausch nur über definierte Kontrakte (JSON-Schemata, ko-* Suite-Module). Fachlogik, die zwei Module brauchen, lebt in genau **einem** Suite-Modul.
 2. **ES6-Zielarchitektur.** Neuer Code ausschließlich ES6-konform (const/let, Arrow Functions, zentrale String-Objekte, keine Inline-Handler, JSDoc). Monolithen werden schrittweise migriert, nie big-bang.
 3. **80/20-Vorbehalt.** Jedes Feature nur, wenn ≤ 20 % Aufwand ≥ 80 % Nutzerwert liefern. Randfälle werden dokumentierte Grenzen, keine Features.
-4. **No-Hallucination auf allen Ebenen.** Zahlen entstehen deterministisch aus Daten + belegten Konstanten (GZ, Norm, Preisliste mit Standdatum). KI erklärt und formuliert — sie rechnet, schätzt und zitiert nie ohne Quelle. Näherungen sind sichtbar markiert (~). Gilt auch fürs Marketing („verifiziert" nur nach echtem Lauf).
+4. **No-Hallucination auf allen Ebenen.** Zahlen entstehen deterministisch aus Daten + belegten Konstanten (GZ, Norm, Preisliste mit Standdatum). KI erklärt und formuliert — sie rechnet, schätzt und zitiert nie ohne Quelle. Näherungen sind sichtbar markiert (~). Gilt auch fürs Marketing („verifiziert" nur nach echtem Lauf). **Ergänzt 29.08.2026:** Gilt auch für Validierungssprache — "wissenschaftlich validiert" oder ein Backtest-Ergebnis als "Beweis" der Systemqualität sind nur zulässig, wenn tatsächlich eine externe wissenschaftliche Validierung stattgefunden hat. Bis dahin: "wissenschaftlich dokumentierte Methode", "empirisch getestetes Modell" oder "historisches Testergebnis unter definierten Modellannahmen" — nie "Beweis" oder "validiert" ohne diesen Beleg.
 5. **Compliance by Design im Public-Bereich.** Je Modul die einschlägige Schranke: WpHG/BaFin (UIQ, PO — Public/EIC-Split, „Statistische Kontext-Analyse"), StBerG (Refundex, PO, künftig Ruhestand — Rechenwerk mit Szenarien nebeneinander, nie Ratschlag). Empfehlungssprache existiert ausschließlich hinter dem EIC-PIN.
 6. **Datensouveränität.** Browser-first; Depot- und Steuerdaten verlassen den Rechner des Nutzers nicht. Kein Suite-Server hält Nutzerdaten.
 7. **Belegkette.** Jeder ausgewiesene Wert ist rückführbar auf Datenzeile, Modul und Rechts-/Datenquelle.
 8. **Governance-Muster.** Jedes Modul führt `docs/STRATEGIE.md` + `docs/ROADMAP.md` (versioniert, Fortschreibung Claude), Entscheidungen laufen durch den Vier-Fragen-Filter (Belegkette / 80-20 / ES6-Modularität / Compliance). Deploy nach Zwei-Vorgänge-Prinzip: GitHub = Quellcode, Cloudflare-Pages-Zip = Publikation.
 9. **Debug-Protokoll (Laufzeit-Bugs).** Bei jedem Laufzeit-Bug gilt zwingend: **IMMER zuerst Konsolen-Check, dann Code anfassen. Kein Fix ohne bewiesene Root Cause.** Weder Claude noch Axel tippen Code-Änderungen ins Blaue — erst das Symptom im Browser-/Aggregator-Log sichern, dann gezielt fixen. Herleitung: Strategie-Ampel-Farb-Diskrepanz (v354–v364, 4 Fehlversuche) — die korrekte Root-Cause (`ko:regimeChanged` nicht dispatched nach `calcStrategyGates()`) war erst nach explizitem Console-Diagnostic sichtbar.
 10. **Sync- und Versionierungs-Pflicht (Mehrfach-Session-Schutz).** Vor jeder Code-Änderung an einer bereits versionierten Datei: **zuerst `git fetch`/`git log origin/main` gegen den lokalen Stand prüfen**, nie blind auf einem möglicherweise veralteten lokalen/Kontext-Stand weiterarbeiten. Jede geänderte Datei bekommt zwingend im selben Schritt: (a) einen neuen Versions-Header/Meta-Tag, (b) einen Changelog-Eintrag nach bestehendem Muster, (c) bei CDN-Hash-gepinnten `ko-modules`-Dateien die sofortige Aktualisierung des Pins in `index.html` — **nicht** als separater, später nachzuholender Schritt. Herleitung: 27./28.08.2026 — gleich zweifach in derselben Sitzung durch versäumten Pin-Sync (`ko-market-state.js`, `ko-prompts.js`) live 401er bzw. reaktivierte Sicherheitslücken ausgelöst; zusätzlich eine Versionsnummern-Kollision (v482 zweifach vergeben), weil frühere Änderungen derselben langen Sitzung außerhalb des sichtbaren Kontexts lagen und nicht gegen `origin/main` geprüft wurden, bevor weitergearbeitet wurde.
+11. **Analyse/Execution-Trennung (ergänzt 29.08.2026, externe Rechtsberatung).** Verbindlich für jedes Modul mit Optionsbezug (UIQ Options Desk, Premium Options): UIQ liefert ausschließlich die linke Spalte, niemals die rechte — die Trennung ist Architektur, nicht Textkosmetik:
+
+    | UIQ | Broker |
+    |---|---|
+    | Strategie-Fit | konkrete Option |
+    | DTE-Bereich | exaktes Expiry |
+    | qualitative Strike-Nähe | konkreter Strike |
+    | geschätztes Prämienniveau (nur qualitativ, s. UIQ-REGULATORY-LANGUAGE-SPEC.md §1.6) | Bid/Ask |
+    | regelbasierte Roll-Logik (nur EIC) | tatsächlicher Roll |
+    | Underlying-Analyse | Delta |
+    | Underlying-Risikoanalyse | PoP |
+    | Markt-/Regimeanalyse | Break-even |
+    | Kandidatenranking | Order |
+    | Risikohinweise | Assignment Risk |
+
+    Diese Tabelle ist die verbindliche Prüfmatrix für jedes neue Options-Feature (analog zum Vier-Fragen-Filter aus Grundgesetz #8) — ein Feature, das eine rechte-Spalten-Größe produziert oder in Aussicht stellt, kommt nicht ins Public-Produkt. Details und Sprachregeln: `docs/UIQ-REGULATORY-LANGUAGE-SPEC.md`.
 
 ---
 
@@ -195,6 +219,36 @@ Corporate Design und Web-Präsenz sind **suite-übergreifend, nicht produktkriti
 | **D3 — Suite-weit** | 2027 | Refundex, Premium Options, GuidelineIQ ziehen huckepack aufs Design-System nach; Suite-Portal (§6) wird sichtbar. | Kein Selbstzweck-Redesign bestehender Module ohne anstehende inhaltliche Arbeit. |
 
 **Warnpflicht-Verankerung:** Corporate Design bleibt bis Phase D2 strikt Denk-Kapazität. Sollte ein Modul-Auftritt vor Q4 2026 unabweisbar werden (z. B. Refundex-Publikumsöffnung), wird das als bewusste Ausnahme in §7 dokumentiert — nicht situativ vorgezogen.
+
+---
+
+### 3.8 Public Safety Boundary (neu 29.08.2026, externe Rechtsberatung — Regulatory/Architecture Review SUITE.md 4.24)
+
+**Zweck:** Nicht nur ein Disclaimer, sondern eine produktinterne Compliance-Architektur — eine explizite, verbindliche Grenze dessen, was die Public-Version jedes Moduls tun darf, tun soll und niemals tun darf. Diese Grenze ist die Grundlage für das Legal Briefing an den Fachanwalt (Backlog №36) und wird mit `docs/UIQ-REGULATORY-LANGUAGE-SPEC.md` synchron gehalten — jene Spec ist die sprachlich-technische Umsetzung dieser Grenze auf Prompt-Ebene, dieser Abschnitt ist die architektonische Grundsatzformulierung.
+
+**Public darf:**
+- quantitative Analysen, Rankings, Strategie-Fits, Marktregime, Risikoindikatoren und regelbasierte Szenarien darstellen
+- erklären, warum ein Titel oder eine Strategie im Modell höher oder niedriger steht
+
+**Public darf NICHT:**
+- dem Nutzer eine individualisierte Anlageentscheidung abnehmen
+- eine konkrete Orderausführung ermöglichen oder in Aussicht stellen
+- konkrete Brokerparameter bestimmen (s. Grundgesetz #11, Analyse/Execution-Trennung)
+
+Konkrete Brokerparameter und die Entscheidung über die tatsächliche Transaktion verbleiben ausschließlich beim Nutzer und seinem Broker.
+
+**Abstufungs-Beispiele (Gradient von zulässig zu eindeutig unzulässig):**
+
+| Stufe | Beispiel |
+|---|---|
+| ✅ Zulässig/angestrebt | "AMZN weist nach den UIQ-Kriterien einen hohen Strategy Fit für diese Strategie auf." |
+| 🟡 Kritisch | "AMZN ist heute der beste CSP." |
+| 🔴 Noch kritischer | "AMZN jetzt verkaufen." |
+| ⛔ Eindeutig außerhalb der Boundary | "Verkaufe jetzt einen $250-Put mit 25 DTE." |
+
+**Regulatorische Selbstbeschreibung:** UIQ formuliert über sich selbst niemals die juristische Schlussfolgerung "UIQ ist keine Anlageberatung" — das ist eine Bewertung, die dem Fachanwalt vorbehalten bleibt. Zulässig und ausreichend ist die konstruktive Beschreibung: **"UIQ ist konstruktiv darauf ausgelegt, keine individuelle Anlageberatung durchzuführen."** Ein Beleg für diese konstruktive Auslegung: UIQ fragt an keiner Stelle nach Depotgröße, gehaltenen Positionen, Risikobereitschaft, Anlagezielen oder Erfahrungsstand — diese Nicht-Erhebung ist bewusste Architektur, kein Zufall.
+
+**Einordnung der bisherigen Entwicklung:** Von "EMPFEHLUNG JETZT: ALL + GOOG neueröffnen" (früher Options-Desk-Output) zu "Unter Anwendung der definierten Modellkriterien weisen AMZN, LMT und WMT … den höchsten Strategy Fit … auf" (aktueller Stand, `ko-prompts.js` v2.9.0) ist ein qualitativer Sprung, kein kosmetischer — er demonstriert im Legal Briefing, dass die Ausgabearchitektur selbst verändert wurde, um Analyse und Anlageentscheidung strukturell zu trennen, statt eine unveränderte Empfehlungsmaschine nachträglich mit einem Disclaimer zu versehen.
 
 ---
 
@@ -1555,8 +1609,109 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
     *Verwandt mit: №60, №65, №36.*
 
+67. **✅ Erstfassung (29.08.2026): UIQ Regulatory Language Specification v1.0**
+    *(Externe Rechtsberatung, vierter Review-Zyklus zum CSP(ATM/NA)-Public-
+    Output)*
+
+    **Auslöser:** Vier aufeinanderfolgende Review-Zyklen (28./29.08.2026) am
+    selben Output zeigten denselben Fehlermodus — einzelne problematische
+    Formulierungen verschoben sich mit jeder Runde, statt strukturell zu
+    verschwinden (v2.6.0 → v2.6.1 → v2.7.0 → v2.8.0 in `ko-prompts.js`).
+    Reviewer-Empfehlung (Zyklus 4): nicht weitere Einzelfälle prüfen, sondern
+    ein verbindliches, modulübergreifendes Sprach-Regelwerk erstellen, das
+    der Fachanwalt als konkret geprüftes Produktverhalten beurteilen kann,
+    statt einer abstrakten Beschreibung.
+
+    **Umsetzung:** Neues Dokument `docs/UIQ-REGULATORY-LANGUAGE-SPEC.md`
+    (v1.0) — konsolidiert alle bisherigen Wortverbote/Ersatzformulierungen
+    aus den vier Review-Zyklen in ein einziges Regelwerk: was UIQ sagen
+    darf/nicht darf (§1), konsolidierte Verbotsliste (§2), Pflicht-
+    Ersatzformulierungen (§3), Datenhoheit-Katalog was ausschließlich beim
+    Broker bleibt (§4), Pflicht-Abschlussformulierung (§5), Modul-Rollout-
+    Status über alle 10+ Strategien plus Morning Briefing/Master
+    Shortlist/Deep Dive (§6), Single-Source-Prinzip Spec-vor-Code (§7).
+
+    **Zwei neue Fehlerkategorien identifiziert (Zyklus 4), die kein
+    regulatorisches, sondern ein fachliches Problem sind — noch NICHT in
+    `ko-prompts.js` kodiert, s. Spec §9:**
+    - **Begriffs-Integrität:** UIQ-Indikatoren dürfen nicht durch ähnlich
+      klingende, aber fachlich andere Begriffe ersetzt werden (Fund:
+      "HVP96%" wurde im Output als "IV-Percentile" bezeichnet — Historical
+      vs. Implied Volatility sind unterschiedliche Größen); Extremwert-
+      Label müssen zur Zahl passen (Fund: RSI 77 fälschlich als
+      "Überverkauftheitssignal" statt "überkauft" bezeichnet).
+    - **Kausalitäts-Integrität:** mehrgliedrige Kausalketten ohne
+      Datenbeleg sind verboten (Fund: "komprimierte Prämie → höhere
+      Wahrscheinlichkeit → zügige Gewinnmitnahme" sowie "RSI 30 →
+      Gegenbewegung → keine Andienung" — beides aus den Modelldaten nicht
+      ableitbar).
+
+    **Status:** Entwurfsstufe (v1.0), Grundlage für Backlog №36
+    (Rechtsgutachten). §9 dokumentiert vier offene Punkte: Kodierung von
+    §1.3/§1.4 in `PUBLIC_REGULATORY_GUARDRAIL`, ersatzlose statt gehedgte
+    Streichung von Prämienerwartungs-Sätzen, Modul-Rollout (Master
+    Shortlist → Equity-Strategien → Deep Dive), SUITE.md-Verweis (dieser
+    Eintrag).
+
+    *Verwandt mit: №65, №66, №36.*
+
+68. **✅ Erledigt (29.08.2026): Regulatory/Architecture Review von SUITE.md
+    selbst — Public Safety Boundary verankert** *(externe Rechtsberatung,
+    fünfter Review-Zyklus — diesmal nicht am Output, sondern am
+    Dachdokument selbst)*
+
+    **Befund:** SUITE.md 4.24 beschreibt an mehreren Stellen noch "das
+    ideale UIQ" (interne Architekturphilosophie), während die Suite
+    inzwischen über die vier vorangegangenen Review-Zyklen (№65)
+    regulatorisch das tatsächlich veröffentlichbare UIQ definiert hat —
+    beides muss zusammengeführt werden, ohne die technische Architektur
+    (MCM, Decision Engine, Strategie-Gates, ML-Konzept) anzutasten.
+    Empfohlene Methodik (übernommen): drei Ebenen trennen — **A**
+    unverändert lassen (Technik), **B** intern schärfen (Decision-System-
+    Sprache bleibt intern erlaubt), **C** neue Public Boundary ergänzen.
+
+    **Umsetzung (kein Rewrite, gezielte Ergänzungen):**
+    - **§0 (Leitprinzip):** neuer Abschnitt "Interne vs. öffentliche
+      Beschreibung" — die OB/WIE/WAS-Formulierung bleibt intern gültig,
+      für Public-Kontexte gilt die Ersatzformulierung "UIQ strukturiert
+      die Entscheidungsfindung des Nutzers …". Neues Design-Prinzip:
+      "UIQ hat für dich entschieden" ist in keinem Public-Kontext eine
+      zulässige Selbstbeschreibung.
+    - **Grundgesetz #4 (No-Hallucination)** ergänzt: gilt jetzt explizit
+      auch für Validierungssprache — "wissenschaftlich validiert"/"Beweis"
+      nur bei tatsächlicher externer wissenschaftlicher Validierung, sonst
+      "historisches Testergebnis unter definierten Modellannahmen".
+    - **Neues Grundgesetz #11 (Analyse/Execution-Trennung):** die
+      UIQ/Broker-Funktionsmatrix (Strategie-Fit vs. konkrete Option,
+      DTE-Bereich vs. exaktes Expiry, etc.) als verbindliche Prüfmatrix für
+      jedes neue Options-Feature, nicht nur im Legal Briefing.
+    - **Neuer Abschnitt §3.8 "Public Safety Boundary":** was Public darf/
+      nicht darf, Abstufungs-Beispiel-Tabelle (zulässig → eindeutig
+      außerhalb), regulatorische Selbstbeschreibungs-Regel ("konstruktiv
+      darauf ausgelegt" statt der juristischen Schlussfolgerung selbst),
+      Einordnung der bisherigen Output-Entwicklung als Beleg für
+      strukturelle statt kosmetische Verbesserung.
+
+    **Bewusst nicht umgesetzt:** kein Rewrite des 231-kB-Dokuments — der
+    Reviewer hat das ausdrücklich empfohlen, um den Anwaltstermin klein und
+    bezahlbar zu halten. Nächster Schritt (offen): §3.8 mit dem Legal
+    Briefing für den Fachanwalt synchronisieren.
+
+    **Nebenfund:** Reviewer zitierte in der Review-Begründung selbst den
+    veralteten, bereits am 23.08. korrigierten Sharpe-Wert "1,66" (s.
+    Changelog 4.18) statt des aktuellen Regime-Gate-Werts 1,76 — vermutlich
+    Arbeit von einer älteren Dokumentfassung. Kein SUITE.md-Fehler, nur
+    zur Kenntnis vermerkt.
+
+    *Verwandt mit: №65, №67, №36.*
+
 
 ## Fortschreibungshistorie
+
+| Version | Datum | Änderung |
+|---|---|---|
+| 4.25 | 29.08.2026 | №68 (neu): Regulatory/Architecture Review von SUITE.md selbst (fünfter Review-Zyklus, diesmal am Dachdokument statt am Output) — Public Safety Boundary verankert, ohne die technische Architektur anzutasten. §0 um "Interne vs. öffentliche Beschreibung" ergänzt (OB/WIE/WAS bleibt intern, Public-Ersatzformulierung neu); Grundgesetz #4 um Validierungssprache-Vorsicht erweitert; neues Grundgesetz #11 (Analyse/Execution-Trennung, UIQ/Broker-Funktionsmatrix als verbindliche Prüfmatrix); neuer Abschnitt §3.8 "Public Safety Boundary" mit Abstufungs-Beispielen und regulatorischer Selbstbeschreibungs-Regel. Bewusst kein Rewrite des Gesamtdokuments. |
+| 4.24 | 29.08.2026 | №67 (neu): Erstfassung `docs/UIQ-REGULATORY-LANGUAGE-SPEC.md` v1.0 — nach vier externen Review-Zyklen zum CSP(ATM/NA)-Output konsolidiertes, modulübergreifendes Sprach-Regelwerk statt weiterer Einzelfall-Reviews. Zwei neue Fehlerkategorien identifiziert (Begriffs-Integrität, Kausalitäts-Integrität), die fachlicher statt regulatorischer Natur sind und noch nicht in `ko-prompts.js` kodiert sind. Grundlage für Backlog №36 (Rechtsgutachten) — Anwalt bekommt konkret geprüftes Produktverhalten statt abstrakter Beschreibung. Nebenbei kritischer Live-Fund behoben: `ko-modules`-Commit `3fbf685` enthielt versehentlich Diff-Text statt validem JS als `ko-prompts.js`-Inhalt (vermutlich Diff-Datei statt Volltext committed) — Syntaxfehler legte alle KI-Strategie-Buttons lahm; durch Wiederherstellung der letzten bekannt guten v2.8.0-Volltextdatei behoben.
 
 | 4.23 | 29.08.2026 | №65 vollständig abgeschlossen: 14-Template-Bestandsaufnahme fertig — alle 8 gestern nur grob klassifizierten Templates verlangten ebenfalls konkrete Handlungsparameter, gefixt in `ko-prompts.js` v2.6.0 (`ctx.isEic`-Weiche + zwei geteilte Public-Builder) + `index.html` v484 (`ctx.isEic` einheitlich gesetzt). Drei Zusatzfunde mitbehoben: hart verdrahtetes `strat === 'atmna'`→`expert_mode:true`; `runValueKiBriefing()` rief nicht-existente Action `'value_briefing'` auf und lief dadurch permanent über einen ungeschützten Direkt-API-Fallback am Compliance-Worker vorbei; `value`-Template serialisierte `ctx.tickers` nie. Externe Review des ATM/NA-EIC-Outputs ausgelöst (Reviewer kritisiert "Handeln:/priorisieren"-Sprache aus `ki_briefing_expert`-System-Prompt) — Axel-Entscheidung: EIC/Owner-Zugriff bewusst unverändert lassen (reiner Eigengebrauch, keine Drittwirkung i.S.v. MAR/WpHG). №66 (neu): separate `eic`-Action geprüft — zugriffsgehärtet (№60) UND aktuell nirgends im Frontend verdrahtet (Codesuche bestätigt), daher ebenfalls unverändert belassen; Warnpflicht dokumentiert für den Fall künftiger UI-Anbindung. |
 | 4.22 | 28.08.2026 | №64 (neu) formalisiert: `score_options_atmna()`-Ticker-Score für separate Session vorgemerkt. №65 (neu): wichtigster Folgefund des Tages — clientseitig eingebetteter EIC-Instruktionsblock (`getKiSystemPrompt()`/`getMorningBriefingPrompt()`) lief unabhängig vom serverseitigen isOwner-Gate (№60) und wurde live an einer Covered-Call-Analyse im Public-Toggle-Zustand nachgewiesen (enthielt trotzdem Strike/Delta/Prämien-Zahlen + Rangfolge); gefixt in `ko-prompts.js` v2.5.7 + `index.html` v483, vollständig verifiziert. Separater, noch offener Teilbefund dokumentiert: die Options-Desk-Strategie-Templates selbst (cc/atmna/csp_wheel/weekly_income) verlangen unabhängig davon konkrete Handlungsparameter — 14-Template-Bestandsaufnahme nur teilweise abgeschlossen, Fortsetzung morgen vorgemerkt inkl. Abgleich gegen das von Axel parallel umgesetzte Options-Desk-Redesign (`t.ki_eic`, `ko-sync-worker.js` v2.2, `market_aggregator.py` v5.38.0). |
