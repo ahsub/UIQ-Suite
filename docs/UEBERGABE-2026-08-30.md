@@ -250,7 +250,74 @@ Absicherungsbedarfs nahelegen, falls Positionen gehalten werden").
 
 ---
 
-## 6. Aktueller Versionsstand (Ende des Tages)
+## 6. Externes Reviewer-Feedback zu Collar-Live-Test 2
+
+Nach Live-Test 2 (s. §5.4) eine ausführliche externe Einschätzung
+erhalten — bestätigt zwei der heute selbst gefundenen Punkte
+unabhängig und liefert fünf weitere, konkrete Prompt-Verfeinerungen
+plus einen strukturellen Vorschlag für alle vier Options-Strategien.
+
+**Bestätigt unsere eigenen Funde:**
+- **HVP-Kompressions-Rückfall** (Punkt 3): "Volatilitäts-
+  Kompressionsrisiko" bei NUE (HVP 95%) — derselbe Fund wie in §5.4,
+  jetzt von zweiter Seite bestätigt. Reviewer verlangt eine harte
+  Prompt-Regel: HVP hoch = realisierte Vol historisch hoch, NIE
+  "Kompression" in Verbindung mit hohem HVP.
+- **Ranking-Anmutung trotz `holding_review`** (Punkt 6): die reine
+  Aufzählung "LMT / PH / NUE" erzeugt weiterhin den Eindruck eines
+  Rankings, obwohl das AUFGABE-Fix aus §5.3 die Ranking-*Sprache*
+  bereits entfernt hat — die Reihenfolge/Listenform allein reicht schon
+  aus, denselben Eindruck zu erzeugen. Vorschlag: "Drei Titel erfüllen
+  die definierten Kriterien..." statt Aufzählung, oder mit "starker
+  Hinweis"-Label statt reiner Namensliste.
+
+**Fünf weitere, neue Punkte:**
+1. **"Gewinnmitnahme" zu eng** — unterstellt implizit, dass der Nutzer
+   bereits im Gewinn ist, das weiß UIQ nicht. Ersatzformulierung:
+   "gezielte Überprüfung des Absicherungsbedarfs bei gehaltenen
+   Positionen mit ausgeprägter kurzfristiger Kursbewegung."
+2. **RSI niedrig + Protective Put allein ist konzeptionell
+   widersprüchlich** (wichtigster fachlicher Punkt): ein bereits stark
+   gefallener Titel braucht nicht automatisch mehr Absicherung — im
+   Gegenteil, die Frage kann sein "warum jetzt noch versichern?". Die
+   Kombinationslogik muss praeziser werden: RSI niedrig + hohe HVP +
+   strukturell intakter übergeordneter Trend → Absicherungsbedarf
+   prüfen (nicht RSI allein).
+3. **"Modell-Grenze"-Pattern als formales Prompt-Element verankern** —
+   Reviewer schlägt vor, "MODEL DECISION BOUNDARY" (was kann/kann das
+   Modell anhand der Daten nicht auflösen) explizit als eigenes
+   Formatelement zu definieren, nicht nur als Pflichtsatz innerhalb von
+   Punkt d). Wird als "zentrales UIQ-Pattern" mit regulatorischem Wert
+   eingeschätzt.
+4. **"Strategy Fit"-Begriff bei Protective Put/Collar unpassend** —
+   "TITEL MIT MODELLBASIERTEM ABSICHERUNGS-HINWEIS" (unser heutiger
+   Fix, s. §5.3) wird explizit als besser bestätigt und soll konsequent
+   beibehalten werden, nicht zurück zu "Strategy Fit"-Sprache.
+5. **Fehlender Trennsatz Marktrisiko vs. Positionsrisiko** — Reviewer
+   schlägt einen expliziten Klarstellungssatz vor: "Der
+   Absicherungs-Hinweis stellt keine Aussage darüber dar, dass eine
+   Position verkauft oder abgesichert werden sollte. Er beschreibt
+   ausschließlich eine vom Modell erkannte Konstellation, bei der eine
+   bestehende Position hinsichtlich ihres individuellen
+   Downside-Risikos überprüft werden kann." — als einer der stärksten
+   möglichen Sätze für UIQ eingeschätzt, noch nicht im Prompt enthalten.
+
+**Struktureller Vorschlag, größer als heutiger Scope:** ein
+einheitliches 9-Punkte-Schema für alle vier Options-Strategien (CSP,
+CSP ATM/NA, Covered Call, Collar/Protective Put) statt vier einzeln
+gewachsener Prompt-Strukturen: Market Context → Model Signal →
+Candidate Fit → Positive Factors → Risk Factors → Strategic Trade-off →
+Model Boundary → External Validation → Neutral Summary. Deckt sich
+inhaltlich mit der bereits laufenden Coaching-Standard-Vereinheitlichung
+(s. §1/§2), geht aber über die bisherige 6-gliedrige Kette hinaus
+(Candidate Fit + External Validation + Neutral Summary als explizite,
+eigenständige Schritte statt implizit in den bestehenden Punkten
+enthalten). Reviewer sieht dies als nächsten "wirklich großen
+Qualitätssprung", nicht als Teil eines weiteren Einzel-Prompt-Zyklus.
+
+---
+
+## 7. Aktueller Versionsstand (Ende des Tages)
 
 | Datei | Version | Commit |
 |---|---|---|
@@ -262,7 +329,16 @@ Absicherungsbedarfs nahelegen, falls Positionen gehalten werden").
 
 ---
 
-## 7. Plan für morgen
+## 8. Plan für morgen
+
+**Priorität 0 — Reviewer-Feedback aus §6 in den Collar-Prompt
+einarbeiten, bevor weitere Live-Test-Zyklen laufen** (fünf konkrete
+Textänderungen plus die HVP-Kompressions-Hartregel und die
+Ranking-Anmutungs-Korrektur — güenstig, alles an einer Stelle
+zusammenzufassen statt in Einzelschritten). Der Marktrisiko-vs.-
+Positionsrisiko-Trennsatz (§6 Punkt 5) hat dabei die höchste
+Priorität — laut Reviewer der stärkste einzelne Satz, den UIQ bislang
+nicht nutzt.
 
 **Priorität 1 — Compliance-Scanner-Regex-Lücke schließen (klein,
 ~5min, zwei unabhängige Live-Belege heute).** `COMPLIANCE_PATTERNS` in
