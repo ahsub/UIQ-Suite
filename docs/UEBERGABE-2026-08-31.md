@@ -271,13 +271,45 @@ Strategie-Ampel-Texten und dem Master-Shortlist-Python-Äquivalent aus dem
 
 ---
 
+## 5a. Nachtrag — Dead-Code-Fund bei MCM-PARITÄT-Nachfrage
+
+Axel fragte am Abend nach dem Umsetzungsstand von `MCM-PARITAET-KONZEPT.md`
+(Konzept-Doc vom 20.07.2026, ursprünglich für den Sprint am 21.07.2026).
+**Der ursprüngliche 4-Faktoren-Sprint ist vollständig umgesetzt** —
+`build_server_market_context()` ruft alle vier geplanten Funktionen auf
+(`calc_mcm_ndx_breadth`, `calc_mcm_intermarket_score`,
+`calc_mcm_treasury_stress`, `calc_mcm_bull_indicator`) und ging seither in
+zwei weiteren Nachzug-Runden (v5.14.0, v5.36.5) noch über den ursprünglichen
+Plan hinaus (net_liquidity, move_index, skew_vvix_div, breadth_osc,
+distribution_days).
+
+**Dabei gefunden und noch am selben Abend gefixt:**
+`build_server_market_context()` war **byte-identisch zweimal** in der Datei
+definiert (Zeile 472 und Zeile 8773 im damaligen Stand). Python nutzte
+durch Late-Binding ohnehin durchgängig die zweite Kopie — funktional
+folgenlos, aber ein Drift-Risiko für künftige Bearbeitungen (eine
+Änderung nur an der ersten, von einer Suche zuerst gefundenen Kopie hätte
+beide Definitionen unbemerkt auseinanderlaufen lassen, ohne Fehler oder
+Absturz). Herkunft des Duplikats unklar, vermutlich ein Merge-/
+Copy-Paste-Rest aus einer der MCM-Paritäts-Nachzug-Runden.
+
+**Fix — `market_aggregator.py` v5.40.0 → v5.41.0:** erste Kopie entfernt,
+durch Verweis-Kommentar ersetzt. Verifiziert: `ast.parse()` syntaktisch
+sauber, exakt eine Fundstelle für `build_server_market_context` übrig,
+Diff gegen den Tagesausgangsstand zeigt nur die beabsichtigten Blöcke
+(Dedup + Versionsbump, getrennt von den vier VVIX/SKEW-Blöcken aus §1.3).
+Live auf `main` bestätigt: Datei identisch, `AGGREGATOR_VERSION = "5.41.0"`,
+nur noch eine Definition im Live-Stand.
+
+---
+
 ## 6. Aktueller Versionsstand (Ende des Tages)
 
 | Datei | Version | Commit/Deploy |
 |---|---|---|
 | `ko-modules/ko-prompts.js` | 2.18.0 | committed, deployed (CDN-Pin `e2b75f2` bestätigt) |
 | `ko-aggregator/workers/ko-ai.js` | 1.16 | committed; Deploy-Mechanismus für diesen Worker unklar (kein GHA-Workflow gefunden) — Axel bestätigt "deployed" |
-| `ko-aggregator/market_aggregator.py` | 5.40.0 | committed, deployed, Lauf erfolgreich live verifiziert |
+| `ko-aggregator/market_aggregator.py` | 5.41.0 | committed, deployed; v5.40.0-Live-Lauf erfolgreich verifiziert, v5.41.0 (Dead-Code-Cleanup) auf `main` verifiziert, aber noch nicht durch einen eigenen Live-Lauf bestätigt (reiner strukturell-folgenloser Fix, kein neuer Lauf nötig) |
 | `axel-scanner/index.html` | v486 | committed, deployed |
 | Anthropic API Key (workspace-scoped) | — | rotiert, hinterlegt in Cloudflare `ko-ai` + GitHub Actions `ko-aggregator`, funktional bestätigt |
 | `UIQ-Suite/SUITE.md` | — | *heute nicht angefasst, Nachzug weiterhin nötig* |
