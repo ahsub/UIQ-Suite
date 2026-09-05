@@ -1,4 +1,4 @@
-# UEBERGABE-2026-09-05.md
+# UEBERGABE-2026-09-04.md
 
 Fortsetzung von `UEBERGABE-2026-09-03.md`. Zwei Arbeitstage in einer
 Session: zuerst P0 (KO-5-Guardrail-Fund samt `homeMarket`-Fix) sauber
