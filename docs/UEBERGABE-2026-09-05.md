@@ -396,3 +396,50 @@ Restliche Prioritäten (3-4) aus Abschnitt 10 unverändert gültig.
    wurde — ein guter Grund, beim Hinzufügen neuer UI-Elemente kurz zu
    prüfen, ob bereits vorbereitender (evtl. veralteter) Code dafür
    existiert.
+
+---
+
+## 16. Nebenbei, außerhalb des Sprints: echte IVP-Datenquelle gefunden und repariert
+
+Axel recherchierte parallel zum Sprint kostenlose Datenquellen für
+HVP/IVP (UIQ nutzt HVP bisher nur als Notlösung für echte implizite
+Volatilität, mangels Live-Optionsketten-Zugriff). Zwei Kandidaten
+geprüft:
+
+**Pineify (kommerzielles Trading-SaaS)** — nach genauer Prüfung der
+MCP-Tool-Dokumentation abgelehnt: keine dokumentierte IV-Perzentil-
+Kennzahl über die MCP-Schnittstelle, das einzig passende Tool
+(`get-option-contract-flow`) braucht eine bereits bekannte Kontrakt-ID
+als Eingabe, das eigentlich passende Bulk-Feature ("Custom Screener")
+ist nicht Teil der MCP-Tools, und selbst im teuersten Tier (259 $
+einmalig) bliebe unklar, ob die benötigte Kennzahl überhaupt enthalten
+ist.
+
+**`lvg77/options-vol-data` (GitHub, Open Source)** — der eigentliche
+Treffer. Liefert echte, historisch fundierte IV-Perzentil-Daten
+(`days_percentile`-Spalte) plus HV20/HV50/HV100, für ein breites
+Universum inkl. ADRs (AAPL/MSFT/NVDA/TSLA/ASML/SAP/RIO bestätigt).
+Der wöchentliche Scraper war seit 03.08.2025 defekt — die Quellseite
+(`optionstrategist.com`) rendert den Datenblock jetzt als `<pre
+id="volContainer">` statt `<pre>`, der alte literale sed-Match griff
+nicht mehr. Zwei Fixes identifiziert und verifiziert (Bug gegen
+rekonstruierte echte HTML-Struktur reproduziert, dann gegen zwei
+tatsächliche Live-Läufe der von Axel geforkten Kopie bestätigt):
+
+1. `sed -n "/<pre>/,.../p"` → `sed -n "/<pre/,.../p"` (Präfix- statt
+   exaktes Literal-Match)
+2. `sed "1,/^Symbol/d"` → awk-Konstrukt, das zur **letzten**
+   "Symbol"-Kopfzeile springt statt zur ersten (Seite zeigt die
+   Kopfzeile jetzt zweimal — der erste Fixversuch übersah das, ließ
+   4 Erklärtext-Zeilen als Datenmüll durch, die zufällig auf exakt 8
+   Kommafelder kamen)
+
+**Ergebnis:** Axel hat `ahsub/options-vol-data` geforkt, die
+reparierte `get_options_data.sh` committed, Workflow manuell
+ausgelöst — 5.463 saubere Datenzeilen, alle Qualitätsprüfungen
+bestanden (Feldanzahl, Duplikate, Format).
+
+**Bewusst zurückgestellt, eigener Termin:** wie `market_aggregator.py`
+diese Daten künftig abruft und `days_percentile` als neues Feld in
+die bestehenden HVP-Guardrails (KO-3, `cc`s HVP-Proxy-Klarstellung
+usw.) einbindet — heute nicht mehr Teil des Sprints.
