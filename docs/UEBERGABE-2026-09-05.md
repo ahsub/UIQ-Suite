@@ -1,6 +1,6 @@
 # UEBERGABE-2026-09-05.md
 
-Fortsetzung von `UEBERGABE-2026-09-05.md`. Zweiter voller Arbeitstag am
+Fortsetzung von `UEBERGABE-2026-09-04.md`. Zweiter voller Arbeitstag am
 9-Punkte-Migrationssprint: P0 (veraltete Pflichtformulierungen) und P2
 (Equity-Migration) vollständig abgeschlossen, danach ein grundlegender
 Architektur-Umbau (Single Source of Truth über alle UI-Entry-Points),
@@ -14,7 +14,7 @@ Dateien bearbeitet (`ko-prompts.js`, `index.html`, `market_aggregator.py`,
 
 ## 1. P0 abgeschlossen: systematischer Audit aller 7 migrierten Strategien
 
-Auslöser: der `ko`-Adversarial-Test vom 05.09. zeigte, dass der Fix im
+Auslöser: der `ko`-Adversarial-Test vom 04.09. zeigte, dass der Fix im
 gemeinsamen `PUBLIC_REGULATORY_GUARDRAIL` (v2.28.0) strategie-eigene
 Textstellen nicht mit abdeckte. Audit über `focus[]`/`risikenText`/
 `principle` aller 7 Strategien ergab **3 Funde in 2 Strategien**:
