@@ -1,4 +1,4 @@
-# UEBERGABE-2026-09-06.md
+# UEBERGABE-2026-09-05.md
 
 Fortsetzung von `UEBERGABE-2026-09-05.md`. Zweiter voller Arbeitstag am
 9-Punkte-Migrationssprint: P0 (veraltete Pflichtformulierungen) und P2
