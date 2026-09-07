@@ -1,0 +1,150 @@
+# UIQ Mean-Reversion-Architektur — Erweiterungsvorschlag (Backlog)
+
+**Status: zurückgestellt, analog zum Options-/Aktienstrategie-Erweiterungsvorschlag
+vom 07.09.2026 — erst nach Bewährung der EIC-Master-Prompts angehen.**
+
+Eingebracht am 08.09.2026 im Rahmen der `meanrev`-EIC-Migration (Reviewer-Feedback,
+mit Quellenangaben). Anders als die bisherige Literaturarbeit dieses Sprints
+(Ludwig, Lawrence, Place, Zerenner/Chupka, Minervini ×2, Spears, Lowe, Chan,
+Leung/Li) ist dies **kein Fall von "bestehende Prompt-Zahl mit Quelle korrigieren"**,
+sondern ein Vorschlag für **neue, vom Aggregator zu berechnende Datenfelder**, die
+UIQ heute nicht hat. Vor jeder Prompt-Integration müssten diese Felder erst
+server-seitig existieren — sonst würde der Prompt genau die Art erfundener Zahlen
+provozieren, die der gesamte heutige Sprint (Zahlen-Erfindungs-Sperren, serverseitiger
+Scanner) zu verhindern versucht.
+
+---
+
+## Grundidee: zwei getrennte Fragen statt einer Regel
+
+Der Vorschlag trennt explizit:
+
+1. **"Ist das Underlying grundsätzlich mean-reverting?"** (strukturelle Eignung,
+   relativ stabil über Zeit)
+2. **"Liegt JETZT eine attraktive Abweichung vor?"** (aktuelles Setup, tagesaktuell)
+
+Diese Trennung fehlt in UIQs aktuellem `meanrev`-Ansatz komplett — dort wird RSI
+direkt als Kaufsignal behandelt, ohne vorherige Prüfung, ob die Aktie überhaupt
+statistisch zur Mean-Reversion neigt (vs. z.B. eine echt trendende, nicht-stationäre
+Reihe).
+
+## Vorgeschlagene Phase 1 — "Ist die Aktie grundsätzlich mean-reverting?"
+
+Mindestkriterien (Beispielschwellen, laut Reviewer empirisch zu kalibrieren):
+
+```
+ADF p < 0.05
+Hurst < 0.50
+Half-Life < 30 Tage
+Variance Ratio < 1
+```
+
+## Vorgeschlagene Phase 2 — "Ist JETZT eine attraktive Abweichung vorhanden?"
+
+```
+MR LONG:
+Z-Score < -2.0
+AND RSI < 35
+AND RSI steigend (Reversal aus dem Extrembereich, nicht der Extremwert selbst)
+AND Kurs erholt sich vom unteren Bollinger-Band
+AND kein starkes Trendregime
+
+MR SHORT: spiegelbildlich (Z > +2.0, RSI > 65 fallend, oberes Band, kein Trendregime)
+```
+
+**Wichtige Nuance, die im Review explizit betont wird:** ein RSI von z.B. 25 ist für
+sich kein Kaufsignal — interessanter ist die *Bewegung aus dem Extrembereich heraus*
+(z.B. RSI 24 → 27 → 31). Das würde in UIQ eine RSI-Slope/Trend-Erkennung erfordern,
+die es heute nicht gibt (UIQ arbeitet mit Tagesschluss-Snapshots, nicht mit
+Zeitreihen-Ableitungen im Prompt-Kontext).
+
+## Kernmetriken laut Review (mit Quellen)
+
+| Metrik | Was sie misst | MR-Interpretation |
+|---|---|---|
+| Z-Score | Abstand vom Mittelwert in σ | \|Z\| > 2 = stark über-/unterdehnt |
+| Bollinger %B | Position in den Volatilitätsbändern | <0 bzw. >1 = außerhalb der Bänder |
+| RSI(14) | kurzfristige Über-/Unterhitzung | <30/>70 als Extremzone (Standard-Parameter) |
+| Hurst-Exponent H | Persistenz vs. Anti-Persistenz | H<0,5 unterstützt MR |
+| ADF p-Wert | Test auf Unit Root/Random Walk | niedriger p-Wert → mehr Evidenz für Stationarität |
+| Half-Life | Geschwindigkeit der Rückkehr zum Mittelwert | kurze HL = handelbare MR |
+| OU θ (Reversionsgeschwindigkeit) | wie schnell die Rückkehr erfolgt | höher = schneller |
+| Variance Ratio | Autokorrelation über Horizonte | VR<1 unterstützt MR, VR>1 unterstützt Momentum |
+| Trend-Filter (MA-Slope, ADX, Regime) | Gefahr eines echten Trends statt Reversion | starker Trend → MR-Signal abwerten |
+
+**Wichtige Warnung aus der Literatur (Bollinger selbst zitiert):** ein Bandkontakt
+allein ist kein Umkehrsignal — in starken Trends kann der Kurs lange am Band
+"entlanglaufen", ohne dass eine Umkehr folgt. Das deckt sich mit UIQs bereits
+bestehendem "Momentum-Falle"-Hinweis (s. `meanrev`-Prinzip, ergänzt 08.09.2026 um
+Chans Half-Life-Konzept), verstärkt ihn aber mit einem konkreten methodischen
+Unterbau (Stationaritätstest statt reinem Trendgefühl).
+
+## Vorgeschlagene Erweiterung: Mean Reversion jenseits des Einzeltitels
+
+Der Review schlägt vor, Mean Reversion nicht nur auf Aktienkurs-Ebene zu betrachten,
+sondern auch:
+
+- **Relative MR**: Aktie vs. Peer (z.B. KO/PEP)
+- **Sektor-MR**: Aktie vs. Sektor-ETF (z.B. NVDA/SMH)
+- **Markt-relative MR**: Aktie vs. SPY/QQQ
+- **Residual-MR**: Regression Stock ~ α + β·Market + ε, dann ε als Reversionsgröße
+- **Cointegration/Pairs Trading**: klassischer Ansatz (Gatev/Goetzmann/Rouwenhorst
+  2006), Reviewer merkt aber an, dass spätere Forschung die Stabilität dieser
+  Effekte relativiert hat — nicht unkritisch übernehmen.
+
+Diese Varianten wären eine grössere architektonische Erweiterung (Pair-/Vergleichs-
+Datenstruktur, die UIQ heute nicht hat — vgl. den bereits am 07.09. zurückgestellten
+"Pairs/Relative Value"-Vorschlag aus dem Options-/Aktienstrategie-Review).
+
+## Vorgeschlagene Feldpriorisierung (falls implementiert)
+
+**Kern (10 Felder):**
+```
+mr_zscore, mr_bollinger_pctb, mr_rsi, mr_rsi_slope, mr_hurst,
+mr_adf_pvalue, mr_half_life, mr_ou_theta, mr_variance_ratio, mr_trend_filter
+```
+
+**Zweite Ebene (abgeleitet):**
+```
+mr_score, mr_regime_compatibility, mr_signal_strength,
+mr_expected_holding_period, mr_reversion_probability
+```
+
+## Verbindung zum bestehenden HMM/MCM (Regime-Erkennung)
+
+Der Review schlägt eine saubere Arbeitsteilung vor: das bestehende HMM/MCM
+entscheidet, **ob** Mean Reversion im aktuellen Marktregime grundsätzlich aktiviert
+werden soll; Z-Score/RSI/ADF/Half-Life entscheiden, **ob** die einzelne Aktie gerade
+eine attraktive Gelegenheit darstellt. Das würde aus der aktuellen Indikatoren-
+Sammlung ein zweistufiges Entscheidungsmodell machen.
+
+## Zitierte Quellen (aus dem Review)
+
+- Poterba & Summers (1987), *Mean Reversion in Stock Prices: Evidence and
+  Implications*, NBER Working Paper w2343
+- De Bondt & Thaler (1989), *Anomalies: A Mean-Reverting Walk Down Wall Street*,
+  Journal of Economic Perspectives
+- Gatev, Goetzmann & Rouwenhorst (2006), *Pairs Trading: Performance of a
+  Relative-Value Arbitrage Rule*, Review of Financial Studies
+- Ernest Chan (2013), *Algorithmic Trading* — Kapitel "The Basics of Mean
+  Reversion" (dasselbe Buch, das bereits für die `meanrev`-Prompt-Migration vom
+  08.09.2026 konsultiert wurde, dort für Half-Life-Konzept und Z-Score-Framing,
+  ohne die hier vorgeschlagenen zusätzlichen Felder ADF/Hurst/Variance Ratio/OU-θ
+  in den Prompt zu übernehmen)
+- Bollinger Bands, offizielle Regeln (bollingerbands.com)
+- Wilder/RSI-Dokumentation (AAII)
+
+## Nächste Schritte (wenn dieses Projekt aufgenommen wird)
+
+1. Aggregator-seitige Machbarkeitsprüfung: welche der zehn Kernfelder lassen sich
+   mit vertretbarem Aufwand aus den bereits vorhandenen Tagesschluss-Zeitreihen
+   berechnen (Z-Score, Bollinger %B vermutlich einfach; ADF, Hurst, Half-Life, OU-θ,
+   Variance Ratio brauchen mehr statistische Infrastruktur)?
+2. Empirische Kalibrierung der vorgeschlagenen Schwellenwerte (Half-Life 5-30 Tage,
+   ADF p<0.05, Hurst<0.50 etc.) — Reviewer merkt selbst an, dass diese Grenzen
+   empirisch zu kalibrieren wären, keine feststehenden Werte sind.
+3. Erst NACH Feldverfügbarkeit: Prompt-Integration analog zum heutigen Muster
+   (echte, vom Aggregator gelieferte Werte statt Prompt-seitiger Erfindung).
+4. Entscheidung, ob die Peer-/Sektor-/Markt-relative Erweiterung (Punkt "jenseits
+   des Einzeltitels") überhaupt verfolgt wird, oder ob das zusammen mit dem bereits
+   zurückgestellten Pairs-Trading-Vorschlag vom 07.09. gebündelt wird.
