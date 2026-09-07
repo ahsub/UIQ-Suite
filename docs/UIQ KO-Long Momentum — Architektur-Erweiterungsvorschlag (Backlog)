@@ -1,0 +1,142 @@
+# UIQ KO-Long Momentum — Architektur-Erweiterungsvorschlag (Backlog)
+
+**Status: zurückgestellt, analog zum Mean-Reversion- und Options-/Aktienstrategie-
+Erweiterungsvorschlag vom 07./08.09.2026 — erst nach Bewährung der EIC-Master-
+Prompts angehen. Anders als der Mean-Reversion-Vorschlag ist hier ein wichtiger
+Unterschied bereits verifiziert: die meisten benötigten Felder EXISTIEREN bereits
+im Aggregator (gegen den echten Code geprüft, s. unten) — das ist näher an
+"umsetzbar" als der Mean-Reversion-Vorschlag, aber noch keine fertige Spezifikation.**
+
+Eingebracht am 08.09.2026 im Rahmen der `ko`-EIC-Migration (Reviewer-Feedback,
+mehrteilige Diskussion). Der Reviewer selbst empfiehlt als nächsten Schritt eine
+Verifikations- und Backtest-Phase, **nicht** das direkte Schreiben von Strategielogik
+— dieser Vorschlag ist entsprechend als Konzept/Spezifikations-Entwurf zu verstehen,
+nicht als fertige Prompt-Ergänzung.
+
+---
+
+## Verifizierte Fakten (gegen den echten Aggregator-Code geprüft, 08.09.2026)
+
+Folgende vom Reviewer genannten Felder und Schwellenwerte wurden gegen
+`market_aggregator.py` bestätigt:
+
+- `trendScore`, `chopIndex`, `chopLabel`, `patternEntry`, `iosScore`, `iosRating`,
+  `iosDecision` existieren tatsächlich im Aggregator.
+- ADX-Schwellenwerte (Code: `adx_score = 3 if adx_val > 35 else 1 if adx_val >= 20
+  else 0`): **>35 = starker Trend, ≥20 = Trend** — exakt wie vom Reviewer behauptet.
+- ChopIndex-Schwellenwert (Code: `chop_lbl = "High" if chop >= 55...`): **≥55 = "High"
+  (seitwärts-/rauschgetrieben)** — exakt wie vom Reviewer behauptet.
+- TVA-Block (ADX, DI+, DI−, Efficiency Ratio, TVA-Regime, TVA-Regime-Confidence,
+  ChopIndex) existiert als zusammenhängender Datenblock.
+
+**Noch NICHT verifiziert** (Reviewer selbst empfiehlt das als nächsten Schritt):
+was `patternEntry`, `iosScore`/`iosRating`/`iosDecision`/`iosQuality`/`iosEntry`/
+`iosIsLeader` und `sepaScore` GENAU berechnen, und ob/wie stark sie mit `trendScore`,
+`ADX`, `rsRating` redundant sind.
+
+## Grundidee: vier getrennte Fragen statt eines Scores
+
+1. **Market Gate** — Ist Long-Momentum im aktuellen Marktregime überhaupt
+   kompatibel? (bestehende MSE/HMM-Infrastruktur nutzen)
+2. **Stock Quality** — Ist die Aktie grundsätzlich ein Momentum-Kandidat?
+   (`trendScore`, `rsRating`, `ADX`, `chopIndex`)
+3. **Entry Confirmation** — Gibt es jetzt einen vernünftigen Einstieg?
+   (`macdHist`, `volRatio`, `obvTrend`, `pctFromHigh52`, ggf. `patternEntry`)
+4. **Entry Risk / Extension** — Ist die Bewegung bereits zu weit gelaufen?
+   (`ATR`, `dist200`, `bbPos`, `RSI`, `Overheat`) — als eigenständige Warnkategorie,
+   NICHT additiv in einen Gesamtscore eingerechnet.
+
+Ausdrücklich als **Filter-Funnel**, nicht als gewichteter Summenscore konzipiert —
+entspricht UIQs bestehendem "Was OB / WIE / WAS gehandelt werden sollte"-Prinzip.
+
+## Wichtige methodische Präzisierung des Reviewers (Selbstkorrektur im Verlauf)
+
+Der Reviewer korrigiert im zweiten Teil des Gesprächs die eigene erste Aussage:
+`pctFromHigh52` ist **kein Breakout-Indikator** — ein Wert nahe 100% zeigt Nähe zum
+52-Wochen-Hoch, sagt aber NICHTS über einen kurzfristigen (z.B. 20-Tage-)Ausbruch
+aus. Das ist exakt das Semantic-Firewall-Prinzip, das UIQ bereits anwendet ("ein
+Indikator darf nur für das stehen, was er tatsächlich misst") — der Reviewer wendet
+UIQs eigene Regel korrekt auf seinen eigenen vorherigen Vorschlag an.
+
+Ebenso ausdrücklich betont: `VolRatio` zeigt nur relatives Volumen, nicht
+automatisch Kaufdruck; `OBV`-Entwicklung zeigt nur die Entwicklung, nicht
+automatisch "Smart Money"; `Dist200` beschreibt nur den Abstand zur EMA200, ist
+NIEMALS als "KO-Sicherheitsabstand" zu verwenden (das würde Underlying- und
+Produkt-Ebene vermischen — UIQs bestehende Trennung, die im aktuellen `ko`-Prompt
+bereits gehärtet ist).
+
+## Vorgeschlagene erste Gewichtung (Reviewer selbst: "Hypothese, keine validierten
+UIQ-Gewichte")
+
+| Faktor | Gewicht |
+|---|---|
+| trendScore | 20-30% |
+| rsRating | 20-30% |
+| ADX | 15-20% |
+| chopIndex | 10-20% |
+| MACD-Hist | 10% |
+| VolRatio/OBV | 10% |
+| Breakout-Nähe | 10% |
+| Extension/Risk | 5% |
+
+Zwei unterschiedliche Gewichtungsvorschläge im Gesprächsverlauf (erste und zweite
+Runde) — bestätigt den eigenen Hinweis, dass dies experimentelle Startwerte sind,
+keine feststehende Spezifikation.
+
+## Getrennter zweiter Score: KO Product Suitability
+
+Wichtige architektonische Trennung, die der Reviewer vorschlägt und die zum
+bestehenden UIQ-Prinzip passt (UIQ bewertet nur das Underlying, nicht das
+Produkt): ein separater Score für die Eignung des KONKRETEN KO-Zertifikats,
+unabhängig vom Underlying-Momentum-Score. Dafür wird **echte neue Produktdaten**
+benötigt, die UIQ heute nicht hat:
+
+```
+Underlying-Kurs, KO-Level, Abstand zur Barriere, Hebel, Spread,
+Finanzierungslevel, Restlaufzeit
+```
+
+Vorgeschlagene Kennzahl: `KO Buffer = (Preis - KO-Level) / ATR` — eine reine
+Ableitung aus bereits vorhandenem ATR + neuen Produktdaten, kein neuer
+Marktindikator. Dieser zweite Score bleibt vollständig außerhalb des heutigen
+Sprints — UIQ hat keine Zertifikate-/Optionsschein-Datenquelle.
+
+## Vorgeschlagene erste Test-Feldauswahl (Reviewer, reduziert auf 7 Variablen)
+
+```
+Markt:  MSE/HMM-Regime
+Aktie:  trendScore, rsRating, ADX, chopIndex
+Entry:  macdHist, volRatio, obvTrend
+```
+
+Separat als Filter-/Risikofaktoren (nicht als Alpha-Signal):
+```
+ATR, dist200, bbPos, pctFromHigh52
+```
+
+## Nächste Schritte (wenn dieses Projekt aufgenommen wird)
+
+1. **Verifikation vor allem anderen** (Reviewer-eigene Priorität): was berechnen
+   `patternEntry`, `sepaScore`, `iosScore`/`iosRating`/`iosDecision`/`iosQuality`/
+   `iosEntry`/`iosIsLeader` tatsächlich? Überschneiden sie sich mit `trendScore`/
+   `rsRating`/`ADX` (Redundanzanalyse, Anschluss an die geplante BN-Methodik)?
+2. Forward-Return-Matrix aus vorhandenen Aggregator-Snapshots bauen (T0-Metriken
+   gegen T+1/T+3/T+5/T+10-Forward-Returns, inkl. Maximum Favorable/Adverse
+   Excursion — für KO-Trades relevanter als ein einfacher "höher nach 5 Tagen?"-Test).
+3. Redundanzanalyse (BN) auf Basis dieser Daten, um von 8-10 Hypothesen-Variablen
+   auf vermutlich 5-6 tatsächlich unabhängige Signale zu reduzieren.
+4. Erst danach: Entscheidung, ob ein separates `KO Product Suitability`-Modul
+   (mit echten Zertifikatedaten) überhaupt verfolgt wird.
+5. Keine der vier Gates sollte vor Schritt 1-3 in den EIC-Prompt einfließen, um
+   nicht dieselbe Art unbelegter Zahlen-/Architektur-Behauptung zu erzeugen, die
+   der gesamte 07./08.09.-Sprint (Zahlen-Erfindungs-Sperren, serverseitiger Scanner)
+   zu vermeiden versucht.
+
+## Was heute (08.09.2026) stattdessen bereits umgesetzt wurde
+
+Die vier verifizierten Felder (`trendScore`, `ADX`, `chopIndex`, `rsRating`) wurden
+mit den bestätigten Schwellenwerten (ADX≥35/≥20, ChopIndex≥55) ins bestehende
+`focus[]`-Array der `ko`-Strategie aufgenommen — als vier **separate, benannte
+Beobachtungen**, bewusst OHNE die vorgeschlagene Gewichtung/Score-Verrechnung.
+Die bestehende, bereits mehrfach gehärtete Underlying-vs-Produkt-Trennung und die
+Totalverlust-Warnung blieben unverändert.
