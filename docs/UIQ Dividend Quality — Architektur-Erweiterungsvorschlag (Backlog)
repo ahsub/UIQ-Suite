@@ -1,0 +1,95 @@
+# UIQ Dividend Quality — Architektur-Erweiterungsvorschlag (Backlog)
+
+**Status: zurückgestellt, analog zu Mean-Reversion und KO-Long vom 08.09.2026 —
+erst nach Bewährung der EIC-Master-Prompts angehen. Anders als bei den Minervini-/
+Ludwig-/Lawrence-Quellen enthält dieser Vorschlag KEINE Buchzitate — die
+vorgeschlagenen konkreten Zahlen (s. Yield-Stufen unten) sind die eigene,
+unvalidierte Kalibrierungs-Hypothese des Reviewers, kein belegtes Fachwissen.**
+
+Eingebracht am 08.09.2026 im Rahmen der `dividend`-EIC-Migration. Wichtiger
+Unterschied zu Mean-Reversion: die vier zentralen Dividend-Felder (`divYield`,
+`payoutRatio`, `fcfYield`, `roe`) sowie der aggregierte `sDividend`-Score
+existieren bereits — das ist näher an "teilweise umsetzbar" als der Mean-
+Reversion-Vorschlag.
+
+---
+
+## Grundidee: drei getrennte Fragen statt eines Scores
+
+Analog zur KO-Long-Struktur (Market Gate / Stock Quality / Entry):
+
+1. **Dividend Income** — Wie attraktiv ist die aktuelle Ausschüttung? (`divYield`)
+2. **Dividend Quality** — Wie plausibel ist die Ausschüttung aus dem Unternehmen
+   heraus gedeckt? (`payoutRatio`, `fcfYield`, `roe`, `roicProxy`, `grossMargin`)
+3. **Entry Quality** — Ist jetzt ein vernünftiger Einstiegszeitpunkt? (`rsRating`,
+   `trendScore`, `DD`, `RSI`, `ATR`) — explizit getrennt von Quality: "Eine
+   hervorragende Dividendenaktie kann technisch gerade in einen massiven
+   Abwärtstrend laufen."
+
+Payout und FCF-Yield sollen laut Vorschlag höher gewichtet werden als ROE, mit
+der Begründung: "Hohe Dividendenrendite + hoher Payout + schwacher Cashflow"
+ist genau die Konstellation, die eine Dividend-Strategie aussortieren sollte.
+
+## Was UIQ heute fehlt (explizit NICHT aus technischen Indikatoren rekonstruieren)
+
+Der Vorschlag warnt ausdrücklich vor einem Semantic-Firewall-Verstoß: ein
+RS-Rating kann nicht "Dividendensicherheit" bedeuten, ein niedriger Drawdown ist
+kein Beweis für stabile Dividenden. Fehlende Felder für eine vollständige
+Dividend-Aristocrats-Strategie:
+
+```
+Verschuldungsgrad, Net Debt/EBITDA, Interest Coverage, FCF-Payout-Ratio,
+Dividendenwachstum 3/5/10 Jahre, Jahre ohne Dividendensenkung,
+Dividend Cut History, EPS-Wachstum 3/5/10 Jahre, FCF-Wachstum,
+Earnings/Cashflow Stability, Dividend CAGR, Sector-relative Yield,
+Ex-Dividend-/Payment-Daten
+```
+
+Empfehlung: UIQ sollte sich vorerst explizit als "Dividend Quality/Income
+Candidate" positionieren, NICHT als vollständige "Dividend Aristocrats"-
+Strategie — UIQ kann heute seriös sagen "attraktive Rendite bei akzeptabler
+Ausschüttungsquote und ausreichendem FCF", aber NICHT "wird die Dividende
+langfristig halten oder erhöhen" (dafür fehlen Dividend History, FCF/EPS
+Stability, Verschuldungsdaten).
+
+## Vorgeschlagene Yield-Interpretation (UNBELEGTE Kalibrierungs-Hypothese)
+
+```
+Yield 2,5%  → attraktiv
+Yield 4,0%  → sehr attraktiv
+Yield 6,0%  → interessant
+Yield 10%   → WARNUNG
+Yield 15%   → EXTREM / Prüfung
+```
+
+**Wichtig:** diese Stufen sind NICHT aus einer zitierten Quelle, sondern die
+eigene Einschätzung des Reviewers — bevor sie ins Prompt einfließen, müssten sie
+entweder mit einer echten Quelle belegt oder als UIQ-eigene, empirisch zu
+kalibrierende Heuristik gekennzeichnet werden (nicht als feststehende Regel).
+Das Grundprinzip dahinter — Rendite ist keine Qualität, sondern nur die Höhe der
+aktuellen Ausschüttung relativ zum Kurs, oft Folge eines gefallenen Kurses statt
+einer besonders großzügigen Ausschüttung — ist bereits im aktuellen `dividend`-
+Prinzip als qualitative Warnung enthalten (Yield-Trap-Analogie zum bestehenden
+Value-Trap-Konzept), nur ohne die konkreten Prozent-Stufen.
+
+## Nächster Schritt vor jeder Matrix-Entwicklung (Reviewer-eigene Priorität)
+
+Wie beim KO-Long-Vorschlag: erst `sDividend`s tatsächliche Berechnung/
+Abhängigkeitskette untersuchen (welche Rohdaten, welche Gewichtung, mögliche
+Doppelzählungen mit anderen UIQ-Scores), bevor eine neue Bewertungsmatrix
+gebaut wird.
+
+## Vorgeschlagene erste Test-Feldauswahl (7 Variablen, "bewusst klein")
+
+```
+divYield, payoutRatio, fcfYield, roe, roicProxy, revGrowth, rsRating
+```
+Plus MSE/HMM als Marktfilter, DD/RSI/trendScore als Warnsignale (nicht als
+Alpha-Signal).
+
+## Was heute (08.09.2026) stattdessen bereits vorhanden ist
+
+Das bestehende `dividend`-Prinzip enthält bereits die Kernwarnung (Yield allein
+kein Qualitätsmerkmal, immer gemeinsam mit payoutRatio/fcfYield einordnen,
+sDividend als interner Aggregationswert statt externes Gütesiegel) — nur ohne
+die vorgeschlagene Drei-Score-Architektur und ohne die (unbelegten) Yield-Stufen.
