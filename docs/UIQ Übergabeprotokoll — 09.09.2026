@@ -1,0 +1,172 @@
+# UIQ Übergabeprotokoll — 09.09.2026
+
+**Für die nächste Session. Schließt an das Übergabeprotokoll vom
+06.09.2026 und die Transkripte vom 07./08.09.2026 an.**
+
+---
+
+## 1. Deployed/Live-Stand (Stichtag Ende 09.09.2026)
+
+| Datei | Version | Repo | Status |
+|---|---|---|---|
+| `ko-prompts.js` | **2.53.25** | ko-modules | Live bestaetigt (verifiziert) |
+| `ko-market-state.js` | **2.8** | ko-modules | Live bestaetigt |
+| `index.html` | **v509** | axel-scanner | Bereitgestellt, Deploy-Status NICHT bestaetigt — s. Punkt 2 |
+| `market_aggregator.py` | (Owner-Earnings-Erweiterung) | ko-aggregator | Von Axel als deployed gemeldet, nicht separat re-verifiziert |
+
+**GHA-Run: bewusst NICHT getriggert** — wartet auf Bestaetigung, dass
+alle drei betroffenen Dateien (Aggregator, `ko-prompts.js`,
+`index.html`) tatsaechlich im Live-Stand synchron sind.
+
+## 2. Wichtigster offener Punkt: index.html-Deploy-Status unklar
+
+Heute wurde ein eigener Fehler entdeckt: eine `index.html`-Aenderung
+(ownerEarningsYield in `runAlphaLbKI()`) wurde urspruenglich ohne
+Versionsbump ausgeliefert — dadurch blieb unklar, ob sie tatsaechlich
+live ankam. Korrigiert als **v509** mit korrektem Changelog-Eintrag,
+bereitgestellt — aber nicht mehr im Gespraech bestaetigt, dass v509
+tatsaechlich deployed wurde (letzte Nachricht dazu war "aggregator.py
+und index.html v508 ebenfalls deployed", das war VOR der v509-Korrektur).
+
+**Erster Schritt der naechsten Session: `index.html` live gegen
+`ownerEarningsYield`-Vorkommen UND Versionsnummer pruefen**, bevor
+irgendetwas anderes an diesem Bereich weitergebaut wird.
+
+## 3. Heute abgeschlossen: EIC-Master-Prompt-Migration komplett
+
+Mit `vcp`, `swing`, `breakdown`, `breakout` (Literatur-Runden) sind
+**alle 9 Equity-Strategien plus alle 5 Options-Strategien** literatur-
+fundiert und auf `_eicMasterPrompt()` migriert. Zusaetzlich:
+
+- **Systemischer Fund behoben:** `risikenText`/`tradeoffKontext`/
+  `modellGrenzeText`/`kriterienDifferenzierungText` wurden von
+  `_eicMasterPrompt()` nie gelesen — betraf 10 Strategien, alle Inhalte
+  ins `principle` verschoben (v2.53.19).
+- **Regex-Bug in der Datenkanal-Verifikation gefunden und korrigiert:**
+  Feldnamen mit Ziffern (`dist52wHigh` etc.) wurden faelschlich als
+  nicht verfuegbar eingestuft — betraf `momentum`/`vcp`/`swing`,
+  korrigiert (v2.53.23). Vollstaendige, korrigierte Feldliste im
+  `UIQ_Breakout_Konzept_2026-09-09.md` dokumentiert — bei kuenftiger
+  Arbeit an diesen vier Strategien als Referenz nutzen.
+- **`ko`-Datenkanal-Fund:** dieselbe lbKey-Verifikationsluecke wie bei
+  `fading_short` (nur gegen Aggregator-Code, nicht gegen echten Payload
+  geprueft) — korrigiert (v2.53.18).
+- **Fading-Short-Namensverwirrung vollstaendig aufgeloest:** von der
+  UI-Umbenennung (v506) ueber den eigentlichen lbKey-Root-Cause (v507)
+  bis zur konsistenten Options-Leaderboard-Erweiterung (v508/v509).
+
+**Zehn Konzeptdokumente** geschrieben (je Strategie: Momentum, Swing,
+VCP, Breakout, Mean-Reversion, KO-Long, Value, Dividend, Fading-Short,
+Breakdown) — alle unter `UIQ-Suite/docs/`, sollten committed sein.
+
+## 4. Owner Earnings — neues Feature, produktiv
+
+`market_aggregator.py` berechnet jetzt `ownerEarningsYield`
+(Nettogewinn + Abschreibungen − min(Abschreibungen, Gesamt-Capex)) via
+`yfinance`, getestet gegen echte Daten (MSFT, HRB, UAN, SAP.DE),
+Plausibilitaetscheck gegen einen Drittanbieter-Screenshot bestanden.
+Zwei-Stufen-Fallback in `ko-prompts.js` (echtes Feld -> `fcfYield` als
+Ersatz). Details: `UIQ_Owner_Earnings_Architektur_2026-09-09.md`.
+
+**Offener Nebenfund, nicht heute geloest:** `value`/`dividend` haben
+DREI unterschiedlich reichhaltige Einstiegspunkte (Alpha-Desk,
+`runValueKiBriefing()`, generischer Scanner-Tab-Kanal) — verdient
+eigene Untersuchung, im Dokument festgehalten.
+
+## 5. Literaturverzeichnis erstellt
+
+`UIQ_Literaturverzeichnis_2026-09-09.md` — erste konsolidierte Fassung
+ueber alle 15 Strategien. Enthaelt einen "Bekannte Korrekturen"-Abschnitt
+(Zitat-Verwechslung Jegadeesh 1990 vs. 1995, Regex-Bug) als bewusstes
+Transparenz-Protokoll. Offene Fragen darin: Darstellungsort in der
+UIQ-Oberflaeche noch nicht entschieden, Options-Strategien weniger tief
+dokumentiert als Equity, Zitate vor echter Veroeffentlichung gegenpruefen
+(UIQ hat keinen Suchzugriff).
+
+## 6. Public Daily Recommendations — Konzept UND Technical Spec fertig
+
+Reihenfolge: Konzept v1 (Axel) -> Reviewer-Feedback (Prediction Ledger,
+strukturierte Daten statt KI-Text als Backtest-Primaerquelle,
+Append-only-Archiv, Versionierung, verschaerfter Rechtshinweis) ->
+Konzept v2 -> **Technical Implementation Spec v1.0** (konkrete
+JSON-Schemas, KV-Pfade, ID-Schema, GHA-Integrationspunkt, Frontend-
+Verzweigung, Fehlerbehandlung).
+
+**Noch NICHT umgesetzt** — reine Spezifikation. Ergaenzt um zwei kleine
+Nachtraege (FRED-Vintage-Daten-Hinweis, `full_fred`-Empfehlung).
+
+**Wichtig fuer morgen:** Axels neue Projektbezeichnung
+("AI_delivery_public: Marketstate, Macrodata und Public-Strategy-
+AI-Empfehlungen **2x/Tag**") weicht in zwei Punkten von der bestehenden
+Spec ab, die **zuerst geklaert werden sollten, bevor weitergebaut wird**:
+
+1. **Frequenz:** Spec ging von 1x/Tag aus (ein kanonischer Snapshot
+   nach dem GHA-Lauf). "2x/Tag" waere eine Architektur-Aenderung — z.B.
+   ein Snapshot vor EU-Handelsstart, einer vor US-Handelsstart? Das
+   beruehrt direkt die in der Spec unter 4.1 offen gelassene Frage nach
+   der Anzahl kanonischer Snapshots.
+2. **Scope-Erweiterung:** "Marketstate, Macrodata" klingt danach, dass
+   nicht nur die Strategie-Empfehlungen (Ebene C: AI Output) oeffentlich
+   abrufbar werden sollen, sondern auch der Canonical Snapshot selbst
+   (Ebene A — Regime, Makro-Werte) — in der bisherigen Spec war das nur
+   intern fuer den Backtest gedacht, nicht als eigenes Public-Produkt.
+
+## 7. EZB-/Makrodaten-Architektur — neuer Vorschlag, passt zu Punkt 6
+
+`UIQ_EZB_Makrodaten_Architektur_2026-09-09.md` — UIQs Makro-Ebene ist
+bisher rein US-zentrisch (FRED), keine DE-/Eurozone-Abdeckung trotz
+DE-Titeln im Universum. EZB-API (kostenlos, kein Key) als Loesung
+vorgeschlagen, mit konkreter erster Serienauswahl (DE-10J-Rendite,
+EUR/USD, EZB-Leitzins). Offene Design-Frage darin: reiner Zusatzkontext
+vs. eigenstaendiges DE/EU-Regime — Empfehlung fuer den kleineren Eingriff.
+Eurostat als ergaenzende, noch zu pruefende Quelle nachgetragen. Referenz-
+Notebooks (`ilchen/EU_Economic_Data_Analysis`) fuer die Umsetzung
+vermerkt. **Live-Verifikation der ECB-API steht noch aus** (Netzwerk-
+Freigabe fehlte mir heute dafuer).
+
+**Relevant fuer Punkt 6:** Falls "Marketstate, Macrodata" morgen
+tatsaechlich EU-Makrodaten mit einschliessen soll, haengen dieser
+Vorschlag und die Public-Recommendations-Spec zusammen — nicht
+unabhaengig voneinander planen.
+
+## 8. Datenquellen-Brainstorm — Ergebnis
+
+Rund ein Dutzend GitHub-Repos geprueft (auf Axels Vorschlag). Zwei
+tatsaechlich wertvoll:
+- **EZB-API** (kostenlos, kein Key) — s. Punkt 7.
+- **`full_fred`** (PyPI: `full-fred`) — bester der drei geprueften
+  FRED-Python-Wrapper, falls spaeter Vintage-Daten gebraucht werden;
+  kein Ersatz der bestehenden `fetch_fred_macro()`-Loesung.
+
+Der Rest verworfen: falsche Sprache (R: `pedquant`,
+`Empirical-Method-in-Finance`), fachfremd (China-A-Aktien, Batterie-
+Optimierung), veraltet (Opportunity Insights seit Juni 2024, IMF-WEO-
+Export seit ~2020), kommerziell ohne Free-Vorteil (Trading Economics,
+DataSetIQ), architektonisch unpassend (MCP-Server fuer KI-Agenten statt
+Backend-Pipeline: `fred-mcp-server`, `openecon-data`).
+
+## 9. Kein neuer, aber wichtiger Verifikations-Grundsatz fuer morgen
+
+Zwei eigene Fehler heute (Regex-Bug bei Feldnamen mit Ziffern,
+vergessener Versionsbump bei index.html) — beide transparent
+dokumentiert, nicht verschwiegen. Fuer morgen als Arbeitsweise
+festhalten: **nach jeder Datei-Aenderung Versionsnummer UND
+Changelog-Eintrag explizit pruefen**, nicht nur den Inhalt — das war
+heute die eigentliche Fehlerquelle, nicht die inhaltliche Aenderung
+selbst.
+
+---
+
+## Fuer den Einstieg morgen: offene Reihenfolge-Frage
+
+Bevor an "AI_delivery_public" weitergebaut wird, in dieser Reihenfolge
+sinnvoll:
+
+1. `index.html` v509 Deploy-Status verifizieren (Punkt 2).
+2. GHA-Run fuer Owner Earnings triggern, sobald 1. bestaetigt.
+3. Die beiden Abweichungen der neuen Projektbezeichnung von der
+   bestehenden Spec klaeren (Punkt 6: Frequenz, Scope) — am besten
+   direkt mit Axel, bevor Architekturentscheidungen getroffen werden.
+4. Falls Marketstate/Macrodata tatsaechlich Teil des Public-Angebots
+   werden: EZB-Vorschlag (Punkt 7) als Teil dieser Planung mitdenken,
+   nicht getrennt.
