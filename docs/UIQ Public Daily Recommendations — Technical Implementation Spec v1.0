@@ -1,0 +1,475 @@
+# UIQ Public Daily Recommendations — Technical Implementation Spec v1.0
+
+**Status: Technische Spezifikation, bereit für Umsetzung. Baut auf
+Konzeptdokument v2 auf — dort wird das "Ob" und "Warum" begründet, hier
+wird das "Wie" exakt festgelegt. Kein Konzept-Diskussionsdokument mehr,
+sondern Implementierungs-Checkliste.**
+
+---
+
+## 1. Ziel / Scope
+
+Einmal pro Tag, nach dem kanonischen GHA-Aggregator-Lauf, generiert UIQ
+für jede der 15 Strategien (10 Equity-/KO-, 5 Options-Strategien) genau
+eine Public-Modus-KI-Empfehlung, speichert sie strukturiert und
+unveränderlich (append-only) ab, und stellt sie über einen KV-Endpunkt
+zum Abruf bereit. Public-Nutzer beziehen daraus ihre Tagesempfehlung
+statt einen individuellen Live-Call auszulösen. EIC bleibt vollständig
+unverändert (weiterhin live, on-demand, individuell).
+
+**Explizit außerhalb des Scopes dieser Spec:** die eigentliche
+Backtest-Auswertungslogik (Forward-Return-Berechnung, Score-Anpassung)
+— diese Spec legt nur die Datenerfassung so an, dass ein späteres
+Backtest-Projekt direkt darauf aufbauen kann, ohne Datenstruktur-Umbau.
+
+---
+
+## 2. Datenfluss
+
+```
+GHA Aggregator-Run (bestehend, unveraendert)
+    |
+    v
+Canonical Snapshot                    [NEU, Abschnitt 3.1]
+    |
+    v
+Strategy Engine                       (bestehende score_*()-Funktionen,
+    |                                  unveraendert - liefert die
+    |                                  Kandidaten je Strategie)
+    v
+Decision Snapshot je Kandidat         [NEU, Abschnitt 3.2]
+    |
+    v
+AI Generator (koAiCall-Aequivalent,   [NEU, GHA-seitig, Abschnitt 6]
+    server-seitig, nutzt ko-prompts.js)
+    |
+    v
+AI Output                             [NEU, Abschnitt 3.3]
+    |
+    v
+Prediction Ledger Entry               [NEU, Abschnitt 3.4]
+(fasst Snapshot+Decision+AI Output
+ unter einer ID zusammen)
+    |
+    v
+KV-Ablage (latest + Archiv)           [Abschnitt 4]
+    |
+    v
+Frontend-Abruf (openKiBriefing)       [Abschnitt 7]
+```
+
+---
+
+## 3. Datenmodelle
+
+Alle Felder mit `?` sind optional, alle anderen sind Pflichtfelder. Ein
+Prediction-Ledger-Eintrag, der ein Pflichtfeld nicht befüllen kann,
+wird NICHT gespeichert — lieber eine Strategie fehlt für den Tag im
+Archiv, als ein unvollständiger Eintrag mit stillem `null`.
+
+### 3.1 Canonical Snapshot
+
+Ein Objekt pro Tag, referenziert von allen Decision-Einträgen desselben
+Tages (nicht redundant in jedem Ledger-Eintrag dupliziert — nur die
+`snapshot_id` wird dort referenziert).
+
+```json
+{
+  "snapshot_id": "SNAP-20260908-071231Z",
+  "date": "2026-09-08",
+  "generated_at": "2026-09-08T07:12:31Z",
+  "aggregator_version": "5.28.3",
+  "indicator_registry_version": "2.4.0",
+  "gha_run_id": "18234567890",
+  "ticker_universe_size": 735,
+  "mcm_regime": "BULL_QUIET",
+  "mcm_context_downgrades": [],
+  "vix": 15.3
+}
+```
+
+**Herkunft der Felder:** `aggregator_version`/`indicator_registry_version`
+existieren bereits als Konstanten im Aggregator-Code (dieselben, die
+heute schon in Log-Ausgaben/Kommentaren auftauchen) — hier nur erstmals
+strukturiert mitgeschrieben statt nur in Kommentaren dokumentiert.
+`gha_run_id` kommt aus der GHA-Runtime-Umgebungsvariable
+`GITHUB_RUN_ID`. `snapshot_id` wird deterministisch aus Datum+Uhrzeit
+des Snapshot-Zeitpunkts gebildet (s. 3.5 für das ID-Schema).
+
+### 3.2 Decision Snapshot (pro Kandidat)
+
+```json
+{
+  "date": "2026-09-08",
+  "strategy": "momentum",
+  "sym": "NVDA",
+  "rank": 1,
+  "strategy_score": 87,
+  "grade": "A+",
+  "regime": "BULL_QUIET",
+  "signals": {
+    "rsRating": 94,
+    "macdHist": 0.42,
+    "obvTrend": 1.85,
+    "volRatio": 1.12,
+    "dist52wHigh": -1.8,
+    "rsi": 68
+  },
+  "signals_note": "Feldliste je Strategie unterschiedlich - s. 3.6"
+}
+```
+
+**Wichtig:** `signals` enthält NUR Felder, die für die jeweilige
+Strategie tatsächlich verifiziert im Datenkanal vorhanden sind (s.
+Abschnitt 3.6 für die Feldliste je Strategie-Familie — direkt aus den
+heutigen Konzeptdokumenten übernommen, keine Neurecherche nötig). Kein
+Feld wird spekulativ als `null` eingetragen, wenn es grundsätzlich nicht
+zur Strategie gehört.
+
+### 3.3 AI Output
+
+Ein Objekt pro (Datum, Strategie) — NICHT pro Kandidat, da der
+generierte Text mehrere Kandidaten gemeinsam bespricht.
+
+```json
+{
+  "ai_output_id": "AIOUT-20260908-MOMENTUM",
+  "date": "2026-09-08",
+  "strategy": "momentum",
+  "prompt_version": "2.53.23",
+  "model": "claude-sonnet-4-6",
+  "generation_timestamp": "2026-09-08T07:18:44Z",
+  "mode": "public",
+  "recommendation_text": "1. MARKT-/REGIME-KONTEXT\n...",
+  "candidate_syms": ["NVDA", "AMD", "AVGO"],
+  "filter_preset": { "hvpMin": 50, "priceMin": 15, "priceMax": 500 },
+  "disclaimer": "Daten-Synthese - Keine Anlageberatung gem. Section 1 WpHG - Eigene Pruefung erforderlich",
+  "generation_error": null
+}
+```
+
+`prompt_version` ist der Versionsstring aus dem Header-Kommentar von
+`ko-prompts.js` (aktuell z.B. "2.53.23") — wird beim GHA-Lauf direkt aus
+der geladenen Datei ausgelesen (Regex auf den ersten
+`Version: X.Y.Z`-Treffer im Kommentarblock), nicht manuell gepflegt,
+damit er nie veraltet. `filter_preset` ist nur bei Options-Strategien
+befüllt (s. Abschnitt 9), sonst `null`. `generation_error` ist `null`
+im Erfolgsfall, sonst ein Fehlerobjekt (s. Abschnitt 8).
+
+### 3.4 Prediction Ledger Entry
+
+Der eigentliche, unveränderliche Archiv-Eintrag — fasst Decision
+Snapshot + Referenzen zusammen. **Ein Ledger-Eintrag pro (Datum,
+Strategie, Kandidat)** — feinste sinnvolle Granularität für spätere
+Einzeltitel-Auswertung.
+
+```json
+{
+  "ledger_id": "UIQ-20260908-MOMENTUM-001",
+  "snapshot_id": "SNAP-20260908-071231Z",
+  "ai_output_id": "AIOUT-20260908-MOMENTUM",
+  "decision": { "...": "s. 3.2, vollstaendig eingebettet, nicht nur referenziert" },
+  "created_at": "2026-09-08T07:18:44Z",
+  "immutable": true,
+  "outcome": null
+}
+```
+
+`outcome` bleibt `null` bis ein späterer, separater Auswertungsschritt
+(nicht Teil dieser Spec) T+1/T+3/T+5/T+10/T+20/MFE/MAE nachträgt — dieser
+spätere Schritt **fügt ein neues Feld hinzu, überschreibt aber nichts
+Bestehendes** (s. Immutability-Regel, Abschnitt 4.3).
+
+### 3.5 ID-Schema
+
+| ID-Typ | Format | Beispiel |
+|---|---|---|
+| `snapshot_id` | `SNAP-{YYYYMMDD}-{HHMMSS}Z` | `SNAP-20260908-071231Z` |
+| `ai_output_id` | `AIOUT-{YYYYMMDD}-{STRATEGY_UPPER}` | `AIOUT-20260908-MOMENTUM` |
+| `ledger_id` | `UIQ-{YYYYMMDD}-{STRATEGY_UPPER}-{RANK:03d}` | `UIQ-20260908-MOMENTUM-001` |
+
+`RANK` ist die Platzierung des Kandidaten innerhalb der Top-N dieser
+Strategie an diesem Tag (001 = höchster Rang). Alle IDs sind rein aus
+Datum+Strategie+Rang deterministisch ableitbar — kein Zufalls- oder
+Datenbank-Autoincrement-Element nötig, das bei einem Wiederholungslauf
+Kollisionen erzeugen könnte.
+
+### 3.6 Verfügbare `signals`-Felder je Strategie (aus heutigen Funden übernommen)
+
+| Strategie-Familie | Verfügbare Felder |
+|---|---|
+| Momentum, VCP, Swing, Breakout (Scanner-Tab-Kanal) | `rsRating`, `macdHist`, `obvTrend`, `volRatio`, `hvp`, `rsi`, `ma200`->abgeleitetes `dist200`, `dist52wHigh`, `sma150`, `above50` — NICHT `trendScore`/`adx`/`chopIndex`/`diPlus`/`diMinus`/`perf3m`/`perf12m` |
+| VCP zusätzlich | `vcpContractions`, `vcpLastPct`, `vcpAvgPrevPct`, `vcpVolContraction`, `vcpBreakoutVol` |
+| KO-Long (Alpha-Desk-Kanal) | `dist200`, `bbPos`, `pctFromHigh52`, `rsRating` — NICHT `trendScore`/`adx`/`chopIndex` |
+| Fading Short, Breakdown | `ema50`, `ema200`, `atr`, `rsi`, `macdHist`, `obvTrend`, `volRatio`, `bbPos`, `hvp`, `squeezeRisk` |
+| Mean Reversion | `rsi`, `dist200`, `regime` |
+| Value | `peForward`, `pb`, `fcfYield`, `roicProxy`, `revGrowth`, `grossMargin`, `analystUpside` |
+| Dividend | `divYield`, `payoutRatio`, `fcfYield`, `roe` |
+| Options-Strategien | `price`, `hvp`/`ivp`, `er` (Earnings-Tage), strategie-spezifische Strike-Berechnung |
+
+**Diese Tabelle ist die verbindliche Referenz** — nicht neu recherchieren,
+direkt aus den zehn heutigen Konzeptdokumenten (`UIQ_*_Konzept_2026-09-09.md`)
+übernommen. Bei künftigen Datenkanal-Änderungen muss diese Tabelle
+mitgepflegt werden.
+
+---
+
+## 4. KV-Struktur
+
+```
+/public/recommendations/latest
+    -> { "date": "2026-09-08", "strategies": { "momentum": "UIQ-20260908-MOMENTUM", ... } }
+    (reiner Pointer/Manifest, wird TAEGLICH ERSETZT - einziger veraenderlicher Key)
+
+/archive/recommendations/2026/09/08/momentum.json
+    -> Array aller Prediction-Ledger-Eintraege dieser Strategie an diesem Tag
+       (typisch 3 Eintraege, s. Top-3-Kandidaten-Konvention aus den Prompts)
+
+/archive/recommendations/2026/09/08/momentum_ai_output.json
+    -> das eine AI-Output-Objekt (3.3) fuer diese Strategie/diesen Tag
+
+/archive/recommendations/2026/09/08/snapshot.json
+    -> der Canonical Snapshot (3.1) dieses Tages, von allen Strategien
+       dieses Tages referenziert
+```
+
+### 4.1 Warum diese Aufteilung
+
+`latest` ist absichtlich klein (nur IDs, kein Volltext) — das Frontend
+liest `latest`, bekommt die relevante `ledger_id`/Datum, und lädt dann
+gezielt aus dem Archiv nach. Das vermeidet, bei jedem Seitenaufruf alle
+15 Strategien komplett zu laden, wenn der Nutzer nur eine sehen will.
+
+### 4.2 `latest` als Pointer
+
+`latest` wird beim täglichen GHA-Lauf einmalig komplett überschrieben
+(kein Merge, kein Append) — enthält ausschließlich Referenzen auf den
+aktuellen Tag, nie Nutzdaten selbst. Ein Fehler beim Schreiben von
+`latest` gefährdet nicht das bereits geschriebene Archiv (Schreibreihenfolge:
+erst Archiv-Dateien, dann `latest` zuletzt — s. Abschnitt 8).
+
+### 4.3 Immutability — logisch vs. technisch (Axels Präzisierung übernommen)
+
+**Für den Beta-Start: logisch immutable, nicht technisch immutable.**
+
+- **Logisch:** Der GHA-Schreibschritt kennt nur `create`, keine
+  `update`-Operation auf Pfaden unter `/archive/`. Es gibt im Code
+  schlicht keine Funktion, die einen bestehenden Archiv-Pfad
+  überschreibt — das ist die eigentliche Absicherung, nicht eine
+  externe Zugriffskontrolle.
+- **Technisch NICHT umgesetzt in v1:** keine kryptografische Hash-Kette,
+  keine Schreibschutz-Policy auf KV-Ebene, kein Merkle-Tree. Das wäre
+  Overengineering für den Beta-Start — explizit als spätere Erweiterung
+  vorgemerkt, falls der Track Record später extern belastbar bezeugt
+  werden soll (z.B. für Marketing-Zwecke, s. Konzeptdokument v2,
+  Abschnitt 6 — dort ausdrücklich zurückgestellt).
+- **Namensschema als einzige Absicherung:** Pfade enthalten das Datum
+  fest im Namen (`/archive/recommendations/2026/09/08/...`) — ein
+  erneuter Lauf für denselben Tag würde denselben Pfad treffen. Der
+  GHA-Schreibschritt muss daher VOR dem Schreiben prüfen, ob der
+  Ziel-Pfad bereits existiert, und im Kollisionsfall abbrechen statt
+  zu überschreiben (s. Abschnitt 8, Fehlerfall "Tag bereits generiert").
+
+---
+
+## 5. Versionierung
+
+Jeder Prediction-Ledger-Eintrag trägt (über die eingebetteten
+Teilobjekte 3.1-3.3) vollständig:
+
+| Version | Quelle | Beispielwert |
+|---|---|---|
+| `aggregator_version` | Snapshot (3.1), aus Aggregator-Konstante | `"5.28.3"` |
+| `indicator_registry_version` | Snapshot (3.1) | `"2.4.0"` |
+| `prompt_version` | AI Output (3.3), aus `ko-prompts.js`-Header ausgelesen | `"2.53.23"` |
+| `model` | AI Output (3.3), fest im GHA-Skript konfiguriert | `"claude-sonnet-4-6"` |
+
+Keine dieser vier Versionsangaben ist optional. Fehlt eine davon zum
+Generierungszeitpunkt, wird der Ledger-Eintrag NICHT geschrieben (s.
+Abschnitt 8).
+
+---
+
+## 6. GHA-Integration
+
+**Neuer Workflow-Schritt**, nach dem bestehenden Aggregator-Lauf, vor
+dem bisherigen Leaderboard-Build-Abschluss:
+
+```yaml
+- name: Generate Public Daily Recommendations
+  run: node scripts/generate_public_recommendations.js
+  env:
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    KV_WRITE_TOKEN: ${{ secrets.KO_SYNC_WRITE_TOKEN }}
+    GITHUB_RUN_ID: ${{ github.run_id }}
+```
+
+**Neues Skript `scripts/generate_public_recommendations.js` (Node,
+läuft im GHA-Runner):**
+
+1. Lädt `ko-prompts.js` per `require()` (funktioniert bereits heute im
+   Node-Kontext, mehrfach in dieser Session selbst getestet).
+2. Liest die aktuelle `aggregator_version`/`indicator_registry_version`
+   aus dem soeben produzierten Aggregator-Output.
+3. Für jede der 15 Strategien: baut den Ticker-Kandidaten-Payload aus
+   den Aggregator-Ergebnissen (server-seitige Nachbildung der bisher nur
+   client-seitigen `topResults.push()`/`tickerList`-Logik — **das ist der
+   eigentliche neue Code**, kein Wiederverwenden von index.html-Code,
+   da der dort in Browser-DOM-Kontext eingebettet ist).
+4. Ruft `KoPrompts.get(strategy, ctx)` mit `ctx.isEic = false` auf —
+   identische Funktion wie im Frontend, liefert den fertigen Public-Prompt.
+5. Ruft die Anthropic API direkt auf (kein Umweg über `ko-ai-worker.js`,
+   da dieser für Nutzer-Token-Auth gebaut ist, nicht für Server-zu-
+   Server-Aufrufe — GHA nutzt das eigene `ANTHROPIC_API_KEY`-Secret).
+6. Baut Snapshot/Decision/AI-Output/Ledger-Objekte (Abschnitt 3), prüft
+   Pflichtfelder, schreibt Archiv-Dateien, zuletzt `latest`.
+
+---
+
+## 7. Frontend — `openKiBriefing()`
+
+Neue Verzweigung am Anfang der Funktion, vor dem bisherigen
+Live-Call-Pfad:
+
+```javascript
+async function openKiBriefing(defaultStrat, forceRefresh) {
+  // ... bestehender Anfang (Modal oeffnen, Button-Status) unveraendert ...
+
+  if (!_expertModeActive || !_eicUnlocked) {
+    // PUBLIC-MODUS
+    var isOptionsStrat = ['csp_wheel','atmna','weekly_income','cc','collar'].indexOf(_kiStrat) !== -1;
+    var usesCustomFilter = isOptionsStrat && _hasNonDefaultOptionsFilter();
+
+    if (usesCustomFilter) {
+      content.innerHTML = '<div style="color:var(--amber);padding:1rem">'
+        + 'Individuelle KI-Analyse steht im Public-Beta-Modus fuer angepasste '
+        + 'Filter derzeit nicht zur Verfuegung. Bitte Standardfilter verwenden '
+        + 'oder EIC-Modus nutzen.</div>';
+      return;
+    }
+
+    var precomputed = await fetchPrecomputedRecommendation(_kiStrat);
+    if (precomputed) {
+      _showPrecomputedBriefing(precomputed);
+      return;
+    }
+    // Fallback nur falls precomputed fehlt (s. Abschnitt 8) -
+    // NICHT der reguläre Weg, sondern Havarie-Fall
+    content.innerHTML = '<div style="color:var(--red);padding:1rem">'
+      + 'Tagesempfehlung fuer diese Strategie aktuell nicht verfuegbar. '
+      + 'Bitte spaeter erneut versuchen.</div>';
+    return;
+  }
+
+  // EIC-MODUS: bestehender Live-Call-Pfad, komplett unveraendert
+  // ... bisheriger Code ...
+}
+```
+
+**Neue Hilfsfunktion `fetchPrecomputedRecommendation(strategy)`:**
+1. Fetch `/public/recommendations/latest`.
+2. Falls `strategies[strategy]` vorhanden: Datum aus `latest` entnehmen,
+   daraus den Archiv-Pfad bilden, `ai_output.json` für diese Strategie
+   laden.
+3. Rückgabe des `recommendation_text` plus Zeitstempel-Anzeige (Muster
+   aus dem bestehenden Tearsheet-Disclaimer wiederverwenden, s.
+   Konzeptdokument v2, Abschnitt 4.3).
+
+**Bewusst kein Live-Fallback bei fehlendem Precomputed-Eintrag in v1**
+(konsistent mit der MVP-Entscheidung aus v2, Abschnitt 4.2) — stattdessen
+eine klare Fehlermeldung. Das ist ein bewusst seltener Havarie-Fall
+(GHA-Lauf fehlgeschlagen), kein regulärer Nutzerpfad.
+
+---
+
+## 8. Fehlerfälle / Fallbacks
+
+| Fehlerfall | Verhalten |
+|---|---|
+| Anthropic-API-Timeout/-Fehler bei einer Strategie während der GHA-Generierung | Diese eine Strategie wird für den Tag NICHT in `latest` aufgenommen (fehlt schlicht im Manifest) — andere Strategien werden unabhängig davon fertig generiert. Ein Fehlschlag blockiert nicht den gesamten Lauf. Einmaliger Retry mit 10s Backoff vor endgültigem Verzicht. |
+| Pflichtfeld (Abschnitt 3/5) beim Bau eines Ledger-Eintrags nicht befüllbar | Eintrag wird nicht geschrieben, Fehler geloggt (GHA-Job-Log), Strategie fehlt für den Tag — kein stiller `null`-Wert. |
+| Ziel-Archiv-Pfad existiert bereits (Tag bereits generiert, z.B. bei manuellem Re-Run) | Schreibvorgang für diesen Pfad wird übersprungen, kein Überschreiben — entspricht der Immutability-Regel aus 4.3. Warnung im GHA-Log, kein Job-Fehlschlag. |
+| `latest`-Schreibvorgang schlägt fehl, nachdem Archiv-Dateien bereits geschrieben wurden | Archiv bleibt korrekt (bereits geschrieben, unveränderlich) — nur `latest` zeigt noch auf den Vortag. Nutzer sehen vorübergehend die alte Empfehlung mit korrektem, nicht-irreführendem Zeitstempel (kein Datenverlust, nur verzögerte Sichtbarkeit). Nächster GHA-Lauf überschreibt `latest` regulär erneut. |
+| Frontend: `fetchPrecomputedRecommendation()` liefert `null` (Netzwerkfehler oder Strategie fehlt in `latest`) | Havarie-Fehlermeldung wie in Abschnitt 7 beschrieben, kein automatischer Live-Fallback in v1. |
+
+---
+
+## 9. Optionsstrategien — Standard-Preset
+
+Konkrete Werte für den einen vorab generierten Preset je Options-Strategie
+(entspricht dem bereits im Options-Desk-Frontend als mittlere Voreinstellung
+markierten Wert):
+
+| Parameter | Standardwert |
+|---|---|
+| HVP-Filter | >= 50% |
+| Kursfilter | $15 - $500 |
+| Max. Kurs (Margin-Proxy) | $250 |
+
+Diese drei Werte werden im GHA-Skript fest kodiert (nicht aus dem
+Frontend-State gelesen, da GHA keinen Browser-Kontext hat) und im
+`ai_output`-Objekt als `filter_preset`-Feld mitgeführt, damit im
+Frontend transparent angezeigt werden kann, mit welchen Annahmen die
+gezeigte Empfehlung generiert wurde.
+
+---
+
+## 10. Public vs. EIC — Referenztabelle
+
+| | Public | EIC |
+|---|---|---|
+| Generierung | 1x/Tag, GHA-seitig | on-demand, live |
+| Datenstand | Canonical Snapshot (Tagesbeginn) | aktueller Live-Stand |
+| Optionsfilter | nur Standard-Preset (9) | frei einstellbar |
+| Inhalt für alle Nutzer | identisch | individuell |
+| Kosten pro Nutzer-Klick | keine (bereits generiert) | ein API-Call |
+| Speicherung | Prediction Ledger (unveränderlich) | `_kiCache` (Client, TTL-begrenzt, wie bisher) |
+
+---
+
+## 11. Datenschutz / rechtliche Guardrails
+
+Kein technischer Abschnitt kann die in Konzeptdokument v2, Abschnitt 5
+beschriebene rechtliche Prüfung ersetzen — diese Spec geht davon aus,
+dass diese Prüfung VOR der Umsetzung stattfindet (wie dort empfohlen),
+nicht parallel dazu.
+
+**Technische Vorkehrung, die unabhängig vom Prüfergebnis sinnvoll ist:**
+der bestehende Disclaimer ("Daten-Synthese - Keine Anlageberatung gem.
+Section 1 WpHG - Eigene Prüfung erforderlich") wird nicht nur im Frontend
+angezeigt, sondern als eigenes Feld direkt im `ai_output`-Objekt (3.3)
+mitgespeichert — damit trägt auch das Archiv selbst dauerhaft den
+Compliance-Kontext, unabhängig davon, wie der Text später angezeigt
+oder zitiert wird.
+
+---
+
+## 12. MVP-Implementierungsreihenfolge
+
+1. `scripts/generate_public_recommendations.js` bauen — server-seitige
+   Ticker-Payload-Konstruktion (der aufwendigste Einzelschritt, s.
+   Abschnitt 6, Punkt 3).
+2. Datenmodelle (Abschnitt 3) als eigenständige, testbare Funktionen
+   implementieren, isoliert vom GHA-Kontext testbar.
+3. KV-Schreiblogik (Abschnitt 4) inkl. Kollisionsprüfung (4.3).
+4. GHA-Workflow-Integration (Abschnitt 6).
+5. Einen vollständigen Testlauf gegen einen bereits vergangenen
+   Snapshot-Tag fahren (nicht im produktiven Zeitfenster), Ledger-
+   Einträge manuell gegenprüfen.
+6. Frontend-Änderung (Abschnitt 7) — erst NACHDEM Schritt 5 zuverlässig
+   funktioniert, damit das Frontend nicht gegen eine noch unfertige
+   Backend-Struktur getestet wird.
+7. Options-Preset-Deklaration (Abschnitt 9) im Frontend sichtbar machen.
+
+---
+
+## 13. Nicht im MVP
+
+Unverändert aus Konzeptdokument v2, Abschnitt 6 — hier nicht erneut
+aufgeführt, gilt vollständig weiter: kein Multi-Modell-Vergleich, kein
+paralleles Prompt-Testing, keine volle Options-Preset-Matrix, keine
+automatische Score-Optimierung aus dem Archiv, keine automatische
+Strategie-Auswahl, keine KI-Selbstbewertung vergangener Empfehlungen,
+kein sofortiges Marketing des Track Records. Zusätzlich aus dieser Spec:
+kein Live-Fallback bei Custom-Filtern (Abschnitt 7), keine
+kryptografische Immutability-Absicherung (Abschnitt 4.3).
