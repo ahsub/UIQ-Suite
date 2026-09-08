@@ -1,0 +1,173 @@
+# UIQ Breakout — Konzeptdokument
+
+**Status: `breakout` ist migriert und produktiv (ko-prompts.js v2.53.23).
+Damit sind alle 9 geplanten Equity-Strategien inhaltlich abgeschlossen.
+Dieses Dokument hält fest, was übernommen wurde — inklusive eines
+kritischen eigenen Verifikationsfehlers, der beim Schreiben entdeckt und
+rückwirkend in drei bereits fertigen Strategien korrigiert wurde.**
+
+Eingebracht 08./09.09.2026 — zwei Literatur-Runden, `breakout` war die
+letzte der neun Equity-Strategien.
+
+---
+
+## Runde 1 (08.09.2026): Beide Minervini-Bücher
+
+**Konkret übernommen/korrigiert:**
+- **RS-Rating-Kriterium** (Minervini Trend Template): mindestens 70,
+  idealerweise in den 80ern/90ern — kein starrer 85er-Cutoff. Der alte
+  Prompt hatte fälschlich "≥85 = ideal" als feste Schwelle genannt.
+- **Ausbruchsvolumen** (Minervini): idealerweise 300-400% (3-4x) des
+  durchschnittlichen Tagesvolumens — deutlich höher als die zuvor im
+  Prompt genannten 1,2-2,0x.
+- **Grundsatz:** erst NACH dem tatsächlichen Pivot-Durchbruch einsteigen,
+  nicht antizipieren ("assuming that a stock will break out is
+  dangerous").
+- **Stop-Loss/Gewinnerwartung:** dieselbe Konvention wie `momentum`
+  (7-8%, max. 8-10%, Ø-Gewinn ~15%, gleicher Autor).
+
+---
+
+## Runde 2 (09.09.2026): Akademische Literatur + zwei eigene Korrekturen
+
+### Die konzeptionelle Kernidee: Breakout ist ein Ereignis, kein Zustand
+
+Der wichtigste Beitrag dieser Runde, wörtlich ins Prinzip übernommen:
+
+> Ein Breakout ist ein Ereignis — kein Zustand.
+
+Das unterscheidet Breakout klar von den benachbarten Strategien:
+Momentum fragt "ist die Aktie stark?", Minervini/SEPA "ist der Leader
+technisch konstruktiv?", VCP "komprimiert sich die Struktur konstruktiv?"
+— Breakout fragt "bricht die Aktie tatsächlich aus dieser Struktur aus?".
+Erst das tatsächliche Überschreiten eines vorher identifizierbaren
+Pivot-/Widerstandsniveaus (Kurs-Feld) ist das Ereignis selbst.
+
+### Semantic-Firewall-Regelliste (vollständig übernommen)
+
+Das ist laut Reviewer "wahrscheinlich die wichtigste Abgrenzung des
+gesamten Konzepts" — jetzt wörtlich im Prinzip verankert:
+
+- Resistance-Nähe ≠ Breakout
+- 52-Wochen-Hoch-Nähe ≠ Breakout
+- Hohes VolRatio ≠ Breakout
+- Positives MACD ≠ Breakout
+- Hohes RS-Rating ≠ Breakout
+- Momentum ≠ Breakout
+- Ein VCP-Setup ≠ Breakout
+
+Alle genannten Dimensionen sind Confirmation-/Kontext-Kandidaten für ein
+bereits erkanntes Ereignis, niemals dessen Ersatz.
+
+### Akademische Fundierung (alle drei bereits an anderer Stelle zitiert)
+
+- **Lo, Mamaysky & Wang (2000), "Foundations of Technical Analysis"**,
+  Journal of Finance — dieselbe Quelle wie `vcp`/`swing`. Methodische
+  Grundlage: technische Muster algorithmisch statt subjektiv behandeln.
+- **George & Hwang (2004), "The 52-Week High and Momentum Investing"**,
+  Journal of Finance — dieselbe Quelle wie `momentum`/`breakdown`.
+  Legitimiert 52-Wochen-Hoch-Nähe als Leadership-Signal, ausdrücklich
+  NICHT als Breakout-Trigger selbst.
+- **Park & Irwin (2007), "What Do We Know About the Profitability of
+  Technical Analysis?"**, Journal of Economic Surveys — dieselbe Quelle
+  wie `breakdown`. Methodische Mahnung vor Data-Snooping und
+  nachträglich angepassten Regeln.
+
+Keine dieser drei Quellen war neu — der Wert dieser Runde lag darin, sie
+für `breakout` konsistent zusammenzuführen, nicht neue Literatur zu
+erschließen.
+
+---
+
+## Kritischer eigener Fund: Regex-Bug bei der Datenkanal-Verifikation
+
+Beim Bauen von `breakout` fiel auf: das Feld `dist52wHigh` (Abstand zum
+52-Wochen-Hoch) wird tatsächlich im Scanner-Tab-Datenkanal verwendet
+(`index.html`, Zeile ~19337: `if(r.dist52wHigh != null) line += ' 52W-H:'
+...`). Das widersprach der am selben Tag getroffenen Aussage, `momentum`/
+`vcp`/`swing` hätten **keinerlei** 52-Wochen-Hoch-Information zur
+Verfügung.
+
+### Root Cause
+
+Die Python-Feldextraktion nutzte das Regex-Muster `[a-zA-Z_]+` — das
+schließt Ziffern aus. Bei `dist52wHigh:` bricht das Muster bei `dist` ab
+(erwartet danach `\s*:`, findet aber `52wHigh: ...`) und erkennt keinen
+Treffer. Betroffen waren alle Feldnamen mit Ziffern:
+
+```
+dist52wHigh, high52w, low52w, ma200, sma150,
+ivpHv20, ivpHv50, ivpHv100, above50
+```
+
+Mit korrigiertem Muster (`[a-zA-Z_][a-zA-Z0-9_]*`) wuchs die tatsächliche
+Feldliste des Scanner-Tab-Kanals von 54 auf **63** Felder.
+
+### Konsequenz: drei bereits fertige Strategien rückwirkend korrigiert
+
+`momentum` (ursprünglich v2.53.17), `vcp` (v2.53.20) und `swing`
+(v2.53.21/22) hatten alle dieselbe fehlerhafte Aussage: "pctFromHigh52
+ist nicht verfügbar". Das ist für den **exakten Feldnamen** korrekt —
+aber das inhaltlich gleichwertige Feld `dist52wHigh` (dieselbe
+Information: Abstand zum 52-Wochen-Hoch in %) ist tatsächlich vorhanden.
+Alle drei principleTexte wurden noch am selben Tag berichtigt.
+
+**Wichtig, nicht betroffen:** der `ko`-Alpha-Desk-Datenkanal
+(`runAlphaLbKI()`) wurde mit direkten String-Prüfungen statt
+Regex-Feldextraktion verifiziert — dort war `pctFromHigh52` bereits
+korrekt als vorhanden erkannt worden, keine Korrektur nötig.
+
+### Lehre für künftige Datenkanal-Verifikationen
+
+Bei jeder künftigen Feldextraktion aus JavaScript-Objektliteralen: Regex-
+Muster für Feldnamen müssen Ziffern zulassen (`[a-zA-Z_][a-zA-Z0-9_]*`,
+nicht `[a-zA-Z_]+`). Ein zu enges Muster erzeugt keinen Fehler, sondern
+ein stillschweigend unvollständiges Ergebnis — genau die gefährlichste
+Art von Bug, weil sie wie eine erfolgreiche, vollständige Prüfung aussieht.
+
+## Vollständige, korrigierte Feldliste des Scanner-Tab-Datenkanals
+
+Für künftige Migrationen von `momentum`/`vcp`/`swing`/`breakout` (alle
+teilen sich diesen generischen Kanal):
+
+```
+above50, atr, bullCount, date, days, dist52wHigh, er, fcfYield, fibo,
+finalScore, grade, grossMargin, high52w, homeMarket, hvp, ivp, ivpCurIv,
+ivpDays, ivpHv100, ivpHv20, ivpHv50, ivpPercentile, low52w, ma200,
+macdBull, macdHist, markov, obvBull, obvTrend, pb, pe, price, regime,
+revGrowth, roicProxy, rs, rsRating, rsi, sBreakdown, sBreakout,
+sDividend, sFading, sKoLong, sMinervini, sMrLong, sSwing, sValue, sVcp,
+score, sepa, sma150, sticky, sym, tightnessPct, vcpAvgPrevPct,
+vcpBreakoutVol, vcpContractions, vcpDetected, vcpLastPct,
+vcpVolContraction, volRatio, warnLevel, wheelCandidate
+```
+
+**Weiterhin bestätigt NICHT vorhanden** (kein Ziffern-Bug-Artefakt, echte
+Lücke): `trendScore`, `adx`, `diPlus`, `diMinus`, `chopIndex`, `bbPos`,
+`avwap`, `perf3m`, `perf12m`.
+
+## Damit: alle 9 Equity-Strategien abgeschlossen
+
+Mit `breakout` sind `momentum`, `swing`, `vcp`, `breakout`, `meanrev`,
+`ko`, `value`, `dividend`, `fading_short` und `breakdown` (9 Equity- plus
+`ko`/`fading_short` als KO-Zertifikat-Strategien) inhaltlich fertig
+migriert und literaturfundiert. Der Reviewer merkt selbst an: die Cluster
+Momentum/Minervini/VCP/Breakout/Swing dürften erhebliche Korrelationen
+aufweisen — genau dafür ist die für später geplante BN-Analyse gedacht,
+um herauszufinden, welche Komponenten tatsächlich unterscheidbaren
+inkrementellen Wert liefern.
+
+## Nächste Schritte (falls vertieft)
+
+1. Die vorgeschlagene Drei-Score-Architektur (`breakout_setup_quality`,
+   `breakout_confirmation`, `breakout_risk`) sowie die False-Breakout-
+   Forschungsidee (Setup×Confirmation×Outcome-Matrix) sind konzeptionell
+   dokumentiert, aber nicht als separate numerische Scores umgesetzt —
+   das wäre ein Aggregator-Umbau.
+2. Die korrigierte, vollständige Feldliste oben sollte als Referenz für
+   alle künftigen Prompt-Arbeiten an `momentum`/`vcp`/`swing`/`breakout`
+   dienen, um denselben Fehler nicht zu wiederholen.
+3. Redundanzprüfung im Literaturverzeichnis: `breakout` teilt sich alle
+   drei Quellen mit anderen Strategien (Lo/Mamaysky/Wang mit vcp/swing,
+   George/Hwang mit momentum/breakdown, Park/Irwin mit breakdown) — als
+   gemeinsame Quellen führen, nicht duplizieren.
