@@ -1,0 +1,146 @@
+# UIQ Fading Short — Architektur-Erweiterungsvorschlag (Backlog)
+
+**Status: zurückgestellt, analog zu Mean-Reversion/KO-Long/Dividend vom
+08.09.2026. Besonderheit hier: bei der Verifikation gegen den echten Code
+wurde festgestellt, dass die vorgeschlagene Logik in wesentlichen Teilen
+BEREITS implementiert ist — `score_short_fading()` existiert produktiv und
+enthält eine praezisere, bereits mehrfach ueberarbeitete ("Gemini-Fix")
+Version der Reviewer-Idee. Zwei konkrete Annahmen des Reviewers wurden
+dabei als FALSCH identifiziert (s. unten) — die echte Logik wurde
+verwendet, nicht die Hypothese.**
+
+Eingebracht am 08.09.2026 im Rahmen der `fading_short`-EIC-Migration.
+
+---
+
+## Verifizierte Fakten (gegen `score_short_fading()` in market_aggregator.py)
+
+Die tatsächlich implementierte Logik (Stand 08.09.2026):
+
+```
+dist_atr = (Kurs - EMA200) / ATR
+  Gate: dist_atr >= 2.5 (sonst Score 0)
+  >= 4.0 → +30 | >= 3.0 → +20 | sonst → +15
+
+RSI:
+  Gate: RSI > 68 (sonst Score 0)
+  >= 80 → +25 | >= 75 → +18 | sonst → +10
+
+BBPos >= 0.85 → +15  (Schwelle 08.2026 von 0.92 auf 0.85 gesenkt)
+Overheat >= 75 → +15 | >= 55 → +8
+
+Erschöpfung: volRatio < 0.80 → +10 | OBV < 0 → +7
+pBull2Bear > 0.20 → +10
+
+HVP >= 85 → −20 (Squeeze-/Meme-Stock-Schutz)
+HVP <= 40 → +8  (ruhiger Erschöpfungs-Peak)
+
+Sektor-RS: Sektor-ETF underperformt SPY >1% (5T) → +8 bis +15
+
+Harte Gates (Score sofort 0):
+  Kurs < $15 (Penny-Stock-Schutz)
+  Kurs >= 99% des 52-Wochen-Hochs (nie gegen frisches Hoch shorten)
+  squeezeRisk >= 70
+```
+
+## Zwei Reviewer-Annahmen als FALSCH identifiziert
+
+1. **Erschöpfungs-Volumen:** Reviewer vermutete "ungewöhnlich hohes
+   Volumen" als Erschöpfungssignal (Exhaustion Hypothesis, Punkt 9 im
+   Original). Die echte Logik geht vom GEGENTEIL aus: `volRatio < 0.80`
+   (NIEDRIGES Volumen) plus negativer OBV-Trend gelten als
+   Kauf-Erschöpfung — nachlassende Aktivität, kein finaler Spike.
+2. **HVP-Richtung:** wird im Reviewer-Vorschlag nicht explizit
+   spezifiziert, aber die reale Logik behandelt sehr hohes HVP (≥85) als
+   NEGATIV fürs Signal (Short-Squeeze-Gefahr) — eine naive "hohe
+   Volatilität = besseres Short-Signal"-Annahme wäre falsch gewesen.
+
+## Was der Reviewer-Vorschlag trotzdem beiträgt
+
+- **Konzeptionelle Trilogie**, organisatorisch wertvoll auch wenn nicht
+  neu implementiert: Mean Reversion Long ("zu stark gefallen"), Fading
+  Short ("zu stark gestiegen"), Breakdown Short ("Schwäche setzt sich
+  fort") — drei unterschiedliche Wetten, sauber vom Reviewer
+  auseinandergehalten.
+- **Momentum-Failure-Trigger als offene, noch nicht implementierte
+  Hypothese:** nicht der absolute MACD-Histogramm-Wert, sondern seine
+  VERÄNDERUNG (positiv → fallend → negativ) könnte informativer sein als
+  das aktuelle statische Gate. Explizit als "neue Ableitung, müsste erst
+  backgetestet werden" gekennzeichnet — nicht implementiert.
+- **ADX-Verschlechterung statt ADX-Höhe:** Hypothese, dass "Extension
+  hoch + ADX FÄLLT" informativer ist als "Extension hoch + ADX sehr
+  hoch" (ein sehr hoher, aber weiterhin steigender ADX könnte einfach
+  einen aussergewöhnlich starken, intakten Momentum-Run beschreiben,
+  keine bevorstehende Umkehr). Nicht implementiert, nicht getestet.
+- **RS-Rating-Sonderrolle:** ein hoher RS-Rating-Wert ist laut Reviewer
+  KEIN Short-Signal — im Gegenteil, potenziell ein Warnsignal GEGEN das
+  Shorten (sehr starker Titel relativ zum Universum). Aktuell nicht Teil
+  der echten Scoring-Formel (`sector_rs` ist etwas anderes: Sektor- statt
+  Universums-relative Stärke).
+
+## Wichtiger Nebenfund (nicht Teil des Reviewer-Vorschlags): toter Code
+
+`calc_last_swing_high()` existiert im Aggregator, mit dem eigenen
+Kommentar "für Short Stop-Loss" — wird aber NIRGENDS aufgerufen, ist also
+totes Feature (definiert, nie exportiert). Das wäre ein günstiger
+nächster Schritt: einen echten, UIQ-berechneten Stop-Referenzwert für
+Fading Short UND Breakdown zu bekommen (Swing-High der letzten 20 Bars),
+ohne eine völlig neue Berechnung schreiben zu müssen — nur die
+Verdrahtung fehlt (Funktionsaufruf + Feld im Ticker-Output).
+
+## Nächste Schritte (wenn dieses Projekt vertieft wird)
+
+1. `calc_last_swing_high()` verdrahten (Aufruf ergänzen, als Feld
+   exportieren) — kleiner Aufwand, schliesst eine echte Lücke bei
+   Fading Short UND Breakdown gleichzeitig.
+2. Momentum-Failure-Trigger (MACD-Histogramm-Verlauf statt -Stand) als
+   Hypothese in einem Forward-Return-Backtest prüfen, analog zum KO-Long-
+   Vorschlag vom selben Tag.
+3. ADX-Verschlechterung vs. ADX-Höhe ebenfalls testen, bevor eine
+   Änderung an der produktiven `score_short_fading()`-Funktion erfolgt.
+4. RS-Rating als moegliches Gegen-Signal (nicht Bestaetigungssignal)
+   pruefen — aktuell nicht in der Formel.
+
+## Was heute (08.09.2026) stattdessen bereits umgesetzt wurde
+
+Das `focus[]`-Array und `principle` wurden mit der ECHTEN, verifizierten
+`score_short_fading()`-Logik konkretisiert (inkl. der beiden korrigierten
+Annahmen), statt der ungeprüften Reviewer-Hypothese. Die bestehende,
+bereits gehärtete Underlying-vs-Produkt-Trennung, Grundgesetz-#11-Sperre
+und Gegentrend-Risiko-Warnung blieben unverändert erhalten.
+
+---
+
+## Nachtrag (09.09.2026): akademische Fundierung der Extension/Exhaustion-Architektur
+
+Der Reviewer hat in einem Folgebeitrag die vorgeschlagene Zweiteilung
+(Extension-Frage vs. Exhaustion-Frage) nachträglich literaturseitig
+begründet — "Fading Short" ist selbst kein etablierter akademischer
+Fachbegriff, die Evidenz kommt aus der Short-Term-Reversal-/Overreaction-
+Literatur:
+
+| Quelle | Kernbefund | Stützt welche Architektur-Komponente |
+|---|---|---|
+| Lehmann (1990), "Fads, Martingales, and Market Efficiency", QJE 105(1) | kurzfristige negative Autokorrelation nach extremen Bewegungen, Verbindung zu Liquiditäts-/Mikrostrukturkomponenten | **Extension**-Grundidee: ungewöhnlich starke Bewegung als Ausgangspunkt |
+| Jegadeesh (1990), "Evidence of Predictable Behavior of Security Returns", J. of Finance 45(3) | negative Autokorrelation kurzfristig, POSITIVE Autokorrelation (Momentum) mittelfristig | Begründet, warum Fading Short NICHT als "Short Momentum" zu modellieren ist — unterschiedliche Zeithorizonte, unterschiedliche Vorzeichen |
+| Jegadeesh & Titman (1990), "Short Horizon Return Reversals and the Bid-Ask Spread" | kurzfristige Reversals teilweise durch transitorische Preisbestandteile/Mikrostruktur erklärbar | Stützt die Idee, dass NICHT jede Extension gleich viel Reversal-Potenzial hat — Mikrostruktur-Rauschen vs. echte Übertreibung |
+| De Bondt & Thaler (1989), "Anomalies: A Mean-Reverting Walk Down Wall Street", J. of Economic Perspectives | Overreaction-Grundidee als theoretischer Unterbau | Allgemeine Legitimation des Overreaction-Konzepts hinter Fading |
+| Daniel & Moskowitz (2016), "Momentum Crashes", JFE (bereits an anderer Stelle im UIQ-Evidenzregister zitiert, s. MB-STATEMENT-DATA-MATRIX.md §8.2) | Momentum-Strategien erleiden ihre schlimmsten Verluste ausgerechnet in Erholungsphasen — ein extrem gestiegener Titel kann deutlich laenger/staerker weiterlaufen als erwartet | **Exhaustion/Risk-Gate**: die wissenschaftliche Begründung, warum Extension NIEMALS allein ausreicht — genau die bereits im Reviewer-Vorschlag geforderte Trennung "Extension ≠ Short-Signal" |
+| (unbenannt) "Momentum and reversal: The role of short selling" | Momentum/Reversal nicht als einheitliches Overreaction-Phänomen interpretierbar, Short-Selling-Constraints als eigener Mechanismus | **Risk-Gate**: Squeeze-Risiko ist ein eigenständiger Mechanismus, nicht nur ein Sonderfall von Overreaction — deckt sich mit dem bereits produktiv implementierten `squeezeRisk`-Gate |
+
+**Wichtige Beobachtung:** Diese Literatur bestätigt die vorgeschlagene
+Dreiteilung (Extension → Exhaustion → Risk Gate) nachträglich, ohne dass
+neue Zahlen/Schwellenwerte daraus abgeleitet wurden — die akademischen
+Papiere liefern *Warum*-Begründungen für eine Architektur, die anhand der
+tatsächlichen `score_short_fading()`-Logik bereits weitgehend korrekt
+umgesetzt ist (s. Abschnitt "Verifizierte Fakten" oben). Diese Fundierung
+wurde bereits direkt ins EIC-Prinzip von `fading_short` übernommen
+(`ko-prompts.js` v2.53.12) — hier zusätzlich dokumentiert, weil sie auch
+die Architektur-Diskussion in diesem Dokument stützt.
+
+**Reviewer-Angebot, noch nicht angenommen:** eine vollständige "Fading
+Short – Academic Evidence Matrix" zu erstellen, die JEDE UIQ-Metrik (RSI,
+Dist200, BBPos, MACD, OBV, ADX, VolRatio usw.) einer konkreten
+wissenschaftlichen Evidenz oder ausdrücklich nur einer UIQ-eigenen
+Hypothese zuordnet — wäre ein sinnvoller nächster Schritt, wenn dieses
+Projekt vertieft wird, aber bisher nicht beauftragt.
