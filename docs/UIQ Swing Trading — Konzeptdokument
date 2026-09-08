@@ -1,0 +1,138 @@
+# UIQ Swing Trading — Konzeptdokument
+
+**Status: `swing` ist migriert und produktiv (ko-prompts.js v2.53.22, zwei
+Literatur-Runden plus eine Selbstkorrektur). Dieses Dokument hält fest,
+was übernommen wurde — inklusive eines eigenen Zitierfehlers, der beim
+Schreiben passierte und transparent korrigiert wurde.**
+
+Eingebracht 08./09.09.2026 — zwei Literatur-Runden.
+
+---
+
+## Runde 1 (08.09.2026): Spears und Lowe
+
+Quellen: Larry Spears, "Swing Trading Simplified", und Mark Lowe, "Swing
+Trading: A Beginner's Guide" (beide vom Nutzer hochgeladen).
+
+**Konkret übernommen:**
+- **Chance-Risiko-Konvention (Spears):** Gewinnziel ca. 7% über Einstieg,
+  Stop-Loss auf maximal 4% Risiko begrenzt (≈1,75:1-Verhältnis). Spears'
+  exakte Stop-Platzierungsmechanik (wenige Cent unter dem Vortagestief)
+  wurde NICHT übernommen — zu granular für UIQs Tagesschluss-Daten, nur
+  die Prozent-Eckwerte.
+- **Typische Haltedauer laut Spears:** meist 3-5 Handelstage, gelegentlich
+  bis zu 2-3 Wochen (UIQ-Rahmen 5-20 Tage bleibt die grobe Orientierung).
+- **Nuance (Lowe):** Stop-Loss relativ zur eigenen historischen Volatilität
+  des Titels setzen, nicht als starre Prozentzahl — UIQ kontextualisiert
+  das über HVP/ATR.
+
+---
+
+## Runde 2 (09.09.2026): Akademische Literatur + wichtige konzeptionelle Klarstellung
+
+### Die wichtigste Entscheidung dieser Runde: Swing als Handelsklasse, nicht als Signalformel
+
+Der Reviewer schlägt vor, Swing nicht als einzelnes Chartmuster zu
+verstehen, sondern als **übergeordnete taktische Handelsklasse** —
+definiert primär über Zeithorizont (3-20 Handelstage) und Handelsprinzip,
+nicht über eine feste Signalformel wie bei Momentum oder VCP. Swing kann
+trendfolgend (Pullback), ausbruchsorientiert (Breakout) oder gegenläufig
+(Reversal) sein.
+
+**Wichtige Architekturentscheidung, ins Prinzip übernommen:** UIQ deckt
+hier primär die Pullback- und Breakout-Charakteristik ab. **Swing
+Reversal wird bewusst NICHT als dritte eigenständige Variante gebaut** —
+sie überschneidet sich konzeptionell zu stark mit den bereits
+vorhandenen, spezialisierteren Strategien `fading_short` und `meanrev`.
+Bei einer erkennbaren Reversal-Struktur soll das Modell stattdessen auf
+diese Strategien verweisen, statt sie hier unvollständig nachzubauen.
+
+**Semantic-Firewall-Formulierung, wörtlich übernommen:**
+> NIEMALS "UIQ erkennt den nächsten Swing" — sondern "UIQ identifiziert
+> Markt-/Kurssituationen, die mit einem definierten Swing-Setup
+> kompatibel sind."
+
+### Akademische Fundierung (übernommen)
+
+- **Jegadeesh & Titman (1993), "Returns to Buying Winners and Selling
+  Losers"**, Journal of Finance: Momentum-/Trendpersistenz-Grundlage für
+  die Pullback-Variante (dieselbe Quelle wie `momentum`/`vcp`/
+  `breakdown`).
+- **Jegadeesh & Titman (1995), "Short-Horizon Return Reversals and the
+  Bid-Ask Spread"**, Journal of Financial Intermediation, 4(2), 116-132:
+  zeigt negative serielle Abhängigkeiten bei sehr kurzen
+  Renditehorizonten, teilweise erklärbar durch transitorische
+  Preisbestandteile und Markt-Mikrostruktur. Inhaltlich zentral für
+  Swing: auf sehr kurzen Horizonten können Momentum UND Reversal
+  gleichzeitig existieren, abhängig vom betrachteten Zeithorizont —
+  deshalb sollte Swing nicht einfach als "kleines Momentum" modelliert
+  werden.
+- **Lo, Mamaysky & Wang (2000), "Foundations of Technical Analysis"**,
+  Journal of Finance (dieselbe Quelle wie `vcp`): liefert die methodische
+  Brücke zu Swing-High/Low, Pullback, Breakout und Support/Resistance —
+  ein Swing-Setup muss algorithmisch eindeutig definiert werden, bevor es
+  testbar ist.
+
+### Datenkanal-Fund (Wiederverwendung des momentum-/vcp-Funds vom selben Tag)
+
+`swing` teilt sich denselben generischen Scanner-Tab-Datenkanal wie
+`momentum` und `vcp` (kein eigener `runSwingKiBriefing()`). Dieselbe
+Einschränkung gilt:
+
+| Vom Reviewer vorgeschlagen | Erreicht den swing-Prompt? |
+|---|---|
+| RS-Rating, RSI, MACD-Hist | ✅ |
+| Dist200 (aus ma200 ableitbar), ATR, HVP, OBV, VolRatio | ✅ |
+| TrendScore, ADX, DI+/DI−, ChopIndex, AVWAP | ❌ |
+| pctFromHigh52 | ❌ |
+
+Die verfügbaren Felder decken die Pullback-/Re-Entry-Dimension bereits
+gut ab, auch ohne die nicht verfügbaren Trend-Structure-Felder.
+
+---
+
+## Wichtiger Nachtrag (09.09.2026, selbiger Tag): Zitierfehler korrigiert
+
+Beim ursprünglichen Schreiben dieses Eintrags wurde festgestellt, dass
+die Reviewer-Antwort für swing "Jegadeesh & Titman (1995)" für die
+Short-Horizon-Reversal-Arbeit nannte, während die `fading_short`-Recherche
+vom Vortag "Jegadeesh (1990)" für ein ähnlich klingendes Konzept nannte —
+das wurde zunächst fälschlich als **Zitat-Diskrepanz** (dieselbe Arbeit,
+zwei verschiedene Jahre) dokumentiert.
+
+**Nach Axels Beleg korrigiert:** Die beiden Zitate sind tatsächlich **zwei
+völlig verschiedene, eigenständige Arbeiten**:
+
+| | Autor(en) | Titel | Jahr/Journal |
+|---|---|---|---|
+| `fading_short` | Jegadeesh (solo) | "Evidence of Predictable Behavior of Security Returns" | 1990, Journal of Finance |
+| `swing` | Jegadeesh & Titman | "Short-Horizon Return Reversals and the Bid-Ask Spread" | 1995, Journal of Financial Intermediation |
+
+`fading_short`s Zitat war die ganze Zeit korrekt und musste nicht
+geändert werden. Nur `swing`s principleText wurde korrigiert: die falsche
+Diskrepanz-Rahmung entfernt, die korrekte Quelle (inkl. korrektem
+Journal — Axel hatte ursprünglich unbelegt "Journal of Finance"
+vermutet, tatsächlich ist es "Journal of Financial Intermediation")
+eingesetzt, der eigene Fehler transparent im Code dokumentiert statt
+stillschweigend behoben.
+
+**Lehre für das geplante Literaturverzeichnis:** Ähnlich klingende
+Titel/Konzepte von denselben oder überlappenden Autoren sind nicht
+automatisch dieselbe Arbeit — vor dem Zusammenführen zweier Zitate im
+Verzeichnis immer Autor UND Titel UND Jahr einzeln vergleichen, nicht nur
+das grobe Thema.
+
+## Nächste Schritte (falls vertieft)
+
+1. Falls `TrendScore`/`ADX`/`ChopIndex`/`AVWAP` künftig in den Scanner-
+   Tab-Datenkanal aufgenommen werden: würde auch `swing` automatisch von
+   einer vollständigeren Trend-Structure-/Trend-Integrity-Dimension
+   profitieren (s. offene Frage im momentum-Konzeptdokument).
+2. Backtest-Design für die vorgeschlagenen drei Scores
+   (`swing_trend_quality`, `swing_setup_quality`, `swing_entry_quality`)
+   — aktuell nur konzeptionell als getrennt zu benennende Dimensionen im
+   Prompt-Text umgesetzt, nicht als eigene numerische Scores.
+3. Redundanzprüfung im Literaturverzeichnis: `swing` teilt sich
+   akademische Quellen mit `momentum` (Jegadeesh & Titman 1993) und `vcp`
+   (Lo/Mamaysky/Wang 2000) — als gemeinsame Fundament-Quellen führen,
+   nicht pro Strategie duplizieren.
