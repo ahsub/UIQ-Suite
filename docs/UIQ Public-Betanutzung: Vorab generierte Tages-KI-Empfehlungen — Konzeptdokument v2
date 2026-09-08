@@ -1,0 +1,288 @@
+# UIQ Public-Betanutzung: Vorab generierte Tages-KI-Empfehlungen — Konzeptdokument v2
+
+**Status: Konzept-Entwurf, noch nicht umgesetzt. Ausgangsidee von Axel
+(09.09.2026), durch Reviewer-Feedback substanziell erweitert. Diese
+Fassung ersetzt die erste Version — nicht nur ergänzt, sondern an
+mehreren Stellen architektonisch anders zugeschnitten.**
+
+---
+
+## 0. Neurahmung: mehr als Kostenoptimierung
+
+Der Reviewer stuft dieses Vorhaben höher ein als die ursprüngliche
+Rahmung — nicht primär als Kostenoptimierung, sondern als **Übergang von
+einer interaktiven KI-Demo zu einem reproduzierbaren, beobachtbaren
+DSS**. Diese Einordnung übernehme ich, weil sie die im weiteren Verlauf
+vorgeschlagenen Architektur-Entscheidungen (Strukturierte Daten als
+Primärquelle, Versionierung, Unveränderlichkeit) erst begründet — eine
+reine Kostenoptimierung würde diesen Aufwand nicht rechtfertigen, ein
+"UIQ beginnt seine eigene empirische Geschichte aufzuzeichnen" schon.
+
+---
+
+## 1. Problem (unverändert)
+
+Jeder Klick auf "KI-Analyse" im Public-Modus löst einen frischen,
+individuellen API-Call aus. Bei mehreren gleichzeitigen Beta-Nutzern
+entsteht mehrfach nahezu identischer Inhalt. Kosten skalieren mit der
+Nutzerzahl, nicht mit der Informationsmenge.
+
+## 2. Grundidee (unverändert)
+
+Nach dem relevanten Aggregator-GHA-Run erzeugt UIQ einmal pro Tag die
+Public-Modus-KI-Empfehlung je Strategie und legt sie in einem
+Abrufverzeichnis ab. **Weiterhin ausdrücklich nur Public-Modus** — EIC
+bleibt live/on-demand.
+
+---
+
+## 3. Zentrale Architektur-Änderung: Prediction Ledger statt "Text-Archiv"
+
+Das ist die wichtigste Änderung gegenüber v1. Der ursprüngliche Vorschlag
+("Backtest-Archiv als Nebenprodukt") wird zum **Kernbestandteil**, mit
+einer entscheidenden zusätzlichen Regel:
+
+> **Der KI-Text ist NICHT die primäre Backtest-Quelle.** Die strukturierte
+> Entscheidung muss bereits beim Generieren separat gespeichert werden —
+> der Backtest darf später nicht auf Text-Parsing angewiesen sein.
+
+### 3.1 Drei zu speichernde Ebenen pro Tageslauf
+
+**A. Input Snapshot** — der tatsächliche Datenzustand:
+```
+date, market, aggregator_version, indicator_registry_version,
+mcm_state, dce_state, ticker_data (roh)
+```
+
+**B. Decision Snapshot** — die strukturierte UIQ-Entscheidung, MASCHINELL
+auswertbar, kein Fließtext:
+```json
+{
+  "date": "2026-09-08",
+  "strategy": "momentum",
+  "ticker": "NVDA",
+  "rank": 1,
+  "strategy_score": 87,
+  "regime": "BULL_QUIET",
+  "dce_mode": "GREEN",
+  "signals": {
+    "rsRating": 94,
+    "macdHist": 0.42,
+    "dist52wHigh": -1.8
+  }
+}
+```
+
+**C. AI Output** — der tatsächlich ausgegebene Text, inklusive
+`prompt_version`, `model`, `generation_timestamp`. Ausdrücklich als
+**Interpretation/Kommunikation**, nicht als Auswertungsgrundlage
+eingeordnet.
+
+### 3.2 Prediction Ledger — eindeutige, unveränderliche ID
+
+Jede öffentliche Empfehlung bekommt eine ID nach dem Muster
+`UIQ-20260908-MOMENTUM-001` und trägt alle drei Ebenen (A/B/C) plus
+später nachgetragene Outcome-Daten (T+1/T+3/T+5/T+10/T+20, MFE, MAE) —
+letztere werden erst durch einen separaten, späteren Auswertungsschritt
+ergänzt, nicht beim Generieren selbst.
+
+**Warum das wichtig ist:** Damit entsteht ab dem ersten Beta-Tag ein
+wachsender, strukturiert auswertbarer Datensatz — nicht nur eine Sammlung
+von Texten, aus denen später mühsam Kandidaten/Scores herausgelesen
+werden müssten.
+
+---
+
+## 4. Offene Design-Fragen (überarbeitet)
+
+### 4.1 GHA-Lauf-Timing — umformuliert
+
+Reviewer-Korrektur: Die richtige Frage ist nicht "wann läuft GHA", sondern
+**"welcher Datenstand ist der kanonische Snapshot für welche öffentliche
+Empfehlung"**. Falls UIQ tatsächlich nur einen gemeinsamen
+Aggregator-Lauf besitzt (wovon aktuell auszugehen ist, s. v1-Analyse:
+USA/DE als Client-Filter auf einem gemeinsamen Universum, nicht zwei
+Datensätze), dann **kein künstliches Zwei-System-Setup bauen**. Stattdessen:
+ein kanonischer täglicher Snapshot, im Output eindeutig deklariert
+("Datenstand: XX:XX ET / XX:XX CET").
+
+**Zu klären bleibt weiterhin:** der tatsächliche GHA-Zeitplan, um zu
+bestätigen, ob diese Annahme (ein gemeinsamer Lauf) zutrifft.
+
+### 4.2 Optionsstrategien mit Nutzerfiltern — Ansatz bestätigt, MVP nochmals vereinfacht
+
+Reviewer bestätigt Ansatz (b) aus v1 (ein Standard-Preset pro Strategie,
+z.B. HVP≥50%) als richtig — **mit einer zusätzlichen Vereinfachung für
+den allerersten Rollout**: **kein Live-Fallback bei individuellen
+Filtern in der ersten Version.** Stattdessen bei abweichenden Filtern
+eine klare Meldung ("Individuelle KI-Analyse steht im Public-Beta-Modus
+derzeit nicht zur Verfügung").
+
+**Begründung, die ich nachvollziehbar finde:** zwei parallele Pfade
+(vorab generiert + Live-Fallback) von Anfang an gleichzeitig zu testen
+erschwert die Fehlersuche unnötig. Der Live-Fallback ist eine legitime
+spätere Erweiterung, kein Bestandteil des MVP.
+
+### 4.3 Speicherort — um Unveränderlichkeit erweitert
+
+Reviewer-Ergänzung, die ich für sehr wichtig halte: **Append-only-Prinzip.**
+Nicht `/public/daily_recommendations` als täglich überschriebenen Slot,
+sondern:
+
+```
+/public/recommendations/latest        ← reiner Pointer, wird ersetzt
+/archive/recommendations/2026/09/08/... ← wird NIE verändert
+```
+
+`latest` verweist auf den aktuellen Tag, das Archiv selbst bleibt
+dauerhaft unverändert abrufbar — Voraussetzung dafür, später
+glaubwürdig sagen zu können "das war der tatsächliche UIQ-Datenstand vom
+8. September", ohne dass nachträgliche Korrekturen diese Aussage
+untergraben könnten.
+
+### 4.4 Versionierung — von "nice to have" zu Pflicht hochgestuft
+
+Reviewer-Punkt, den ich als eigenständige Pflichtanforderung aufnehme,
+nicht nur als Empfehlung: **jede gespeicherte Empfehlung muss
+Prompt-Version, Aggregator-Version, Indicator-Registry-Version und
+Modell-Version mitführen.**
+
+**Warum zwingend, nicht optional:** Ohne das vermischt sich im Laufe der
+Zeit (Prompt-Änderungen, Aggregator-Updates, Modellwechsel) die
+scheinbare Erfolgshistorie unterschiedlicher Systeme zu einer einzigen,
+irreführenden Zahl. Der Reviewer nennt das explizit "wissenschaftlich
+fatal" — dem stimme ich zu, das ist keine Stilfrage, sondern
+Voraussetzung dafür, dass ein späterer Track Record überhaupt etwas
+Sinnvolles aussagt.
+
+### 4.5 Technische Umsetzung — unverändert aus v1
+
+`ko-prompts.js` unterstützt bereits Node-Kontext, kann grundsätzlich in
+einem GHA-Skript wiederverwendet werden. Aufwendigster Einzelschritt
+bleibt die serverseitige Nachbildung der aktuell nur clientseitigen
+Ticker-Datenaufbereitung (`tickerList`/`topResults`-Bau).
+
+---
+
+## 5. Rechtlicher Hinweis — deutlich verschärft gegenüber v1
+
+**Wichtige Einordnung vorab:** Der Reviewer zitiert eine spezifische
+ESMA/MAR-Einordnung (öffentliche Kommunikation von Kauf-/Verkaufs-Ideen
+kann unter MAR als "Investment Recommendation" gelten, unabhängig von
+technischer/einfacher Sprache; unter bestimmten Umständen sogar Richtung
+"persönliche Empfehlung"). **Ich kann diese regulatorische Einordnung
+selbst nicht verifizieren** — ich habe keinen Suchzugriff und bin keine
+Rechtsquelle. Das ist eine Charakterisierung des Reviewers, keine durch
+UIQ geprüfte Tatsache.
+
+**Trotzdem übernehme ich die Schärfung der Empfehlung**, weil die
+zugrunde liegende technische Beobachtung unabhängig von der genauen
+Rechtsnorm zutrifft: Der Wechsel von *"Nutzer fragt individuell → UIQ
+antwortet"* zu *"UIQ erzeugt systematisch für die Öffentlichkeit
+tägliche, identische Investment-Ideen"* ist eine echte Änderung der
+Kommunikationssituation — unabhängig davon, welche konkrete Norm greift,
+ist das eine andere Ausgangslage als die bisherige On-Demand-Antwort.
+
+**Geänderte Empfehlung gegenüber v1:** nicht erst "vor dem Rollout"
+rechtlich prüfen lassen, sondern **bevor die Architektur im Detail
+festgelegt wird** — weil sich, wie der Reviewer richtig anmerkt, jetzt
+Produktarchitektur und rechtliche Architektur noch gemeinsam gestalten
+lassen, während eine nachträgliche Anpassung nach bereits gebauter
+Struktur aufwendiger wäre.
+
+**Interessanter Nebeneffekt, den der Reviewer aufwirft:** die ohnehin
+vorhandene Public/EIC-Trennung wird durch diese Überlegung noch
+wertvoller — Public als standardisierte, identische Marktauswertung,
+EIC als individuelle Analyseumgebung. Diese Trennung sollte technisch
+UND semantisch konsequent beibehalten werden, nicht im Laufe der Zeit
+aufweichen.
+
+---
+
+## 6. Ausdrücklich NICHT Teil dieses Vorhabens (Scope-Abgrenzung)
+
+Reviewer-Liste, die ich vollständig übernehme — wichtig, um
+Aufgabenvermischung zu vermeiden:
+
+- Mehrere KI-Modelle vergleichen
+- Mehrere Prompts parallel testen
+- Volle Options-Preset-Matrix (45 Varianten) sofort bauen
+- Automatische Score-Optimierung aus dem Archiv
+- Automatische "beste Strategie"-Auswahl anhand vergangener Ergebnisse
+- KI ihre eigenen vergangenen Empfehlungen nachträglich bewerten lassen
+- Den Track Record sofort öffentlich/als Marketing nutzen
+
+Das sind alles legitime spätere Schritte — aber Datenerfassung,
+Modellentwicklung, Marketing und Optimierung sollten jetzt bewusst
+getrennt bleiben, nicht vermischt werden.
+
+---
+
+## 7. Überarbeitete MVP-Architektur
+
+```
+                    GHA
+                     │
+                     ▼
+             Canonical Snapshot
+        (ein gemeinsamer Lauf, sofern
+         4.1 das bestätigt — kein
+         künstliches DE/US-Doppelsystem)
+                     │
+                     ▼
+             UIQ Strategy Engine
+                     │
+          ┌──────────┴──────────┐
+          ▼                     ▼
+    Structured Ledger       AI Generator
+    (Ebene A+B, s. 3.1)          │
+          │                      ▼
+          │                Public Text
+          │                (Ebene C, s. 3.1)
+          ▼
+     Immutable Archive
+     (Append-only, s. 4.3)
+          │
+          ▼
+   Future Backtesting
+   (spaeteres, eigenstaendiges
+    Projekt — NICHT Teil dieses
+    MVP, s. Abschnitt 6)
+          │
+          ▼
+   BN / HMM / DCE Validation
+```
+
+**Kernprinzip, das diese Version von v1 unterscheidet:** die KI wird vom
+Datenlieferanten zum letzten Layer der UIQ-Entscheidungskette — die
+strukturierte UIQ-Entscheidung (Ebene B), nicht der KI-Text, ist das,
+was archiviert und später wissenschaftlich ausgewertet wird.
+
+---
+
+## 8. Zusammenfassung: Empfohlenes Vorgehen (aktualisiert)
+
+1. Klären, ob tatsächlich ein gemeinsamer GHA-Lauf existiert oder
+   getrennte DE-/US-Läufe (4.1) — entscheidet, ob ein oder zwei
+   kanonische Snapshots gebraucht werden.
+2. Rechtliche Kurzprüfung JETZT einholen, nicht erst kurz vor Rollout
+   (Abschnitt 5) — bevor Detailarchitektur festgelegt wird.
+3. Prediction-Ledger-Datenmodell (Ebenen A/B/C, Abschnitt 3) von Anfang
+   an so bauen, auch wenn die eigentliche Backtest-Auswertung selbst
+   erst später folgt.
+4. Append-only-Speicherarchitektur (4.3) von Beginn an, nicht
+   nachträglich umbauen.
+5. Versionierung (4.4) als Pflichtfeld jeder gespeicherten Empfehlung,
+   nicht optional.
+6. Options-Strategien: EIN Standard-Preset, KEIN Live-Fallback in der
+   ersten Version (4.2) — Sonderfälle klar als "aktuell nicht verfügbar"
+   kommunizieren statt einen zweiten Pfad parallel zu debuggen.
+7. Frontend-Änderung an `openKiBriefing()` (Public-Modus fragt zuerst
+   den Vorab-Store ab) als eigener, klar abgegrenzter Arbeitsschritt.
+8. Abschnitt 6 (Scope-Abgrenzung) als Leitplanke während der gesamten
+   Umsetzung im Blick behalten.
+
+**Reviewer-Gesamturteil:** 9/10 — Einfachheit als Stärke, nicht als
+Schwäche gewertet. Die drei wichtigsten Verbesserungen laut Reviewer:
+Prediction Ledger von Anfang an strukturiert, vollständige Versionierung,
+rechtliche Prüfung vor (nicht nach) der Architekturfestlegung.
