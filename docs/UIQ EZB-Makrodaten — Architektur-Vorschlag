@@ -119,6 +119,27 @@ selben Tag). Könnte bei einer künftigen Vertiefung der
 Fundamentaldaten-Seite einen eigenen Blick wert sein, hier nur als
 Fundstelle vermerkt.
 
+## Ergänzende, künftig zu prüfende Quelle: Eurostat (ERGÄNZT 09.09.2026)
+
+Beim Sichten eines MCP-Servers (`hanlulong/openecon-data`, für UIQ selbst
+architektonisch nicht passend — für KI-Agent-Konversation gebaut, nicht
+für automatisierte Backend-Pipelines) fiel **Eurostat** als weitere
+Quelle auf: die offizielle Statistikbehörde der EU, komplementär zur
+EZB. Während die EZB eher geldpolitisch/finanziell ausgerichtet ist
+(Zinsen, Wechselkurse, Geldmengen), deckt Eurostat breitere
+Konjunktur-/Sozialstatistik ab — Arbeitslosigkeit, BIP, Inflation,
+jeweils pro EU-Land granular auswertbar.
+
+**Noch nicht geprüft:** ob Eurostat eine ähnlich unkomplizierte,
+kostenlose REST-API ohne Key-Pflicht bietet wie die EZB (s. oben) —
+das wäre der erste Schritt, falls diese Quelle weiterverfolgt wird,
+nach demselben Muster wie die EZB-Verifikation.
+
+**Einordnung:** Ergänzung, kein Ersatz für die EZB-Anbindung — beide
+decken unterschiedliche Datenkategorien ab und könnten sich sinnvoll
+ergänzen, falls Option A (reiner Zusatzkontext, s.o.) sich bewährt und
+später erweitert wird.
+
 ## Nächste Schritte (falls dieser Vorschlag weiterverfolgt wird)
 
 1. Live-Verifikation der ECB-API (Erreichbarkeit, Response-Format,
