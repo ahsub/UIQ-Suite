@@ -82,6 +82,43 @@ sorgfältig durchgezogene Regime-Gate-Architektur (alle 15 Strategien,
 B wäre ein eigenständiges, deutlich größeres späteres Projekt, falls
 sich Option A als wertvoll erweist.
 
+## Referenzmaterial für die Umsetzung (ERGÄNZT 09.09.2026)
+
+Bei der weiteren Recherche gefunden: `ilchen/US_Economic_Data_Analysis`
+(GitHub) — eine Sammlung von Jupyter-Notebooks zu US-Wirtschaftsdaten
+(FRED, OECD, World Bank, yfinance), mit Verweis auf einen **Schwester-
+Repo desselben Autors, `ilchen/EU_Economic_Data_Analysis`**, der
+praktisch bereits umsetzt, was oben als Ziel beschrieben ist — parallele
+Eurozone-Analysen zu Zinsstruktur, Risk-free-Rates, BIP-Zusammensetzung,
+Geldmenge und Arbeitslosigkeit, jeweils als direktes Pendant zur
+US-Version.
+
+**Für Schritt 1 (Live-Verifikation der ECB-API) besonders relevant:**
+
+- `Current_Riskfree_Rates_Eurozone.ipynb` (EU-Repo) — zeigt vermutlich
+  konkret, welche EZB-Dataflows/Keys für einen DE-/Eurozone-Risk-free-
+  Rate-Vergleich nötig sind, direkt nutzbar für den oben vorgeschlagenen
+  DE-10J-Renditen-Baustein.
+- Vermutlich enthält das EU-Repo auch ein Pendant zu UIQs bestehender
+  US-Zinsstruktur-Inversionslogik (2J/10J-Spread) — für die EU-Seite,
+  falls das später relevant wird.
+- `Interest_Rate_Spreads.ipynb` (US-Repo, als Referenzmuster für die
+  analoge EU-Umsetzung).
+
+**Einordnung:** Beide Repos sind Notebook-Sammlungen (Analyse-/Lehr-
+material), keine fertigen Python-Bibliotheken zum Importieren — der
+Wert liegt darin, als Referenzcode bei der tatsächlichen Umsetzung von
+Schritt 1 zu dienen (welche Dataflow-Keys funktionieren nachweislich),
+nicht als etwas, das UIQ direkt einbindet.
+
+**Zusätzlicher, nicht direkt EZB-bezogener Fund aus demselben Repo:**
+`Stock_Market_FA.ipynb` (US-Repo) analysiert S&P-500-Profitabilität
+über ROIC, ROE, WACC, EVA, MVA — verwandte, aber andere Kennzahlen als
+Owner Earnings (s. separates Owner-Earnings-Architekturdokument vom
+selben Tag). Könnte bei einer künftigen Vertiefung der
+Fundamentaldaten-Seite einen eigenen Blick wert sein, hier nur als
+Fundstelle vermerkt.
+
 ## Nächste Schritte (falls dieser Vorschlag weiterverfolgt wird)
 
 1. Live-Verifikation der ECB-API (Erreichbarkeit, Response-Format,
