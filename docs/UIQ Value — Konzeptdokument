@@ -1,0 +1,148 @@
+# UIQ Value — Konzeptdokument
+
+**Status: `value` ist migriert und produktiv (ko-prompts.js v2.53.16, zwei
+Literatur-Runden). Dieses Dokument hält fest, was aus beiden Reviewer-
+Vorschlägen konkret übernommen wurde, was direkt umsetzbar war und was als
+Hintergrundwissen dokumentiert bleibt.**
+
+Eingebracht am 08./09.09.2026 — zwei getrennte Literatur-Runden für
+dieselbe Strategie.
+
+---
+
+## Runde 1 (08.09.2026): Praktiker-Literatur
+
+Quellen: Sven Carlin ("Modern Value Investing", Axels Favorit), Jeroen Bos
+("Deep Value Investing"), Guy Spier ("Die Value-Investor-Ausbildung"),
+Cayden Chang ("Value Investing Simplified") — alle vom Nutzer hochgeladen.
+
+**Konkret übernommen:**
+- **Carlin/Fama-French-Quintil-Fund:** ein Portfolio aus Aktien mit dem
+  niedrigsten 30%-Perzentil an Kurs-Buchwert-Verhältnissen hat das
+  Portfolio mit dem höchsten 30%-Perzentil über 10-Jahres-Haltezeiträume um
+  durchschnittlich 4,6 Prozentpunkte pro Jahr geschlagen (seit 1927). Als
+  RELATIVE Perzentil-Aussage gekennzeichnet, KEINE absolute P/B-Schwelle —
+  UIQ hat kein Perzentil-Ranking über das Scan-Universum.
+
+**Als Hintergrundwissen dokumentiert, nicht umsetzbar:**
+- **Bos/Grahams "Net-Net"-Konzept:** eine Aktie unter ihrem Netto-
+  Umlaufvermögen (Umlaufvermögen minus sämtliche Verbindlichkeiten) gilt
+  als besonders tiefer Sicherheitspuffer — UIQ hat keine Bilanzdaten
+  (Umlaufvermögen/-verbindlichkeiten) für diese Prüfung.
+
+**Nicht ergiebig:** Spier und Chang lieferten keine hinreichend belastbaren,
+übertragbaren Zahlen (Changs "5% ist eine gute Rendite" blieb ohne
+Methodik dahinter — dieselbe Erfahrung wie später bei Dividend/Edwards).
+
+---
+
+## Runde 2 (09.09.2026): Akademische Literatur, Vier-Ebenen-Architektur
+
+Der Reviewer schlägt vor, Value nicht als einzelnen "billig kaufen"-Score
+zu behandeln, sondern als **vier getrennte Fragen**:
+
+```
+① VALUE            „Ist die Aktie fundamental günstig?"
+                    peForward · P/B · FCF-Yield · ergänzend divYield
+
+② QUALITY          „Ist das Unternehmen fundamental ausreichend gut?"
+                    ROE · ROIC-Proxy · Gross Margin · Umsatzwachstum · FCF
+
+③ VALUE-TRAP-FILTER „Ist die niedrige Bewertung möglicherweise gerechtfertigt?"
+                    fallendes Umsatzwachstum · schwache Profitabilität/FCF ·
+                    starke Drawdowns · negative relative Stärke ·
+                    negativer Trendscore (Warnsignale, keines beweisend)
+
+④ ENTRY/TIMING      „Ist jetzt ein sinnvoller Einstiegszeitpunkt?"
+                    RS-Rating · Trendscore · RSI · ATR · DD · EMA200-Abstand ·
+                    Marktregime — bewusst GETRENNT von ①-③
+```
+
+**Besonderheit gegenüber den meisten früheren Architektur-Vorschlägen
+(Mean-Reversion, KO-Long):** Alle vier Ebenen lassen sich komplett aus
+bereits vorhandenen UIQ-Feldern speisen — keine neuen Datenpunkte nötig.
+Deshalb wurde diese Struktur **direkt umgesetzt**, nicht als Backlog
+dokumentiert.
+
+### Akademische Fundierung (übernommen)
+
+- **Fama & French (1992), "The Cross-Section of Expected Stock Returns"**,
+  Journal of Finance, 47(2), 427–465: Book-to-Market erklärt einen
+  erheblichen Teil der Renditeunterschiede zwischen Aktien — die
+  akademische Grundlage des klassischen Value-Faktors (Ebene ①). P/B oder
+  P/E allein sind laut Folgeliteratur aber keine hinreichende Strategie.
+- **Lakonishok, Shleifer & Vishny (1994), "Contrarian Investment,
+  Extrapolation, and Risk"**, Journal of Finance, 49(5), 1541–1578: DER
+  ENTSCHEIDENDE FUND für die Vier-Ebenen-Trennung. Investoren neigen dazu,
+  vergangene gute UND schlechte Entwicklungen zu weit fortzuschreiben
+  (Extrapolationsfehler) — dadurch können sowohl überteuerte "Glamour"-
+  Aktien als auch unterbewertete Value-Aktien entstehen. Begründet direkt,
+  warum "günstig" (Ebene ①) und "fundamental intakt" (Ebene ②) getrennte
+  Fragen sind — Value ist NICHT "schlechte Aktie mit niedrigem KGV".
+- **Novy-Marx (2013), "The Other Side of Value: The Gross Profitability
+  Premium"**, Journal of Financial Economics, 108(1), 1–28: Profitabilität
+  (Gross Profit/Assets) hat ähnliche Erklärungskraft wie Book-to-Market;
+  die Kombination beider Faktoren verbessert Value-Strategien deutlich,
+  besonders bei großen/liquiden Unternehmen. Akademische Rückendeckung für
+  die gemeinsame statt isolierte Betrachtung von Ebene ① und ②.
+- **Piotroski (2000), "Value Investing: The Use of Historical Financial
+  Statement Information to Separate Winners from Losers"**, Journal of
+  Accounting Research, 38, 1–41: trennt innerhalb des günstig bewerteten
+  Aktien-Universums anhand fundamentaler Kennzahlen (Profitabilität,
+  Cashflow, Verschuldung/Liquidität, operative Entwicklung — sein
+  "F-Score") attraktive Value-Titel von potenziellen Verlierern.
+  Konzeptionelle Grundlage für Ebene ③ — der vollständige F-Score selbst
+  ist NICHT umsetzbar (UIQ hat keine Verschuldungs-/Liquiditätsdaten), das
+  Grundprinzip ("fundamentale Qualität trennt echten Value von der Falle")
+  aber bereits über ROE/ROIC-Proxy/Gross Margin/FCF abgedeckt.
+- **Fama & French (1998), "Value versus Growth: The International
+  Evidence"**, Journal of Finance, 53(6), 1975–1999: bestätigt die
+  Value-Prämie auch international, nicht nur im US-Markt — relevant, da
+  UIQs Universum nicht auf einen Markt beschränkt ist.
+
+### Zeithorizont-Einordnung (aus der Literatur abgeleitet, im Prinzip
+dokumentiert)
+
+Der Reviewer ordnet Value explizit als längerfristige Strategie ein, im
+Gegensatz zu den kurzfristigen technischen UIQ-Strategien:
+
+| Strategie | Primäre Hypothese | Horizont |
+|---|---|---|
+| KO Momentum | Trend setzt sich fort | Tage |
+| Fading Short | Übertreibung korrigiert | Tage |
+| Breakdown | Schwäche setzt sich fort | Tage–Wochen |
+| Mean Reversion | extreme Abweichung normalisiert sich | Tage–Wochen |
+| Dividend | nachhaltiger Income-Stream | Monate/Jahre |
+| Value | Fehlbewertung normalisiert sich | Monate/Jahre |
+
+Value-Fehlbewertungen normalisieren sich typischerweise über Monate bis
+Jahre, nicht Tage — im `value`-Prinzip als Hinweis verankert, dass die
+Strategie trotz derselben täglichen UIQ-Snapshot-Aktualisierung nicht wie
+ein tägliches Trading-Setup behandelt werden sollte.
+
+## Was NICHT übernommen wurde
+
+Die "endgültige UIQ-Definition" des Reviewers (*"UIQ Value identifiziert
+Aktien mit attraktiver fundamentaler Bewertung und ausreichender
+Unternehmensqualität..."*) wurde inhaltlich, nicht wörtlich übernommen —
+die vier Ebenen und ihre Trennung sind identisch, die Formulierung wurde
+an UIQs bestehenden Prompt-Stil angepasst.
+
+Der vollständige Piotroski-F-Score (9 binäre Kriterien inkl. Verschuldung,
+Liquiditätsquoten, Aktienrückkäufe) wurde NICHT nachgebaut — nur das
+Grundprinzip, mit den tatsächlich vorhandenen UIQ-Feldern.
+
+## Nächste Schritte (falls vertieft)
+
+1. Falls UIQ künftig Bilanzdaten (Umlaufvermögen/-verbindlichkeiten,
+   Verschuldungsgrad) bekommt: sowohl Bos' Net-Net-Konzept als auch der
+   vollständige Piotroski-F-Score würden dann direkt umsetzbar.
+2. Ein echtes Perzentil-Ranking von P/B über das UIQ-Scan-Universum (statt
+   absoluter Schwellenwerte) würde Carlins Fama-French-Quintil-Befund
+   direkt anwendbar machen, nicht nur als Hintergrund-Validierung.
+3. Redundanzprüfung zwischen Ebene ③ (Value-Trap-Filter) und den bereits
+   bestehenden Warnsignalen in anderen Strategien (z.B. Breakdown nutzt
+   teilweise dieselben Felder wie trendScore/DD) — könnte sich lohnen, im
+   Rahmen des geplanten Literaturverzeichnis-Projekts systematisch
+   gegenzuprüfen, welche Felder strategieübergreifend wiederverwendet
+   werden und ob die Interpretation konsistent bleibt.
