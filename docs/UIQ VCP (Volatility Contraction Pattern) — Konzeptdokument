@@ -1,0 +1,148 @@
+# UIQ VCP (Volatility Contraction Pattern) — Konzeptdokument
+
+**Status: `vcp` ist migriert und produktiv (ko-prompts.js v2.53.20, zwei
+Literatur-Runden). Dieses Dokument hält fest, was übernommen wurde, und
+verweist auf den bereits bei `momentum` dokumentierten Datenkanal-Fund,
+der auch hier greift.**
+
+Eingebracht 08./09.09.2026 — zwei getrennte Literatur-Runden.
+
+---
+
+## Runde 1 (08.09.2026): Minervinis zweites Buch
+
+Quelle: Mark Minervini, "Trade Like a Stock Market Wizard" (zweites
+Minervini-Buch, spezifisch zum VCP-Konzept — ergänzt "Think & Trade Like a
+Champion", das nur die allgemeinen Stop-Loss-Regeln lieferte).
+
+**Konkret übernommen:**
+- **Halbierungsregel** (Kernkriterium für VCP-Reife): jede nachfolgende
+  Kontraktion sollte ungefähr HALB so groß sein wie die vorherige (±
+  Toleranz) — Beispiel einer reifen Progression: 25% → 15% → 8%.
+- **Kontraktionszahl korrigiert**: typischerweise 2-4 Kontraktionen,
+  gelegentlich 5-6 — bereits 2 können ein valides VCP bilden. Der alte
+  Prompt hatte fälschlich "mindestens 3" als feste Schwelle genannt; das
+  ist KEINE echte Minervini-Vorgabe.
+- **Stop-Loss**: dieselbe Konvention wie bei `momentum` (7-8%, max. 8-10%)
+  — hier besonders wichtig, weil ein Live-Test-Fund zeigte, dass ohne
+  diese Angabe im Prinzip eine erfundene "2-3%"-Regel fälschlich als
+  "Minervini-Konvention" zitiert wurde.
+
+---
+
+## Runde 2 (09.09.2026): Akademische Literatur + VCP≠Bollinger-Squeeze
+
+### Die wichtigste begriffliche Abgrenzung dieser Runde
+
+**VCP ist nicht dasselbe wie ein Bollinger-Squeeze.** Das ist jetzt
+explizit im Prinzip und im `focus[]`-Array verankert:
+
+| | Bollinger Squeeze | VCP |
+|---|---|---|
+| Volatilitätskontraktion | ✓ | ✓ |
+| sukzessive Kontraktionen | nicht erforderlich | zentral |
+| Pullbacks werden flacher | nein | ja |
+| Volumen-Dry-up | optional | typischer Bestandteil |
+| bestehender Aufwärtstrend | nein | ja |
+| Leader/Relative Stärke | nein | wünschenswert |
+| Pivot | nicht zwingend | zentral |
+
+Ein Squeeze ist keine Richtungsinformation — ein VCP verlangt zusätzlich
+sukzessive Kontraktionen, flacher werdende Pullbacks, Volumen-Dry-up UND
+einen bestehenden Aufwärtstrend mit Leadership. Das verhindert, dass UIQ
+aus bloßem niedrigem `BBPos`/`HVP` vorschnell ein "VCP" konstruiert.
+
+### Akademische Fundierung (übernommen)
+
+- **Lo, Mamaysky & Wang (2000), "Foundations of Technical Analysis"**,
+  Journal of Finance, 55(4), 1705–1765: entwickeln ein systematisches,
+  algorithmisches Verfahren zur Erkennung technischer Chartmuster,
+  untersucht an US-Aktien 1962–1996 — einige Muster lieferten
+  inkrementelle Information gegenüber der unbedingten Renditeverteilung.
+  Methodisch zentral für UIQ: ein subjektives Chartmuster muss erst
+  operationalisiert werden, bevor es quantitativ testbar ist — genau
+  UIQs Ansatz (konkrete Felder statt subjektivem Charteindruck).
+- **Bollinger, "Bollinger on Bollinger Bands"**: liefert die
+  konzeptionelle Grundlage für Volatilitätskompression → -expansion,
+  aber ausdrücklich NICHT den Nachweis, dass ein Minervini-VCP profitabel
+  ist — Grundlage der VCP≠Squeeze-Abgrenzung oben.
+- **Jegadeesh & Titman (1993) und George & Hwang (2004)** gelten
+  ergänzend, da VCP auf einem Momentum-Fundament aufsitzt (dieselben
+  Quellen wie bei `momentum` und `breakdown` — s. dortige Konzeptdokumente
+  für Details).
+
+### Methodische Einordnung: VCP ist keine wissenschaftlich validierte Theorie
+
+Analog zur Minervini/SEPA-Klarstellung bei `momentum`: **für VCP als
+Ganzes gibt es keine vergleichbare akademische Evidenz wie für Momentum**
+— VCP ist primär ein praktisches, von Minervini popularisiertes
+Chart-Pattern. Die wissenschaftliche Evidenz stützt sich auf die
+einzelnen Komponenten (Pattern-Erkennung, Momentum-Fundament), nicht auf
+VCP als validierte Gesamthypothese.
+
+**Zusätzlicher methodischer Hinweis, NICHT als Kernliteratur geführt:**
+eine informelle, nicht-peer-reviewte quantitative Untersuchung (>1.200
+Fälle) fand, dass ein unbedingter VCP-Breakout-Ansatz ohne übergeordneten
+Trendfilter keinen positiven Edge zeigte — erst die Kombination mit einem
+Stage-2-Trendfilter wurde dort positiv. Diese Quelle wurde bewusst NICHT
+in die Kernliteratur aufgenommen (keine etablierte peer-reviewte
+Evidenz), bestätigt aber die bestehende Architekturentscheidung: VCP wird
+bei UIQ nie isoliert bewertet, sondern immer im Kontext von Trend/
+Leadership (Momentum-Gate).
+
+### Datenkanal-Fund (Wiederverwendung des momentum-Funds vom selben Tag)
+
+`vcp` teilt sich denselben generischen Scanner-Tab-Datenkanal wie
+`momentum` (bestätigt über einen historischen Code-Kommentar: "VCP im
+Scanner-Dropdown ... openKiBriefing('vcp') funktioniert automatisch da
+generisch über KoPrompts.get()"). Damit gilt dieselbe Einschränkung wie
+bei `momentum`:
+
+| Vom Reviewer vorgeschlagen | Erreicht den vcp-Prompt? |
+|---|---|
+| RS-Rating | ✅ |
+| TrendScore, ADX, DI+/DI− | ❌ |
+| pctFromHigh52, perf3m, perf12m | ❌ |
+| MACD-Hist, OBV, ATR, HVP | ✅ |
+
+**Wichtiger Unterschied zu `momentum`, positiv für `vcp`:** die
+VCP-spezifischen Felder (`vcpContractions`, `vcpLastPct`,
+`vcpAvgPrevPct`, `vcpVolContraction`, `vcpBreakoutVol`) sind bereits
+verifiziert vorhanden — und sind sogar präzisere, direktere Kontraktions-/
+Volumen-Kennzahlen als das, was der Reviewer manuell aus ATR-/Range-
+Zeitreihen rekonstruieren wollte. UIQ hat für VCP also bereits eine
+bessere Datengrundlage als der ursprüngliche Vorschlag annahm.
+
+### Die vier Reviewer-Dimensionen — was tatsächlich verfügbar ist
+
+| Reviewer-Dimension | Vorgeschlagene Felder | Tatsächlich genutzt |
+|---|---|---|
+| Leadership | RS-Rating, TrendScore, ADX, DI+, pctFromHigh52, perf3m/12m | nur RS-Rating |
+| Trend Structure | TrendScore, EMA50/200, ADX, DI+ | MACD-Hist, OBV, Dist200 (aus ma200) |
+| Contraction | ATR, HVP, BBPos | vcpContractions, vcpLastPct, vcpAvgPrevPct (echte VCP-Felder, besser als Reviewer-Vorschlag) |
+| Volume Dry-Up | VolRatio, AvgVol20, OBV | vcpVolContraction (echtes VCP-Feld), OBV |
+
+Der Reviewer-Vorschlag, VCP NICHT als einzelnen Score zu bauen, sondern
+als mehrere unabhängig bewertbare Dimensionen (`vcp_structure_score`,
+`vcp_leadership_score`, `vcp_breakout_score`, `vcp_risk`) wurde
+konzeptionell übernommen (die vier Dimensionen werden im Prompt getrennt
+benannt), aber NICHT als separate numerische Scores implementiert — das
+wäre ein Aggregator-Umbau, kein reiner Prompt-Fix.
+
+## Nächste Schritte (falls vertieft)
+
+1. Die vom Reviewer vorgeschlagene Trennung in separate numerische Scores
+   (`vcp_structure_score`, `vcp_leadership_score`, `vcp_breakout_score`,
+   `vcp_risk`) würde eine Aggregator-Änderung erfordern — aktuell nur
+   konzeptionell (als getrennt zu benennende Dimensionen im Prompt-Text)
+   umgesetzt.
+2. Falls `TrendScore`/`ADX`/`pctFromHigh52` künftig in den Scanner-Tab-
+   Datenkanal aufgenommen werden (s. offene Frage im momentum-
+   Konzeptdokument): würde auch VCP automatisch von der vollständigeren
+   Leadership-/Trend-Structure-Dimension profitieren, ohne dass an dieser
+   Stelle etwas geändert werden müsste.
+3. Redundanzprüfung: `vcp` und `momentum` teilen sich denselben
+   akademischen Unterbau (Jegadeesh/Titman, George/Hwang) — falls das
+   Literaturverzeichnis-Projekt angegangen wird, sollten diese als
+   gemeinsame Momentum-Fundament-Quellen geführt werden, nicht getrennt
+   pro Strategie dupliziert.
