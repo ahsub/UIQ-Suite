@@ -135,6 +135,28 @@ kostenlose REST-API ohne Key-Pflicht bietet wie die EZB (s. oben) —
 das wäre der erste Schritt, falls diese Quelle weiterverfolgt wird,
 nach demselben Muster wie die EZB-Verifikation.
 
+**Konkreter Ansatzpunkt nachgetragen (ERGÄNZT 09.09.2026):** Beim
+Sichten eines weiteren, für UIQ selbst stark überengineerten Fundes
+(`sharadgupta27/eu-economic-monitor`, ein Bootcamp-Abschlussprojekt mit
+vollem GCP/Kafka/Spark/dbt-Stack nur für vier Eurostat-Indikatoren)
+fiel das zugrunde liegende, eigenständige Python-Paket `eurostat`
+(PyPI) auf — installiert und kurz getestet. Installation erfolgreich,
+ein Live-Aufruf (`get_toc()`) lief ohne Verbindungsfehler durch, lieferte
+aber nur die Kopfzeile ohne echte Katalogeinträge zurück — uneindeutiges
+Ergebnis, vermutlich eine Netzwerk-Einschränkung auf meiner Seite
+(dieselbe Art Einschränkung wie bei der EZB-Domain), nicht zwingend ein
+Problem des Pakets selbst. **Vor jeder Umsetzung mit vollem Netzwerk-
+zugriff neu verifizieren** — genau wie bei der EZB-API (s. oben) noch
+aussteht.
+
+**Warum nicht die volle `eu-economic-monitor`-Pipeline übernehmen:** Für
+UIQs eigentlichen Bedarf (ein paar tägliche Werte per einfachem
+API-Call, wie beim EZB-Vorschlag) ist der volle Stack (Terraform, GCP/
+BigQuery, Kafka/Redpanda, Spark, Flink, dbt, Streamlit) um
+Größenordnungen zu viel Infrastruktur — nur das darunterliegende
+`eurostat`-Paket ist der eigentlich brauchbare Fund, nicht das Projekt
+als Ganzes.
+
 **Einordnung:** Ergänzung, kein Ersatz für die EZB-Anbindung — beide
 decken unterschiedliche Datenkategorien ab und könnten sich sinnvoll
 ergänzen, falls Option A (reiner Zusatzkontext, s.o.) sich bewährt und
