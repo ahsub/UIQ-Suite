@@ -1,0 +1,149 @@
+# UIQ Owner Earnings — Architektur-Dokument
+
+**Status: Umgesetzt und produktiv (market_aggregator.py, ko-prompts.js
+v2.53.25, index.html). Dieses Dokument hält die Herleitung, die
+Berechnungsmethodik und einen dabei entdeckten, separaten Fund fest.**
+
+Eingebracht 09.09.2026 — Axels Anfrage nach Owner Earnings als
+zusätzlicher Qualitätsmetrik für `value`/`dividend`, mit
+Screenshot-Referenz zu einem Drittanbieter-Tool (InvestingPro-Export +
+eigener YouTube-Screener, Kanal "Eric Ludwig und Investing.com
+Deutschland").
+
+---
+
+## Der Ausgangsbefund: echte Owner Earnings waren nicht berechenbar
+
+`enrich_with_fundamentals()` in `market_aggregator.py` holte bis dahin
+ausschließlich `yf.Ticker(sym).info` — bewusst auf 8 Kernfelder reduziert
+(dokumentierte 80/20-Entscheidung vom 01.07.2026: `analystUpside`,
+`fcfYield`, `debtToEquity`, `divYield`, `payoutRatio`, `peForward`, `pb`,
+`roe`). **Keine Rohdaten zu Nettogewinn, Abschreibungen oder Capex.**
+
+Selbst mit zusätzlichen Daten bleibt die Trennung Erhaltungs- vs.
+Wachstums-Capex grundsätzlich eine Schätzung — kein Datenanbieter weist
+das als eigenen Bilanzposten aus. Das gilt auch für das Drittanbieter-
+Tool aus den Screenshots, das vermutlich eine eigene, nicht offengelegte
+Heuristik nutzt.
+
+## Quellenbewertung (Axels Vorschläge)
+
+Axel schlug fünf mögliche Datenquellen vor. Bewertung, mit ehrlicher
+Einschränkung bei den Punkten, die UIQ nicht selbst verifizieren kann:
+
+| Quelle | Bewertung |
+|---|---|
+| **yfinance** (bereits integriert) | Gewählt — kein neuer Key, keine neue Abhängigkeit. Gegen echte Daten getestet (s.u.). |
+| **SEC EDGAR** (secfin, finqual) | Deckt nur US-Titel ab — UIQs Universum enthält auch DE-Titel (Xetra). Würde eine Zwei-Klassen-Datenqualität erzeugen. |
+| **Financial Modeling Prep** | Freier Tier historisch stark rate-limitiert — bei ~735 Tickern potenziell ein Engpass, zusätzlicher API-Key/Secret nötig. |
+| **SimFin** | Zusätzlicher API-Key nötig, aktuelle Freemium-Tiefe nicht verifizierbar. |
+| **Alpha Vantage** | Freier Tier historisch sehr restriktiv (oft nur wenige Calls/Minute) — für UIQs Universumsgröße kaum praktikabel. |
+| **Genannte fertige GitHub-Projekte** (sp100-financial-tracker etc.) | NICHT verifizierbar ohne Suchzugriff — weder Existenz noch Pflegezustand noch Zuverlässigkeit konnte geprüft werden. Nicht übernommen. |
+
+## Verifikation gegen echte Daten (nicht nur spekuliert)
+
+Vor der Umsetzung gegen vier reale Testtitel geprüft (Large-Cap,
+Mid-Cap, kleinerer Titel, ein DE-Titel):
+
+| Ticker | Capital Expenditure | D&A | Net Income | Ergebnis |
+|---|---|---|---|---|
+| MSFT | verfügbar | verfügbar | verfügbar | ✅ |
+| HRB | verfügbar | verfügbar | verfügbar | ✅ |
+| UAN | verfügbar | verfügbar | verfügbar | ✅ (Market-Cap-Feld fehlte separat — s. Fehlerbehandlung) |
+| SAP.DE | verfügbar | verfügbar | verfügbar | ✅ |
+
+**Timing:** ca. 0,53s/Ticker für `cashflow`+`financials` zusammen → ca.
+6,5 Minuten für das volle ~735-Ticker-Universum unparallelisiert.
+Fundamentaldaten ändern sich nicht täglich — ein wöchentliches statt
+tägliches Caching wäre eine naheliegende spätere Optimierung, aktuell
+noch nicht umgesetzt (läuft im bestehenden täglichen Fundamental-Fetch
+mit).
+
+**Plausibilitätscheck:** Eigene Berechnung für HRB ergab 13,26%
+Owner-Earnings-Yield, Axels Screenshot vom Drittanbieter-Tool zeigte
+12,5% — nah genug beieinander, um Vertrauen in die Methodik zu
+rechtfertigen (Abweichung plausibel durch andere Marktkapitalisierungs-
+Zeitpunkte oder Methodik-Details).
+
+## Berechnungsmethodik
+
+```
+Erhaltungs-Capex ≈ min(Abschreibungen, Gesamt-Capex)
+Owner Earnings   = Nettogewinn + Abschreibungen − Erhaltungs-Capex
+Owner-Earnings-Yield = Owner Earnings / Marktkapitalisierung × 100
+```
+
+**Warum `min(D&A, Total-Capex)` als Erhaltungs-Capex-Näherung:** Liegt
+der tatsächliche Capex UNTER den Abschreibungen, gilt er komplett als
+Erhaltungsinvestition (das Unternehmen investiert weniger, als es
+abschreibt — kein Hinweis auf Wachstumscapex). Liegt er DARÜBER, wird
+der Abzug auf die Abschreibungshöhe gedeckelt — der Überschuss gilt als
+Wachstumsinvestition und wird NICHT von Owner Earnings abgezogen.
+
+**Beispiel MSFT (aktuell):** Capex weit über Abschreibungen (KI-
+Infrastruktur-Ausbau) → Owner Earnings ≈ Nettogewinn (der Capex-
+Überschuss wird korrekt als Wachstum behandelt, nicht gegen die
+Ertragskraft verrechnet).
+
+**Explizit als Vereinfachung dokumentiert, nicht als exakte
+Buchhaltungszahl** — sowohl im Code-Kommentar als auch im
+KI-Prompt-Text (`ko-prompts.js`).
+
+## Fehlerbehandlung
+
+Der Owner-Earnings-Fetch läuft in einem **eigenen, separaten
+try-Block** innerhalb von `enrich_with_fundamentals()` — ein
+Fehlschlag hier (z.B. fehlende Cashflow-Daten für einen Titel, wie im
+UAN-Test beobachtet) gefährdet NICHT die bereits etablierten,
+zuverlässigen Fundamentalfelder (`fcfYield`, `divYield` etc.). Das Feld
+wird dann schlicht `None`/`null`.
+
+## Zwei-Stufen-Fallback im Prompt
+
+`ko-prompts.js` behandelt das neue Feld konsequent als optional:
+
+1. **Ist `ownerEarningsYield` für einen Titel vorhanden:** als echte
+   (aber angenäherte) Owner-Earnings-Kennzahl verwenden.
+2. **Ist es nicht vorhanden:** `fcfYield` als konservativer Ersatz-Proxy
+   (bereits in v2.53.24 eingeführt, bleibt als Fallback bestehen) — zieht
+   sämtliche Capex ab, auch Wachstumsinvestitionen, ist damit tendenziell
+   eine Unterschätzung der "wahren" Owner Earnings, nie eine
+   Überschätzung.
+
+In beiden Fällen: NIEMALS als exakte, unhinterfragte Buchhaltungszahl
+darstellen, immer als Näherung kennzeichnen.
+
+---
+
+## Wichtiger Nebenfund: mehrere Einstiegspunkte mit unterschiedlicher Feldtiefe
+
+Bei der Umsetzung fiel auf, dass `value`/`dividend` über **mehrere,
+unterschiedlich reichhaltige Datenkanäle** erreichbar sind:
+
+| Einstiegspunkt | Felder |
+|---|---|
+| Alpha-Desk-Leaderboard (`runAlphaLbKI()`) | Vollständig: `divYield`, `payoutRatio`, `fcfYield`, `roe`, jetzt `ownerEarningsYield` |
+| `runValueKiBriefing()` (separate Buttons "Value + Wheel"/"Value Fundamentals") | Nur `sym`, `finalScore`, `pe`, `rsRating` — deutlich schmaler |
+| Generischer Scanner-Tab-Kanal (`openKiBriefing()`, seit v508 auch für `value`/`dividend` erreichbar) | Nur die im Rahmen der momentum/vcp/swing/breakout-Funde verifizierten Felder — `divYield`/`payoutRatio`/`roe` vermutlich NICHT enthalten |
+
+**Das wurde heute NICHT vollständig aufgelöst** — `ownerEarningsYield`
+wurde nur dort ergänzt, wo die verwandten Felder (`divYield` etc.)
+bereits nachweislich ankommen (Alpha-Desk-Kanal). Diese Drei-Kanal-
+Fragmentierung verdient eine eigene, separate Untersuchung — vermutlich
+sollte geklärt werden, ob `runValueKiBriefing()` und der Scanner-Tab-
+Zugang zu `value`/`dividend` überhaupt noch beide gebraucht werden, oder
+ob einer davon konsolidiert/entfernt werden sollte.
+
+## Nächste Schritte (falls vertieft)
+
+1. Den oben genannten Nebenfund (mehrere Einstiegspunkte) separat
+   untersuchen — welcher Kanal ist der "richtige", sollten die anderen
+   angeglichen oder entfernt werden?
+2. Caching-Frequenz für Fundamentaldaten prüfen (wöchentlich statt
+   täglich) — würde die GHA-Laufzeit entlasten, ohne Aktualität zu
+   verlieren, da sich Cashflow-/Bilanzdaten nicht täglich ändern.
+3. Datenabdeckung über das volle ~735-Ticker-Universum systematisch
+   prüfen (heute nur an vier Stichproben-Tickern verifiziert) — wie
+   hoch ist der tatsächliche Anteil an Tickern, für die
+   `ownerEarningsYield` erfolgreich berechnet werden kann, bevor der
+   Fallback greift?
