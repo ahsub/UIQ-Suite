@@ -1,0 +1,100 @@
+# UIQ EZB-Makrodaten — Architektur-Vorschlag
+
+**Status: Vorschlag, NICHT umgesetzt. Eingebracht 09.09.2026, im Rahmen
+einer Recherche nach zusätzlichen kostenlosen Finanz-/Wirtschaftsdaten-
+quellen (GitHub: `bdecon/econ_data`, ECB-API-Notebook).**
+
+---
+
+## Der Lückenbefund
+
+UIQs gesamte Makro-Ebene ist aktuell **ausschließlich US-zentriert**.
+`fetch_fred_macro()` in `market_aggregator.py` liefert HY-Spread
+(BAMLH0A0HYM2), Fed-Bilanzsumme, Treasury General Account, Reverse Repo
+— allesamt US-spezifische FRED-Serien, die in Net-Liquidity-/Regime-
+Berechnungen einfließen.
+
+**UIQs Ticker-Universum enthält aber auch DE-Titel (Xetra)** — für
+diese gibt es aktuell keinen eigenständigen Makro-Kontext. Das
+Marktregime (MSE/HMM), das jede Empfehlung (auch für DE-Titel)
+einordnet, basiert vollständig auf US-Indikatoren (VIX, US-
+Zinsstruktur, US-Kreditspreads).
+
+## Die vorgeschlagene Quelle
+
+Die Europäische Zentralbank betreibt eine **kostenlose REST-API ohne
+API-Key-Pflicht** (SDMX-Format): `https://data-api.ecb.europa.eu/service/data/{dataflow}/{key}`.
+Dokumentation: https://data.ecb.europa.eu/help/api/overview
+
+**Methodisch identisch zu UIQs bestehendem FRED-Ansatz:** reines
+`requests.get()` + CSV-Parsing (`Accept: text/csv`-Header) — keine neue
+Bibliothek, kein neues Architekturmuster, nur eine zweite Funktion nach
+demselben Vorbild wie `fetch_fred_macro()`.
+
+**Wichtige Einschränkung, bevor irgendetwas gebaut wird:** Die Domain
+`data-api.ecb.europa.eu` liegt außerhalb meiner aktuellen
+Netzwerk-Freigabeliste — ich konnte den Live-Aufruf NICHT selbst
+testen, nur den Beispielcode aus dem referenzierten Notebook lesen und
+für plausibel befinden. **Vor jeder Umsetzung: den tatsächlichen
+Live-Aufruf verifizieren** (Erreichbarkeit, aktuelle Response-Struktur,
+Rate-Limits — genau die Art Verifikation, die sich bei den yfinance-
+Owner-Earnings-Tests gestern bewährt hat, hier aber noch aussteht).
+
+## Konkrete, MVP-taugliche erste Serienauswahl
+
+Bewusst klein gehalten (dieselbe Disziplin wie beim Options-Preset-MVP
+im Public-Recommendations-Spec) — nicht sofort ein volles EU-Regime-
+System bauen, sondern mit wenigen, klar begründeten Serien starten:
+
+| Serie | Dataflow/Key (laut Notebook-Beispiel) | Warum |
+|---|---|---|
+| DE 10-Jahres-Staatsanleihenrendite | `IRS`, Key mit `DE`-Filter | Direktes Pendant zur US-10J-Treasury-Rendite, die UIQ bereits für Zinskurven-Kontext nutzt (2J/10J-Spread-Inversion, s. Aggregator-Kommentar) |
+| EUR/USD-Wechselkurs | `EXR`, `M.USD.EUR.SP00.A` | Breiter Makro-/Risikosentiment-Indikator, zusätzlich relevant für DE-Titel aus Sicht nicht-EUR-Investoren |
+| EZB-Leitzins (Hauptrefinanzierungssatz) | im ECB-Datenportal auffindbar, nicht im Notebook-Beispiel enthalten — vor Umsetzung recherchieren | Pendant zur Fed-Funds-Rate, die im US-Makro-Kontext bereits eine Rolle spielt |
+
+**Bewusst NICHT in diesem ersten Schritt:** Arbeitslosenquote (AMECO),
+weitere Eurozone-Länder außer DE, Inflationsdaten — könnten spätere
+Erweiterungen sein, aber nicht Teil eines schlanken ersten Schritts.
+
+## Offene architektonische Frage: eigenständiges DE-Regime oder Zusatzkontext?
+
+Das ist die wichtigste Design-Entscheidung, bevor Code geschrieben
+wird — zwei grundsätzlich verschiedene Ansätze:
+
+**Option A — Reiner Zusatzkontext:** Die EZB-Werte fließen als
+zusätzliche, informative Datenpunkte in die KI-Prompts für DE-Titel
+ein (ähnlich wie HY-Spread heute als "Makro-Kondensat"-Satz auftaucht),
+OHNE das bestehende, US-basierte MSE/HMM-Regime zu verändern oder zu
+duplizieren. Einfacher, kleinerer Eingriff.
+
+**Option B — Eigenständiges DE/EU-Regime:** Ein paralleles, EU-
+spezifisches Regime-Konzept (analog zum bestehenden US-MSE), das
+speziell für DE-Titel das führende Regime wäre, statt des US-Regimes.
+Deutlich größerer Eingriff — würde die gesamte Regime-Gate-Logik
+(s. `ko-market-state.js`, heute bereits für alle 15 Strategien
+ausgebaut) um eine zweite Dimension erweitern.
+
+**Meine Einschätzung:** Mit Option A beginnen. Das liefert bereits
+echten Mehrwert (DE-Titel bekommen erstmals überhaupt einen
+eigenständigen Makro-Bezug), ohne die heute erst fertiggestellte,
+sorgfältig durchgezogene Regime-Gate-Architektur (alle 15 Strategien,
+5 Regime, s. `ko-market-state.js` v2.8) grundlegend zu erweitern. Option
+B wäre ein eigenständiges, deutlich größeres späteres Projekt, falls
+sich Option A als wertvoll erweist.
+
+## Nächste Schritte (falls dieser Vorschlag weiterverfolgt wird)
+
+1. Live-Verifikation der ECB-API (Erreichbarkeit, Response-Format,
+   eventuelle Rate-Limits) — von Axel oder in einer Session mit
+   entsprechender Netzwerk-Freigabe.
+2. Bei erfolgreicher Verifikation: `fetch_ecb_macro()` nach dem Vorbild
+   von `fetch_fred_macro()` bauen — gleiches Muster, eigene Funktion.
+3. Entscheidung Option A vs. B (s. oben) treffen, bevor die Integration
+   in Prompts/Regime-Logik erfolgt.
+4. Bei Option A: neues Makro-Kondensat-Feld für DE-Titel in den
+   betroffenen KI-Prompts ergänzen (analog zum bestehenden HY-Spread-
+   Satz), mit klarer Kennzeichnung "EU-spezifischer Kontext", damit
+   nicht mit dem US-Makro-Kontext vermischt wird.
+5. Genau wie beim Owner-Earnings-Fund: Fehlerbehandlung in einem
+   separaten try-Block, damit ein Fehlschlag der neuen EZB-Anbindung
+   NICHT die bereits etablierte FRED-Anbindung gefährdet.
