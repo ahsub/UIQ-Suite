@@ -96,6 +96,31 @@ strukturiert mitgeschrieben statt nur in Kommentaren dokumentiert.
 `GITHUB_RUN_ID`. `snapshot_id` wird deterministisch aus Datum+Uhrzeit
 des Snapshot-Zeitpunkts gebildet (s. 3.5 für das ID-Schema).
 
+**Hinweis zu Makro-/FRED-Feldern, NICHT Teil des MVP (ERGÄNZT
+09.09.2026):** UIQs bestehende `fetch_fred_macro()` (u.a. HY-Spread,
+Net Liquidity) liefert den zum Abrufzeitpunkt jeweils aktuellen,
+möglicherweise bereits revidierten Wert einer FRED-Serie — nicht den
+Wert, der am jeweiligen historischen Snapshot-Datum tatsächlich bekannt
+war (viele FRED-Serien, z.B. BIP, werden mehrfach nachträglich
+korrigiert). Für die spätere Backtest-Auswertung (Abschnitt 1, explizit
+außerhalb des Scopes dieser Spec) wäre das relevant: eine rückblickende
+Prüfung einer vergangenen Regime-Entscheidung sollte mit dem
+Datenstand rechnen, der zum Entscheidungszeitpunkt bekannt war, nicht
+mit später revidierten Werten (Lookahead-Bias-Vermeidung).
+
+**Ressource/Fallback-Quelle vorgemerkt (ERGÄNZT 09.09.2026, drei
+FRED-Python-Wrapper verglichen):** `full_fred` (PyPI: `full-fred`,
+GitHub: `7astro7/full_fred`) unterstützt Point-in-Time/Vintage-Daten
+nativ (`get_series_vintagedates`) und deckt als einziger der drei
+geprüften Kandidaten (`fredapi`, `FRB`, `full_fred`) zusätzlich
+GeoFRED/regionale Daten ab — für UIQs aktuellen Bedarf nicht relevant,
+aber ein Qualitätssignal. Apache-2.0-lizenziert, aktiv gepflegt
+(CI/Codecov/PyPI-Downloads sichtbar) — von den drei verglichenen
+Bibliotheken die am besten gepflegte. Kein Wechsel der bestehenden,
+bereits verifizierten FRED-Integration empfohlen — nur als konkreter
+Ansatzpunkt vorgemerkt, falls das spätere Backtest-Projekt
+Point-in-Time-Makrodaten braucht.
+
 ### 3.2 Decision Snapshot (pro Kandidat)
 
 ```json
