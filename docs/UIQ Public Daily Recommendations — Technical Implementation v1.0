@@ -1,4 +1,4 @@
-# UIQ Public Daily Recommendations — Technical Implementation v1.0
+# UIQ Public Daily Recommendations — Technical Implementation Spec v1.0
 
 **Status: Technische Spezifikation, bereit für Umsetzung. Baut auf
 Konzeptdokument v2 auf — dort wird das "Ob" und "Warum" begründet, hier
@@ -88,7 +88,13 @@ Tages (nicht redundant in jedem Ledger-Eintrag dupliziert — nur die
   "ticker_universe_size": 735,
   "mcm_regime": "BULL_QUIET",
   "mcm_context_downgrades": [],
-  "vix": 15.3
+  "vix": 15.3,
+  "qqq_markov_regime": { "regime": "BULL", "signal": -0.2, "sticky": 40, "filterMode": "SHORT_OK" },
+  "sector_rotation": {
+    "signal": "NEUTRAL",
+    "top3": ["SMH +2.1%", "XLK +1.4%", "XLC +0.9%"],
+    "bottom3": ["XLU -1.2%", "XLRE -0.8%", "XLP -0.3%"]
+  }
 }
 ```
 
@@ -240,6 +246,90 @@ Kollisionen erzeugen könnte.
 direkt aus den zehn heutigen Konzeptdokumenten (`UIQ_*_Konzept_2026-09-09.md`)
 übernommen. Bei künftigen Datenkanal-Änderungen muss diese Tabelle
 mitgepflegt werden.
+
+---
+
+### 3.7 Public Digest (Presentation Layer, ERGÄNZT 09.09.2026)
+
+Aggregiert die Prediction-Ledger-Einträge eines Tages über alle zehn
+Equity-/KO-Strategien zu einem einzigen, öffentlich servierbaren
+Dokument. Kein neuer Datenzustand — reine Präsentationsschicht über
+bereits bestehenden Strukturen (3.1/3.2/3.4). `snapshot_id` bleibt der
+technische Anker, nicht `digest_id`.
+
+```json
+{
+  "digest_id": "DIGEST-20260908",
+  "date": "2026-09-08",
+  "snapshot_id": "SNAP-20260908-071231Z",
+  "generated_at": "2026-09-08T07:19:30Z",
+
+  "market_regime": {
+    "mse_regime": "BULL_QUIET",
+    "qqq_markov_regime": "BULL",
+    "vix": 15.3,
+    "sector_rotation_signal": "NEUTRAL"
+  },
+
+  "strategies": [
+    {
+      "strategy": "momentum",
+      "opportunities": [
+        {
+          "rank": 1,
+          "sym": "NVDA",
+          "strategy_score": 87,
+          "status": "active",
+          "rationale": {
+            "summary": "Hohe Uebereinstimmung mit den UIQ-Kriterien fuer Momentum.",
+            "signals": [
+              "RS-Rating 94",
+              "positiver MACD-Trend",
+              "Abstand zum 52W-Hoch -1.8%"
+            ]
+          },
+          "ledger_id": "UIQ-20260908-MOMENTUM-001",
+          "confidence": null
+        }
+      ],
+      "ai_output_id": "AIOUT-20260908-MOMENTUM"
+    }
+  ],
+
+  "data_quality": {
+    "market_snapshot": "ok",
+    "equity_data": "ok",
+    "sector_data": "ok",
+    "qqq_markov": "ok"
+  },
+
+  "disclaimer": "Daten-Synthese - Keine Anlageberatung gem. Section 1 WpHG - Eigene Pruefung erforderlich"
+}
+```
+
+**Designentscheidungen (Review-Runde 09.09.2026):**
+
+- `rationale` ist ein strukturiertes Objekt (`summary` + `signals`-Array),
+  nicht ein fertig formulierter Satz — bleibt dadurch maschinell
+  auswertbar und lässt sich später in beliebige Sprachen/Formate/Kanäle
+  umformulieren, ohne die Berechnung erneut anzufassen. Templatebasiert
+  aus vorhandenen Signal-Feldern generiert, KEIN zusätzlicher
+  KI-Call pro Kandidat.
+- `confidence: null` ist bewusst vorhanden, aber leer — Platzhalter für
+  die künftige DCE (Decision Confidence Engine), kein Schema-Umbau
+  nötig, sobald sie verfügbar ist.
+- `status` hat im MVP ausschließlich den Wert `"active"` — die Werte
+  `filtered`/`invalidated` sind für spätere historische Snapshots
+  vorgesehen, werden aber jetzt bewusst nicht erzeugt (keine künstliche
+  Komplexität vor Bedarf).
+- `strategy_score` bleibt auf der nativen Skala des jeweiligen
+  `s*`-Feldes (0-100, s. `market_aggregator.py`-Dokumentation) — keine
+  Neuskalierung im Public Digest.
+- **Explizit NICHT enthalten** (bewusste Entscheidung, nicht vergessen):
+  `watchlist` (Top-3 bleibt Top-3, keine Aufweichung), `delta`/"changed
+  since yesterday" (eigene Infrastruktur nötig, vertagt), Breadth/
+  Sektor-Overheat/Bull-Score in `data_quality` (nicht Teil der
+  automatisierten zehn Equity-/KO-Strategien, s. Abschnitt 6).
 
 ---
 
@@ -475,6 +565,20 @@ angezeigt, sondern als eigenes Feld direkt im `ai_output`-Objekt (3.3)
 mitgespeichert — damit trägt auch das Archiv selbst dauerhaft den
 Compliance-Kontext, unabhängig davon, wie der Text später angezeigt
 oder zitiert wird.
+
+**Formulierungsvorgabe "keine Prediction Language" (ERGÄNZT 09.09.2026):**
+Öffentlich sichtbare Texte (insb. `recommendation_text` in 3.3 und
+`rationale.summary` im Public Digest, 3.7) formulieren ausschließlich
+Zustandsbeschreibungen relativ zu UIQ-Kriterien, keine Kursvorhersagen.
+
+- Nicht: "RKLB wird steigen."
+- Sondern: "RKLB weist aktuell eine hohe Übereinstimmung mit den
+  UIQ-Kriterien für CSP auf."
+
+Das hält die Kommunikation konsequent beim Decision-Support-Charakter
+(s. bestehender Disclaimer oben) statt bei einem impliziten
+Anlageberatungs-/Signalprodukt-Anspruch — direkt relevant für die
+laufende Legal-Review (Abschnitt 9-11 des Legal Briefings, 27.08.2026).
 
 ---
 
