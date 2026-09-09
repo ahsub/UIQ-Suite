@@ -268,7 +268,8 @@ technische Anker, nicht `digest_id`.
     "mse_regime": "BULL_QUIET",
     "qqq_markov_regime": "BULL",
     "vix": 15.3,
-    "sector_rotation_signal": "NEUTRAL"
+    "sector_rotation_signal": "NEUTRAL",
+    "dce": { "confidence": 62, "mode": "YELLOW", "direction": "HOLD" }
   },
 
   "strategies": [
@@ -325,6 +326,13 @@ technische Anker, nicht `digest_id`.
 - `strategy_score` bleibt auf der nativen Skala des jeweiligen
   `s*`-Feldes (0-100, s. `market_aggregator.py`-Dokumentation) — keine
   Neuskalierung im Public Digest.
+- `market_regime.dce` (ERGÄNZT 09.09.2026, Zusatzfund): UIQ betreibt bereits
+  eine markt-weite "Decision Confidence Engine" (`dce_layer.run_dce()` in
+  `market_aggregator.py`, ein Wert pro Tageslauf) — bei jedem Aggregator-Lauf
+  ohne Zusatzkosten mitberechnet, daher direkt mit aufgenommen. Wichtige
+  Abgrenzung: das ist NICHT dieselbe Confidence wie das leere
+  `confidence`-Feld pro Opportunity weiter unten — jene wäre eine
+  kandidaten-/strategie-spezifische Confidence, die es weiterhin nicht gibt.
 - **Explizit NICHT enthalten** (bewusste Entscheidung, nicht vergessen):
   `watchlist` (Top-3 bleibt Top-3, keine Aufweichung), `delta`/"changed
   since yesterday" (eigene Infrastruktur nötig, vertagt), Breadth/
