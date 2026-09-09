@@ -432,9 +432,13 @@ dem bisherigen Leaderboard-Build-Abschluss:
   run: node scripts/generate_public_recommendations.js
   env:
     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-    KV_WRITE_TOKEN: ${{ secrets.KO_SYNC_WRITE_TOKEN }}
+    CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+    CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+    CF_KV_NS_ID: ${{ secrets.CF_KV_NS_ID }}
     GITHUB_RUN_ID: ${{ github.run_id }}
 ```
+
+**Korrektur (09.09.2026):** Die ursprüngliche Skizze nannte hier faelschlich `KV_WRITE_TOKEN`/`KO_SYNC_WRITE_TOKEN` — der bereits produktiv laufende Schreibmechanismus (`push_to_cloudflare_kv()` in `market_aggregator.py`) nutzt stattdessen die drei oben gezeigten, bereits im GHA-Workflow hinterlegten Secrets direkt gegen die Cloudflare-KV-REST-API (`PUT .../storage/kv/namespaces/{ns}/values/{key}`, `Authorization: Bearer {CF_API_TOKEN}`). Kein neues Secret noetig.
 
 **Neues Skript `scripts/generate_public_recommendations.js` (Node,
 läuft im GHA-Runner):**
