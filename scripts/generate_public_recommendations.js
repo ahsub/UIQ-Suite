@@ -326,15 +326,26 @@ function normalizeTicker(raw) {
     price: raw.price ?? 0,
     ma200: raw.ema200 ?? null,
     ma50: raw.ema50 ?? null,
-    sepa: raw.sepaScore ?? raw.sepa ?? 0,
-    bullCount: raw.bullCount ?? 0,
+    // KORRIGIERT (09.09.2026, echte Daten geprueft): 'sepa'/'sepaScore'
+    // existiert serverseitig NIRGENDS (0/735 im echten Aggregator-Output,
+    // auch nicht in leaderboards/masterShortlist/valueScanner) — reiner
+    // client-seitiger Live-Wert (calcMinerviniSepa() im Browser), den es im
+    // GHA-Server-Kontext schlicht nicht gibt. Bleibt bewusst `null` statt
+    // eines irrefuehrenden `0` — die SEPA-Zeile in buildTickerListString()
+    // wird deshalb jetzt bedingt gerendert (nur wenn vorhanden), s. dort.
+    sepa: null,
+    // KORRIGIERT (09.09.2026): 'bullCount' existiert nicht — das echte Feld
+    // heisst 'bullSignals' (Werte 0-3, 100% Praesenz verifiziert).
+    bullCount: raw.bullSignals ?? 0,
     homeMarket: raw.homeMarket || 'US',
     rsi: raw.rsi ?? null,
     atr: raw.atr ?? null,
     hvp: raw.hvp ?? null,
     macdHist: raw.macdHist ?? null,
     histVal: raw.macdHist ?? null, // buildTickerListString liest r.histVal für die MACD-Zeile
-    macdBull: raw.macdBull ?? null,
+    // KORRIGIERT (09.09.2026): 'macdBull' existiert nicht als eigenes Feld
+    // — aus macdHist abgeleitet (identische Semantik zur Client-Logik).
+    macdBull: raw.macdHist != null ? raw.macdHist > 0 : null,
     obvTrend: raw.obvTrend ?? null,
     obvSlope: raw.obvTrend ?? null,
     volRatio: raw.volRatio ?? null,
@@ -343,7 +354,7 @@ function normalizeTicker(raw) {
     dist52wHigh: raw.pctFromHigh52 ?? null,
     above50: raw.dist50 != null ? raw.dist50 > 0 : null,
     rsRating: raw.rsRating ?? null,
-    rs: raw.rs ?? null,
+    rs: raw.rs ?? null, // bestaetigt: existiert serverseitig nie (Live-Scan-only) — Fallback-Zweig bleibt bewusst tot
     tightnessPct: raw.tightnessPct ?? null,
     sma150: raw.sma150 ?? null,
     bbPos: raw.bbPos ?? null,
@@ -364,9 +375,15 @@ function normalizeTicker(raw) {
     _ivp: (raw.ivAtm != null) ? {
       ivp: raw.ivRank, atmIV: Math.round(raw.ivAtm), isHV: false,
     } : null,
-    // Die zehn strategie-eigenen Scores — direkter Passthrough, kein
-    // Rekonstruktionsrisiko (s. heutiger Fund, market_aggregator.py setzt
-    // sie 1:1 auf jedes results[]-Item).
+    // Die zehn strategie-eigenen Scores — direkter Passthrough. KORRIGIERT
+    // (09.09.2026): sMinervini/sSwing/sMrLong/sBreakout/sBreakdown/sFading/
+    // sVcp sind auf dem FLACHEN tickers[]-Array vorhanden (100% verifiziert)
+    // — sKoLong/sDividend/sValue dagegen NICHT (0/735!), die existieren
+    // ausschliesslich innerhalb der jeweiligen leaderboards[strategie]-
+    // Eintraege. `raw` ist deshalb ab jetzt bereits das Ergebnis von
+    // mergeTickerSources() (s. selectCandidates), nicht mehr der reine
+    // flache Ticker — dort werden leaderboard-Feld und Flach-Feld
+    // zusammengefuehrt, sodass dieser Zugriff hier unveraendert funktioniert.
     sMinervini: raw.sMinervini ?? null,
     sSwing: raw.sSwing ?? null,
     sMrLong: raw.sMrLong ?? null,
@@ -377,20 +394,57 @@ function normalizeTicker(raw) {
     sKoLong: raw.sKoLong ?? null,
     sDividend: raw.sDividend ?? null,
     sValue: raw.sValue ?? null,
-    // Value-Felder (nur bei value-Strategie relevant, sonst durchweg null)
+    // Value-Felder — KORRIGIERT (09.09.2026): Quelle ist masterData.valueScanner
+    // .shortlist[] (per sym gemergt in mergeTickerSources()), NICHT der rohe
+    // Ticker selbst (dort 0% Praesenz fuer alle sechs Felder). pe/pb/roicProxy/
+    // revGrowth/fcfYield/grossMargin sind dort 100% (fuer die 50 gelisteten
+    // Symbole) verifiziert vorhanden.
     pe: raw.pe ?? null,
     pb: raw.pb ?? null,
     roicProxy: raw.roicProxy ?? null,
     revGrowth: raw.revGrowth ?? null,
     fcfYield: raw.fcfYield ?? null,
     grossMargin: raw.grossMargin ?? null,
-    // IOS Foundation (ios_pattern_entry_engine.py)
+    // NEU (09.09.2026, echter Fund): zusaetzliche Value-/Dividend-Felder,
+    // die NUR in leaderboards.long_value/long_dividend mitgeliefert werden
+    // (nicht in valueScanner.shortlist) — echte, bisher ungenutzte Daten.
+    peForward: raw.peForward ?? null,
+    roe: raw.roe ?? null,
+    analystUpside: raw.analystUpside ?? null,
+    ownerEarningsYield: raw.ownerEarningsYield ?? null,
+    divYield: raw.divYield ?? null,
+    payoutRatio: raw.payoutRatio ?? null,
+    debtToEquity: raw.debtToEquity ?? null,
+    // IOS Foundation — KORRIGIERT (09.09.2026): Quelle ist masterData
+    // .masterShortlist[] (per sym gemergt), NICHT der rohe Ticker/leaderboard-
+    // Eintrag (dort beide 0%). Nur fuer die ~20 global kuratierten Symbole
+    // ueberhaupt verfuegbar — bei den meisten Kandidaten bleibt das null,
+    // das ist normal, kein Fehler (Formatierung ist dafuer bereits
+    // null-sicher).
     iosRating: raw.iosRating ?? null,
     iosDecision: raw.iosDecision ?? null,
     iosQuality: raw.iosQuality ?? null,
     iosEntry: raw.iosEntry ?? null,
     scoreLabel: raw.scoreLabel ?? raw.grade ?? null,
-    er: raw._er ? { days: parseInt(raw._er.daysUntil) || null, date: raw._er.date } : null,
+    // KORRIGIERT (09.09.2026): '_er' als verschachteltes Objekt existiert
+    // nicht — earningsDate/earningsDTE liegen FLACH auf dem Ticker (27%
+    // Praesenz, nur wenn ein Earnings-Termin bekannt ist — nicht jeder
+    // Ticker hat demnaechst welche, daher <100% korrekt und erwartet).
+    er: raw.earningsDTE != null ? { days: raw.earningsDTE, date: raw.earningsDate ?? null } : null,
+    // NEU (09.09.2026, echter Fund): server-seitiges Fibonacci-Aequivalent
+    // (f_lvls/f_score/f_setup/f_next_p/f_dist_atr, 100% Praesenz) — deutlich
+    // wertvoller als mein client-portiertes detectSwing()/calcFiboLevels()
+    // unten, das mangels closes_full (0% Praesenz, bestaetigt) in der Praxis
+    // NIE greift. Ersetzt NICHT den alten `fibo`-Mechanismus (bleibt als
+    // Fallback bestehen, falls closes_full in einer kuenftigen Aggregator-
+    // Version doch mitgeliefert wird) — beide Felder existieren parallel.
+    fLvls: raw.f_lvls ?? null,
+    fNextName: raw.f_next_name ?? null,
+    fNextP: raw.f_next_p ?? null,
+    fDistAtr: raw.f_dist_atr ?? null,
+    fScore: raw.f_score ?? null,
+    fSetup: raw.f_setup ?? null,
+    fStrike: raw.f_strike ?? null, // nur ~6% Praesenz — nicht jeder Titel hat einen sinnvollen Strike-Vorschlag
     markov: null,
     fibo: null,
   };
@@ -433,20 +487,89 @@ function enrichWithMarkov(candidate, closesFullByCandidate, KoMarkovModule) {
 
 // ─── Baustein 5: Kandidatenauswahl je Strategie ───────────────────────────
 //
-// 1:1 die Sortier-/Filterlogik aus openKiBriefing() (Fund B, 07.09.2026):
-// strategie-eigener Score wo vorhanden, sonst Composite-Score als Fallback.
-// Top-25 (Kursrahmen-Filter gilt nur für Options-Strategien, hier nicht
-// relevant), davon Top-10 für den Prompt-Kontext. Die tatsächlich
-// getrackten Top-3 fürs Ledger sind rein mechanisch aus dieser sortierten
-// Liste (s. saveKiRecommendationsForTracking() — Top-3 nach Score, KEIN
-// KI-Text-Parsing).
-function selectCandidates(strategy, rawTickers) {
-  const scoreField = STRAT_SCORE_FIELD[strategy];
-  if (!scoreField) {
+// UMGEBAUT (09.09.2026, echte Daten geprueft): Primaerquelle ist jetzt
+// masterData.leaderboards[strategie] statt eigener Sortierung ueber alle
+// 735 Roh-Ticker. Grund: leaderboards ist bereits korrekt nach dem
+// jeweiligen Strategie-Score sortiert (verifiziert fuer long_dividend/
+// long_value/ko_long/long_minervini) UND enthaelt sKoLong/sDividend/sValue,
+// die im flachen tickers[]-Array GAR NICHT existieren (0/735 bestaetigt).
+// Die alte "selbst sortieren"-Logik haette fuer ko/dividend/value also
+// IMMER auf den Composite-Score zurueckfallen muessen — stiller
+// Qualitaetsverlust ohne Fehlermeldung.
+//
+// leaderboards-Eintraege sind aber KLEINER als der flache Ticker (kein
+// bullSignals/earnings*/f_lvls* dort, 0% verifiziert) — deshalb Merge mit
+// dem flachen Datensatz (per sym) fuer volle Feldabdeckung, plus Merge mit
+// valueScanner.shortlist (pe/pb/roicProxy/revGrowth/fcfYield/grossMargin)
+// und masterShortlist (ios*-Felder) — beide ebenfalls nur per sym-Lookup
+// erreichbar, nicht auf dem Ticker/leaderboard-Eintrag selbst.
+const LEADERBOARD_KEY = {
+  ko:           'ko_long',
+  momentum:     'long_minervini',
+  breakout:     'long_breakout',
+  vcp:          'vcp_setups',
+  swing:        'long_swing',
+  meanrev:      'long_mr',
+  breakdown:    'short_breakdown',
+  fading_short: 'short_fading',
+  dividend:     'long_dividend',
+  value:        'long_value',
+};
+
+function buildLookupMaps(masterData) {
+  return {
+    bySymFlat: new Map((masterData.tickers || []).map((t) => [t.sym, t])),
+    byValueScanner: new Map((masterData.valueScanner?.shortlist || []).map((e) => [e.sym, e])),
+    byMasterShortlist: new Map((masterData.masterShortlist || []).map((e) => [e.sym, e])),
+  };
+}
+
+function mergeTickerSources(entry, maps) {
+  const flat = maps.bySymFlat.get(entry.sym) || {};
+  // flat zuerst (reichhaltigste Basis: bullSignals/earnings*/f_lvls*), dann
+  // der leaderboard-Eintrag druebergelegt (gewinnt bei Ueberschneidung —
+  // enthaelt die sonst fehlenden sKoLong/sDividend/sValue).
+  const merged = { ...flat, ...entry };
+
+  const valueRow = maps.byValueScanner.get(entry.sym);
+  if (valueRow) {
+    for (const f of ['pe', 'pb', 'roicProxy', 'revGrowth', 'fcfYield', 'grossMargin']) {
+      if (valueRow[f] != null) merged[f] = valueRow[f];
+    }
+  }
+
+  const msRow = maps.byMasterShortlist.get(entry.sym);
+  if (msRow) {
+    for (const f of ['iosRating', 'iosDecision', 'iosQuality', 'iosEntry']) {
+      if (msRow[f] != null) merged[f] = msRow[f];
+    }
+  }
+
+  return merged;
+}
+
+function selectCandidates(strategy, masterData) {
+  const leaderboardKey = LEADERBOARD_KEY[strategy];
+  if (!leaderboardKey) {
     throw new Error(`selectCandidates: unbekannte oder Options-Strategie "${strategy}" (nur die 10 Equity-/KO-Strategien werden hier unterstützt)`);
   }
 
-  const normalized = rawTickers.map((raw) => {
+  const maps = buildLookupMaps(masterData);
+  const lbEntries = masterData.leaderboards?.[leaderboardKey];
+
+  let mergedRawList;
+  if (Array.isArray(lbEntries) && lbEntries.length > 0) {
+    mergedRawList = lbEntries.map((e) => mergeTickerSources(e, maps));
+  } else {
+    // Fallback nur falls leaderboards fehlt/leer ist (sollte im Regelfall
+    // nicht vorkommen) — alte Sortierlogik ueber den flachen Bestand.
+    console.warn(`  ⚠️  masterData.leaderboards.${leaderboardKey} fehlt oder leer — Fallback auf manuelle Sortierung ueber tickers[]`);
+    const scoreField = STRAT_SCORE_FIELD[strategy];
+    mergedRawList = (masterData.tickers || []).slice()
+      .sort((a, b) => (b[scoreField] ?? -Infinity) - (a[scoreField] ?? -Infinity));
+  }
+
+  const normalized = mergedRawList.map((raw) => {
     const candidate = normalizeTicker(raw);
     if (Array.isArray(raw.closes_full)) {
       enrichWithMarkov(candidate, raw.closes_full, KoMarkov);
@@ -455,10 +578,9 @@ function selectCandidates(strategy, rawTickers) {
     return candidate;
   });
 
-  const sortScore = (r) => (r[scoreField] != null ? r[scoreField] : (r.score ?? -Infinity));
-  const sorted = normalized.slice().sort((a, b) => sortScore(b) - sortScore(a));
-
-  const top25 = sorted.slice(0, 25);
+  // Bereits vom leaderboard korrekt sortiert (bzw. im Fallback-Zweig schon
+  // oben sortiert) — kein erneutes Sortieren noetig.
+  const top25 = normalized.slice(0, 25);
   const top10 = top25.slice(0, 10);
   const top3Syms = top25.slice(0, 3).map((r) => r.sym); // fürs Ledger — mechanisch, nicht aus KI-Text
 
@@ -479,8 +601,13 @@ function buildTickerListString(top10) {
       + ` Kurs:$${r.price ? r.price.toFixed(2) : '?'}`
       + ` S:${r.score}`
       + ` ${r.bullCount}/3`
-      + ` SEPA:${r.sepa}`
       + ` Markt:${r.homeMarket}`;
+    // KORRIGIERT (09.09.2026): SEPA existiert serverseitig nie (0/735
+    // bestaetigt, reiner Client-Live-Wert) — vorher wurde hier IMMER
+    // "SEPA:0" ausgegeben (irrefuehrend, sah wie ein echter Nullwert statt
+    // fehlender Daten aus). Jetzt komplett weggelassen statt erfunden,
+    // konsistent mit der DATA_LEGENDE-Regel "NIEMALS erfinden".
+    if (r.sepa != null) line += ` SEPA:${r.sepa}`;
 
     if (r.markov) {
       const m = r.markov;
@@ -523,6 +650,17 @@ function buildTickerListString(top10) {
     if (r.revGrowth != null) line += ` RG:${r.revGrowth > 0 ? '+' : ''}${r.revGrowth}%`;
     if (r.fcfYield != null) line += ` FCF-Y:${r.fcfYield}%`;
     if (r.grossMargin != null) line += ` GM:${r.grossMargin}%`;
+    // NEU (09.09.2026, echter Fund): zusaetzliche Value-/Dividend-Felder aus
+    // leaderboards.long_value/long_dividend (nicht in valueScanner.shortlist
+    // enthalten) — echte, bisher ungenutzte Daten, nur bei value/dividend-
+    // Kandidaten typischerweise vorhanden.
+    if (r.peForward != null) line += ` PEfwd:${r.peForward}`;
+    if (r.roe != null) line += ` ROE:${r.roe}%`;
+    if (r.analystUpside != null) line += ` AnalystUpside:${r.analystUpside >= 0 ? '+' : ''}${r.analystUpside}%`;
+    if (r.ownerEarningsYield != null) line += ` OEY:${r.ownerEarningsYield}%`;
+    if (r.divYield != null) line += ` DivY:${r.divYield}%`;
+    if (r.payoutRatio != null) line += ` Payout:${r.payoutRatio}%`;
+    if (r.debtToEquity != null) line += ` D/E:${r.debtToEquity}`;
     if (r.high52w && r.low52w) line += ` [52W:$${r.low52w.toFixed(0)}-$${r.high52w.toFixed(0)}]`;
 
     if (r.rsi != null) line += ` RSI:${r.rsi.toFixed(1)}`;
@@ -536,7 +674,11 @@ function buildTickerListString(top10) {
       const d150 = ((r.price - r.sma150) / r.sma150 * 100).toFixed(1);
       line += ` SMA150:$${r.sma150.toFixed(0)}(${d150}%)`;
     }
-    if (r.volRatio != null) line += ` VolR:${(r.volRatio / 100).toFixed(2)}x`;
+    // KORRIGIERT (09.09.2026, echte Daten geprueft): volRatio ist bereits
+    // ein reines Verhaeltnis (z.B. 1.25 = 1.25x), KEIN Prozentwert — die
+    // Division durch 100 war falsch (raw.volRatio:1.25 fuer AVGO
+    // verifiziert, nicht 125).
+    if (r.volRatio != null) line += ` VolR:${r.volRatio.toFixed(2)}x`;
     if (r.overheat != null && r.overheat > 0) line += ` 🔥Overheat:${r.overheat}`;
     if (r.obvSlope != null) line += ` OBV:${r.obvSlope > 0 ? '▲' : '▼'}${Math.abs(r.obvSlope).toFixed(2)}`;
     if (r.hv10 != null) line += ` hv10:${r.hv10}`;
@@ -570,6 +712,16 @@ function buildTickerListString(top10) {
     }
     if (r.scoreLabel) line += ` Grade:${r.scoreLabel}`;
     if (r.fibo) line += ` Fibo:${r.fibo.zone}(${r.fibo.retrace}%)`;
+    // NEU (09.09.2026, echter Fund): server-seitiges Fibonacci-Aequivalent,
+    // 100% Praesenz (ersetzt in der Praxis das obige `fibo`-Feld, das ohne
+    // closes_full nie greift — beide Mechanismen bleiben parallel bestehen,
+    // s. Kommentar in normalizeTicker()).
+    if (r.fSetup) {
+      line += ` FiboSrv:${r.fSetup}`;
+      if (r.fNextName) line += `(${r.fNextName}@$${r.fNextP})`;
+      if (r.fScore != null) line += ` Score:${r.fScore}`;
+      if (r.fStrike != null) line += ` Strike:$${r.fStrike}`;
+    }
 
     if (r.vcpDetected) {
       line += ` VCP✓(${r.vcpContractions || 0}x,letzte:${r.vcpLastPct}%`;
@@ -716,7 +868,6 @@ const DATA_LEGENDE = 'FELDERKLÄRUNG (NUR diese Felder sind verfügbar — nicht
   + '  Kurs:$XX       = aktueller Handelskurs aus Scanner (EINZIGE Kursquelle)\n'
   + '  S:XX           = Composite Score 0-100\n'
   + '  X/3            = Bullish-Signale (MACD/OBV/MA50)\n'
-  + '  SEPA:X         = Minervini SEPA-Score 0-8\n'
   + '  Markt:XX       = Handelsboerse/-zeit des Titels: US (NYSE/NASDAQ/OTC — GILT AUCH für ADRs nicht-amerikanischer Unternehmen wie SAP/ASML/RIO, da diese selbst auf US-Boersen handeln!) oder DE/FR/NL/IT/CH/UK/DK/SE/AU (Heimatboerse). Massgeblich fuer Zeitzonen-/Gap-Risiko ist AUSSCHLIESSLICH dieses Feld — NIEMALS aus dem Tickersymbol selbst erraten (z.B. Ticker "DE" = Deere & Co., NYSE, NICHT das Laenderkuerzel Deutschland).\n'
   + '  Markov2:REG(X%) σ±Y = Markov 2.0 Regime (Stride-sampled, statistisch korrekt). REG=BULL/BEAR/SIDE, X%=Stickiness (Persistenz des Regimes), σ=Signal (-1 bis +1: positiv=bullisch, negativ=bärisch)\n'
   + '  Filter:LONG_OK/SHORT_OK/FLAT = Markov 2.0 Filter-Mode. LONG_OK: Signal stark genug für Longs. FLAT: kein klares Signal → keine neuen Positionen empfohlen\n'
@@ -730,13 +881,16 @@ const DATA_LEGENDE = 'FELDERKLÄRUNG (NUR diese Felder sind verfügbar — nicht
   + '  52W-H:X%       = Abstand vom 52-Wochen-Hoch\n'
   + '  HVP:XX%        = Historical Volatility Percentile (NÄHERUNG — kein echter IV-Rank!). >50%: erhöhte Vola → CSP-Prämien tendenziell höher. <30%: niedrige Vola → CSP meiden. Wenn HVP fehlt: NIEMALS IV-Wert erfinden.\n'
   + '  Fibo:zone(X%)  = Fibonacci-Zone\n'
+  + '  FiboSrv:SETUP(NAME@$P) Score:X Strike:$Y = server-seitiges Fibonacci-Setup (z.B. CSP_ZONE), naechstes relevantes Level mit Name+Preis, Score 0-100, optionaler Strike-Vorschlag (nur bei manchen Titeln)\n'
+  + '  PEfwd:XX / ROE:XX% / AnalystUpside:+XX% / OEY:XX% = zusaetzliche Value-Kennzahlen (Forward-KGV, Eigenkapitalrendite, Analysten-Kursziel-Abstand, Owner-Earnings-Rendite) — nur bei manchen Value-/Dividend-Kandidaten vorhanden\n'
+  + '  DivY:XX% / Payout:XX% / D/E:X = Dividendenrendite, Ausschuettungsquote, Verschuldungsgrad — nur bei manchen Dividend-Kandidaten vorhanden\n'
   + '  VCP✓(Nx,letzte:X%,⌀vorherige:Y%,VolKontr:Z,BrkVol:W) = Volatility-Contraction-Pattern bestaetigt: N Kontraktionen, letzte Kontraktion X% Kursspanne (Y%=Durchschnitt der vorherigen Kontraktionen, zum Vergleich ob die Kontraktion enger wird), VolKontr=Volumen-Kontraktionsfaktor, BrkVol=Volumen-Multiplikator am (potenziellen) Ausbruchstag\n'
   + '  VCP-Ansatz(Nx, kein vollst. VCP) = Kontraktionsmuster erkannt, aber Tightening-Kriterium NICHT erfuellt — NIEMALS als bestaetigtes VCP werten\n'
   + '  Tightness:X%   = Kurs-Tightness-Kennzahl (je niedriger, desto enger die juengste Konsolidierung)\n'
   + '  IVP:XX%ile(YT) IV:Z% HV(20:A/50:B/100:C) = echtes IV-Perzentil (Y=Tage Historie), aktuelle IV, dahinterliegende historische Volatilitaeten ueber 20/50/100 Tage (Referenz zur Einordnung, ob Vola kurzfristig oder strukturell erhoeht/erniedrigt ist)\n'
   + '  SMA150:$XX(Y%) = 150-Tage-Linie (Minervini Stage-2-Kriterium), Y%=Abstand Kurs zur Linie\n'
   + '  [Strat:...]    = Strategie-Fit-Scores (>30) fuer: SEPA=Minervini, Swing=Swing-Pullback, MR=Mean-Reversion, Short⬇=Breakdown, Fade=Fading-Short, Breakout=Breakout, VCP=VCP-Setup-Score (numerischer Fit, ergaenzt die VCP✓-Detailmetriken oben), KO=KO-Zertifikat-Long, Div=Dividend-Growth, Value=Value\n'
-  + 'NICHT VERFÜGBAR (niemals erfinden): KGV, EPS, Umsatz, Dividende, Analystenziele\n\n';
+  + 'NICHT VERFÜGBAR (niemals erfinden): EPS, Umsatz (ausser Value-/Dividend-Kandidaten mit expliziten Feldern oben)\n\n';
 
 // Sektor-Rotationswarnung — 1:1-Logik aus openKiBriefing() übernommen
 // (dieselben Schwellenwerte, dieselbe Handlungsregel-Textinjektion).
@@ -1028,7 +1182,7 @@ const SIGNAL_LABELS = {
   rsRating: (v) => `RS-Rating ${v}`,
   macdHist: (v) => (v > 0 ? 'positiver MACD-Trend' : 'negativer MACD-Trend'),
   obvTrend: (v) => (v > 0 ? 'OBV in Akkumulation' : 'OBV in Distribution'),
-  volRatio: (v) => `Volumen-Ratio ${(v / 100).toFixed(2)}x`,
+  volRatio: (v) => `Volumen-Ratio ${v.toFixed(2)}x`,
   hvp: (v) => `HVP ${v}%`,
   rsi: (v) => `RSI ${v.toFixed ? v.toFixed(1) : v}`,
   dist200: (v) => `Abstand EMA200 ${v >= 0 ? '+' : ''}${v}%`,
@@ -1209,9 +1363,9 @@ async function callAnthropicWithRetry(prompt, { apiKey } = {}) {
 // Fehlerisoliert: wirft NIE — bei jedem Fehlschlag wird { ok:false, ... }
 // zurueckgegeben, main() entscheidet dann pro Strategie weiter (s.
 // Abschnitt 8: "Ein Fehlschlag blockiert nicht den gesamten Lauf").
-async function runStrategy(strategy, rawTickers, snapshot, promptVersion) {
+async function runStrategy(strategy, masterData, snapshot, promptVersion) {
   try {
-    const { top10, top3Syms } = selectCandidates(strategy, rawTickers);
+    const { top10, top3Syms } = selectCandidates(strategy, masterData);
     if (top3Syms.length === 0) {
       return { ok: false, strategy, error: 'keine Kandidaten nach Filterung/Sortierung' };
     }
@@ -1245,10 +1399,36 @@ async function runStrategy(strategy, rawTickers, snapshot, promptVersion) {
 }
 
 // ─── Baustein 20: main() — Orchestrierung über alle zehn Strategien ──────
+// ─── Baustein 21: Python-JSON-Kompatibilitaet ─────────────────────────────
+//
+// ECHTER FUND (09.09.2026, Live-Datei-Test): master_market_data.json
+// enthält literale `NaN`-Tokens (z.B. bei "ownerEarningsYield") — Pythons
+// json.dumps() erlaubt das per Default (allow_nan=True), aber es ist laut
+// JSON-Spezifikation UNGÜLTIG. JavaScripts JSON.parse() lehnt es zu Recht
+// ab (SyntaxError). Das ist ein eigenständiges Datenqualitätsproblem in
+// market_aggregator.py, nicht etwas, das dieses Skript verursacht — aber
+// es muss hier abgefangen werden, um mit der real produzierten Datei
+// arbeiten zu können, ohne auf einen Fix in market_aggregator.py warten
+// zu müssen. WURZEL-FIX-EMPFEHLUNG (nicht Teil dieses Skripts): in
+// market_aggregator.py entweder json.dumps(..., allow_nan=False) nutzen
+// (bricht dann kontrolliert dort, wo der NaN entsteht) oder NaN-Werte vor
+// der Serialisierung explizit zu null normalisieren.
+//
+// Diese Funktion ersetzt bloße NaN/Infinity/-Infinity-Tokens durch null,
+// AUSSERHALB von String-Literalen (simple, aber fuer diesen konkreten Fall
+// ausreichend robuste Regex — ersetzt nur Tokens, die als JSON-Wert an
+// Komma/Doppelpunkt/Klammer grenzen, nicht Teile von Strings).
+function parsePythonStyleJson(text) {
+  const sanitized = text.replace(/([:,\[]\s*)(-?Infinity|NaN)(\s*[,\]}])/g, '$1null$3');
+  return JSON.parse(sanitized);
+}
+
+
 async function main() {
   const masterDataPath = process.env.MASTER_DATA_PATH || path.join(process.cwd(), 'master_market_data.json');
   console.log(`Lese Aggregator-Output: ${masterDataPath}`);
-  const masterData = JSON.parse(fs.readFileSync(masterDataPath, 'utf-8'));
+  const rawJson = fs.readFileSync(masterDataPath, 'utf-8');
+  const masterData = parsePythonStyleJson(rawJson);
   const rawTickers = masterData.tickers || masterData.results || [];
   console.log(`  ${rawTickers.length} Ticker geladen.`);
 
@@ -1265,7 +1445,7 @@ async function main() {
   const results = [];
   for (const strategy of EQUITY_STRATEGIES) {
     console.log(`\n--- Strategie: ${strategy} ---`);
-    const result = await runStrategy(strategy, rawTickers, snapshot, promptVersion);
+    const result = await runStrategy(strategy, masterData, snapshot, promptVersion);
     if (result.ok) {
       console.log(`  ✅ Top-3: ${result.top3Syms.join(', ')}`);
     } else {
@@ -1323,6 +1503,9 @@ module.exports = {
   selectCandidates,
   buildTickerListString,
   normalizeTicker,
+  LEADERBOARD_KEY,
+  buildLookupMaps,
+  mergeTickerSources,
   enrichWithMarkov,
   enrichWithFibo,
   detectSwing,
@@ -1351,5 +1534,6 @@ module.exports = {
   archiveDatePath,
   callAnthropicWithRetry,
   runStrategy,
+  parsePythonStyleJson,
   main,
 };
