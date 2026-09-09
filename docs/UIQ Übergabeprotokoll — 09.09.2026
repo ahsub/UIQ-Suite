@@ -170,3 +170,41 @@ sinnvoll:
 4. Falls Marketstate/Macrodata tatsaechlich Teil des Public-Angebots
    werden: EZB-Vorschlag (Punkt 7) als Teil dieser Planung mitdenken,
    nicht getrennt.
+
+---
+
+## 10. AI_delivery_public — Implementierung abgeschlossen (09.09.2026, Nachmittag/Abend-Sprint)
+
+Direkt im Anschluss an die oben unter Punkt 6 offene Reihenfolge-Frage geklärt (Top-3 bleibt fix, DCE/Fair-Value-Integration bewusst zurückgestellt, s. Session-Verlauf) — danach `generate_public_recommendations.js` komplett gebaut, gegen die echte Anthropic-API UND Axels echte `master_market_data.json` getestet, nicht nur gegen synthetische Daten.
+
+**Spec-Ergänzungen (alle committed, `UIQ-Suite/docs/`):**
+- Neuer Abschnitt 3.7 Public Digest (Presentation Layer) — `rationale` als strukturiertes Objekt (nicht KI-generiert, templatebasiert), `confidence: null` als DCE-Platzhalter, `status`, bewusst OHNE `watchlist`/`delta` (Top-3 bleibt Top-3).
+- `market_regime.dce` nachgetragen — UIQ hat bereits eine markt-weite Decision Confidence Engine (`dce_layer.run_dce()`), war bisher nirgends dokumentiert.
+- Zwei fehlende KV-Pfade ergänzt (`/public/digest/latest`, `/archive/digest/...`) — Abschnitt 4 hatte urspruenglich keinen Pfad für den Digest selbst vorgesehen.
+- **Korrektur in Abschnitt 6:** Die urspüngliche YAML-Skizze nannte ein Secret `KO_SYNC_WRITE_TOKEN`, das es nicht gibt — der tatsächliche, bereits produktiv laufende Schreibmechanismus (`push_to_cloudflare_kv()`) nutzt `CF_ACCOUNT_ID`/`CF_API_TOKEN`/`CF_KV_NS_ID`, alle drei bereits im Workflow hinterlegt.
+- "Keine Prediction Language"-Formulierungsregel in Abschnitt 11 ergänzt.
+
+**Wichtige Bugfunde — nur durch Test gegen Axels echte Datei aufgedeckt, mit synthetischen Daten NIE gefunden worden:**
+- `sKoLong`/`sDividend`/`sValue` existieren im flachen `tickers[]`-Array NICHT (0/735 verifiziert) — nur in `masterData.leaderboards[strategie]`. Kandidatenauswahl komplett umgebaut: `leaderboards[strategie]` ist jetzt Primärquelle (bereits korrekt sortiert), gemergt mit `tickers[]` (volle Feldabdeckung), `valueScanner.shortlist[]` (pe/pb/roicProxy/...) und `masterShortlist[]` (IOS-Felder) — alle drei separate Lookup-Quellen, jeweils per `sym`.
+- `bullCount` existiert nicht — richtiges Feld ist `bullSignals`.
+- `sepa`/`sepaScore` existiert serverseitig NIRGENDS (reiner Client-Live-Wert) — wird jetzt korrekt weggelassen statt als irreführendes `0` ausgegeben.
+- `volRatio`-Skalierungsfehler: Feld ist bereits ein reines Verhältnis (1.25 = 1.25x), keine Division durch 100 nötig — hätte in JEDER Zeile jeder Strategie falsche Werte erzeugt.
+- **`market_aggregator.py` produziert an drei Stellen technisch ungültiges JSON** (literale `NaN`-Tokens, z.B. bei `ownerEarningsYield` — Python erlaubt das per Default, die JSON-Spezifikation nicht). Wurzel-Fix `_json_safe()` in `market_aggregator.py` selbst committed (nicht nur im Node-Skript umschifft) — betraf potenziell jeden strikten JSON-Konsumenten der Datei, nicht nur dieses eine Skript.
+- Server-seitiges Fibonacci-Äquivalent gefunden (`f_lvls`/`f_score`/`f_setup`/`f_next_p`, 100% Präsenz) — ersetzt den ursprünglich client-portierten `closes_full`-Ansatz, der mangels Datenverfügbarkeit in der Praxis nie gegriffen hätte.
+- Netzwerkfehler-Bug im Retry-Mechanismus: `fetch()`-Exceptions wurden nicht abgefangen, der 10s-Retry aus Abschnitt 8 griff dadurch nie bei reinen Netzwerkfehlern (nur bei HTTP-Fehlerstatus) — live beobachtet und gefixt.
+
+**Alle drei betroffenen Repos committed und verifiziert:**
+- `UIQ-Suite`: Spec-Ergänzungen, `scripts/generate_public_recommendations.js`, `scripts/vendor/ko-prompts.js`, `scripts/vendor/ko-markov.js`
+- `ko-aggregator`: `_json_safe()`-Fix in `market_aggregator.py`
+
+**Noch NICHT umgesetzt:** der eigentliche GHA-Workflow-Schritt (Abschnitt 6 der Spec) — reines YAML, kein Code mehr, wann immer gewünscht.
+
+## 11. Neuer offener Punkt für morgen: ko-prompts.js/ko-markov.js als Vendor-Kopie ist ein Wartungsrisiko
+
+`scripts/vendor/ko-prompts.js` und `ko-markov.js` sind eingefrorene Kopien vom heutigen Commit-Stand (`a5473ac`/`03ef406`) — nicht die Live-Quelle. Bei künftigen Aktualisierungen von `ko-modules` (neue Prompt-Version etc.) bekommt `index.html` das automatisch mit (jsDelivr-Pin), das Node-Skript würde aber still auf der alten Version stehen bleiben, ohne Fehlermeldung — dieselbe Art Risiko wie beim `ko-indicators.json`-Commit-Hash, hier aber mit höherer Änderungsfrequenz.
+
+**Vorgeschlagene, sauberere Lösung (morgen):** Fetch-at-Runtime statt Vendor-Kopie, analog zum bereits etablierten `ko-indicators.json`-Muster — Commit-Hash an einer Stelle gepflegt (im Node-Skript, synchron zum `<script>`-Tag in `index.html`), keine doppelte Dateikopie mehr im Repo.
+
+---
+
+**Axels Einschätzung zum Tag:** hart, aber gut — v.a. das systematische Aufspüren der `aggregator.py`-Bugs (Leaderboard-Architektur, `volRatio`, `NaN`) durch Test gegen echte Daten statt nur synthetische, wäre ohne diesen Sprint vermutlich noch lange unbemerkt geblieben.
