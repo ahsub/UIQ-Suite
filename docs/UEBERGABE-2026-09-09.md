@@ -1,4 +1,4 @@
-# UIQ Übergabeprotokoll — 09.09.2026
+# UEBERGABE-2026-09-09
 
 **Für die nächste Session. Schließt an das Übergabeprotokoll vom
 06.09.2026 und die Transkripte vom 07./08.09.2026 an.**
