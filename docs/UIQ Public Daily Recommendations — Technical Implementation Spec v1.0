@@ -22,6 +22,10 @@ Backtest-Auswertungslogik (Forward-Return-Berechnung, Score-Anpassung)
 — diese Spec legt nur die Datenerfassung so an, dass ein späteres
 Backtest-Projekt direkt darauf aufbauen kann, ohne Datenstruktur-Umbau.
 
+**Scope-Entscheidung (09.09.2026):** Der Canonical Snapshot (3.1) wird zusaetzlich zu den Ledger-Eintraegen direkt und oeffentlich unter `/public/marketstate/latest` bereitgestellt (reiner KV-Read, kein KI-Call). Hintergrund: verhindert, dass Nutzer den teuren `ki_briefing`-Pfad fuer einfache Marktdaten-Checks (z.B. hat sich der Goldpreis geaendert) zweckentfremden - das war zuvor ein reales Kostenrisiko (analog zum bereits bekannten 6/Tag-Limit-Grund fuer `ki_briefing`). Die KI-generierten Strategie-Empfehlungen (Ebene C, Abschnitt 3.3) bleiben unveraendert vom Ergebnis der Legal-Review abhaengig (s. Abschnitt 11) - diese Scope-Erweiterung betrifft ausschliesslich Rohdaten, keine Empfehlungstexte.
+
+**Frequenz-Bestaetigung (09.09.2026):** 1x/Tag wurde nach expliziter Pruefung bestaetigt (kein Wechsel auf 2x/Tag) - ein zweiter taeglicher Lauf haette echte Intraday-Sichtbarkeit ohnehin nicht eingeloest (~10h Abstand zwischen den beiden Aggregator-Cron-Zeitpunkten), haette aber Kosten und Fehlerflaeche verdoppelt.
+
 ---
 
 ## 2. Datenfluss
@@ -256,6 +260,11 @@ mitgepflegt werden.
 /archive/recommendations/2026/09/08/snapshot.json
     -> der Canonical Snapshot (3.1) dieses Tages, von allen Strategien
        dieses Tages referenziert
+
+/public/marketstate/latest
+    -> der Canonical Snapshot (3.1) des aktuellen Tages, 1:1, als reiner
+       KV-Read ohne AI-Call - kostenlos beliebig oft abrufbar (ergaenzt
+       09.09.2026, s. Abschnitt 1, Scope-Entscheidung)
 ```
 
 ### 4.1 Warum diese Aufteilung
