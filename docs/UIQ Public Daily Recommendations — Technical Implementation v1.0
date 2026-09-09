@@ -363,6 +363,15 @@ technische Anker, nicht `digest_id`.
     -> der Canonical Snapshot (3.1) des aktuellen Tages, 1:1, als reiner
        KV-Read ohne AI-Call - kostenlos beliebig oft abrufbar (ergaenzt
        09.09.2026, s. Abschnitt 1, Scope-Entscheidung)
+
+/public/digest/latest
+    -> der Public Digest (3.7) des aktuellen Tages, 1:1, TAEGLICH ERSETZT
+       (ergaenzt 09.09.2026 - Luecke gefunden: 3.7 hatte urspruenglich
+       keinen KV-Pfad)
+
+/archive/digest/2026/09/08.json
+    -> unveraenderliche Archiv-Kopie desselben Public-Digest-Objekts,
+       Namenskonvention analog zu den anderen Archiv-Pfaden oben
 ```
 
 ### 4.1 Warum diese Aufteilung
