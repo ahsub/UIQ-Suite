@@ -12,7 +12,32 @@
  * Status: Baustein 1 von mehreren — Daily Market Snapshot Builder
  * (Abschnitt 3.1, strategie-unabhängiger, einmal pro Lauf berechneter
  * Teil). Ticker-Payload/Prompt-Bau/API-Call folgen als nächste Bausteine.
+ * [HINWEIS 10.09.2026: dieser Status-Absatz ist veraltet — das Skript
+ * deckt inzwischen alle Bausteine bis 21 ab (main(), Python-JSON-Kompat.
+ * etc.), s. CHANGELOG unten. Nicht im Rahmen dieser Änderung bereinigt,
+ * um den Diff auf den Trading-Day-Skip-Check zu beschränken.]
  * ====================================================================
+ *
+ * Skript-Version: v1.1 (vorheriger, unversionierter Stand = implizit v1.0)
+ *
+ * CHANGELOG (neueste zuerst):
+ * v1.1 (10.09.2026, Axel + Claude): Trading-Day-Skip-Check ergänzt —
+ *      Baustein 16b (readFromCloudflareKV) + Skip-Logik in main() direkt
+ *      nach dem Snapshot-Aufbau. Verhindert alle zehn Anthropic-Calls an
+ *      Tagen ohne neuen Handelstag (Wochenende, jeder Börsenfeiertag in
+ *      jedem beteiligten Markt) — rein datengetrieben über snapshot.date
+ *      (= masterData.meta.last_trading_day, von market_aggregator.py
+ *      bereits ueber echte SPY-Handelsdaten bestimmt), bewusst OHNE
+ *      Feiertagskalender. Vergleicht gegen date-Feld im zuletzt
+ *      veröffentlichten /public/digest/latest — kein neuer KV-Key.
+ *      FORCE_REGENERATE=true als Escape-Hatch für manuelle Neuerzeugung.
+ *      Fail-open bei KV-Lesefehlern (kein Skip, normaler Lauf), um einen
+ *      stillen Lese-Bug nicht tagelang unbemerkt Digests unterdrücken zu
+ *      lassen — Alternative ("fail-closed") noch mit Axel zu klären.
+ * v1.0 (Datum unbekannt — Datei war bisher unversioniert, dieser
+ *      Changelog-Kopf wurde erst mit v1.1 eingeführt): Basis-Skript
+ *      (Snapshot-Bau, 10 Strategien, Anthropic-Calls, Public Digest,
+ *      KV-Push, Archiv-Schreibfunktionen).
  */
 
 'use strict';
@@ -1326,6 +1351,39 @@ async function getFromCloudflareKV(key) {
   }
 }
 
+// ─── Baustein 16b: KV-Read MIT Value (Trading-Day-Skip-Check, 10.09.2026) ─
+// Bewusst "16b" statt 17+ (und Renummerierung aller Folge-Bausteine), um
+// den Diff auf den eigentlichen Zweck zu beschränken — inhaltlich gehört
+// diese Funktion direkt neben Baustein 16 (ebenfalls ein KV-Read), liefert
+// aber zusätzlich den geparsten Value zurück statt nur exists/nicht-exists.
+// Nutzt dieselbe URL/Auth wie pushToCloudflareKV() (Baustein 15) — kein
+// neues Secret.
+async function readFromCloudflareKV(key) {
+  const accountId = process.env.CF_ACCOUNT_ID;
+  const apiToken = process.env.CF_API_TOKEN;
+  const nsId = process.env.CF_KV_NS_ID;
+  if (!accountId || !apiToken || !nsId) {
+    return { ok: false, error: 'CF_ACCOUNT_ID/CF_API_TOKEN/CF_KV_NS_ID fehlen als Umgebungsvariablen' };
+  }
+  const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces/${nsId}/values/${key}`;
+  try {
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${apiToken}` } });
+    if (resp.status === 404) {
+      // Key existiert noch nicht (z.B. erster Lauf ueberhaupt) — kein
+      // Fehler, einfach "kein vorheriger Digest vorhanden".
+      return { ok: true, notFound: true };
+    }
+    if (resp.status !== 200) {
+      const text = await resp.text().catch(() => '');
+      return { ok: false, error: `HTTP ${resp.status}: ${text.slice(0, 200)}` };
+    }
+    const data = await resp.json();
+    return { ok: true, data };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 // ─── Baustein 17: Archiv-Schreibfunktion mit Immutability-Schutz ──────────
 //
 // s. Abschnitt 8, Fehlerfall "Ziel-Archiv-Pfad existiert bereits": kein
@@ -1435,6 +1493,34 @@ async function main() {
   console.log('\nBaue Daily Market Snapshot...');
   const snapshot = await buildDailyMarketSnapshot(masterData);
   console.log(`  ${snapshot.snapshot_id} — Regime: ${snapshot.mcm_regime}, QQQ: ${snapshot.qqq_markov_regime?.regime ?? 'n/a'}`);
+
+  // ── TRADING-DAY-SKIP-CHECK (Kostenfaktor, s. Session 10.09.2026) ─────────
+  // Kein neuer Handelstag seit dem letzten veröffentlichten Digest (Montag
+  // vor Xetra-Öffnung hat z.B. denselben last_trading_day wie der Samstag-
+  // Lauf, ebenso an jedem US-Feiertag)? Dann wären alle zehn Anthropic-Calls
+  // reine Wiederholung des letzten Ergebnisses — überspringen. Bewusst KEIN
+  // Feiertagskalender (müsste je Markt gepflegt werden), sondern rein
+  // datengetrieben über snapshot.date (= masterData.meta.last_trading_day,
+  // von market_aggregator.py bereits via echter SPY-Handelsdaten bestimmt).
+  // FORCE_REGENERATE=true als Escape-Hatch für bewusste manuelle
+  // Neuerzeugung (z.B. nach einem Prompt-Fix), unabhängig vom Datum.
+  if (process.env.FORCE_REGENERATE !== 'true') {
+    const lastPublished = await readFromCloudflareKV('public/digest/latest');
+    if (lastPublished.ok && !lastPublished.notFound
+        && lastPublished.data?.date === snapshot.date) {
+      console.log(`\n⏭  Kein neuer Handelstag seit letztem Digest (${snapshot.date}) — `
+        + `Anthropic-Calls übersprungen. FORCE_REGENERATE=true erzwingt Neuerzeugung.`);
+      process.exit(0);
+    }
+    if (!lastPublished.ok) {
+      // KV-Read fehlgeschlagen (z.B. Netzwerkfehler) — bewusst "fail-open":
+      // NICHT stillschweigend überspringen (Risiko: ein verpasster
+      // Handelstag bliebe unbemerkt), sondern als Warnung loggen und
+      // normal weiterlaufen, wie bisher ohne diesen Check.
+      console.warn(`  ⚠ Trading-Day-Skip-Check: KV-Read fehlgeschlagen (${lastPublished.error}) `
+        + `— fahre sicherheitshalber normal fort, kein Skip.`);
+    }
+  }
 
   const promptVersion = readPromptVersion();
   const datePath = archiveDatePath(snapshot.date);
