@@ -18,9 +18,22 @@
  * um den Diff auf den Trading-Day-Skip-Check zu beschränken.]
  * ====================================================================
  *
- * Skript-Version: v1.1 (vorheriger, unversionierter Stand = implizit v1.0)
+ * Skript-Version: v1.2 (vorheriger, unversionierter Stand = implizit v1.0)
  *
  * CHANGELOG (neueste zuerst):
+ * v1.2 (10.09.2026, Axel + Claude): Vendor-Drift-Check ergänzt (Punkt 11
+ *      Übergabeprotokoll 09.09.2026) — checkVendorDrift() vergleicht
+ *      scripts/vendor/ko-prompts.js und ko-markov.js beim Start gegen den
+ *      kanonischen Stand in ko-modules@a5473ac und warnt LAUT bei
+ *      Abweichung, statt still zu veralten. Bewusst KEIN reiner
+ *      Fetch-at-Runtime-Ersatz für require()/vm (hätte dieselbe
+ *      "Pin muss von Hand nachgezogen werden"-Schwäche wie
+ *      KO_INDICATORS_JSON_COMMIT und würde eine neue harte Netzwerk-
+ *      Abhängigkeit für etwas zwingend Benötigtes einführen) — die
+ *      Vendor-Kopie bleibt die tatsächlich ausgeführte Quelle. Getestet
+ *      gegen echte ko-modules-Daten (10.09.2026: kein Drift vorhanden,
+ *      beide Dateien byte-identisch zu main) sowie mit künstlich
+ *      erzeugtem Drift (Warnpfad verifiziert).
  * v1.1 (10.09.2026, Axel + Claude): Trading-Day-Skip-Check ergänzt —
  *      Baustein 16b (readFromCloudflareKV) + Skip-Logik in main() direkt
  *      nach dem Snapshot-Aufbau. Verhindert alle zehn Anthropic-Calls an
@@ -104,6 +117,48 @@ async function fetchIndicatorRegistryVersion() {
     // Fehlerisoliert wie alle anderen Teilbausteine — ein Netzwerkfehler
     // hier darf den Hauptlauf nicht brechen (§4-Grundsatz).
     return null;
+  }
+}
+
+// ─── Vendor-Drift-Check (10.09.2026, Punkt 11 Übergabeprotokoll 09.09.2026) ─
+// scripts/vendor/ko-prompts.js und ko-markov.js sind Kopien aus dem
+// ko-modules-Repo (dort Quelle der Wahrheit) — bisheriges Risiko: können
+// stillschweigend veralten, wenn ko-modules sich weiterentwickelt.
+//
+// BEWUSST KEIN reiner Fetch-at-Runtime-Ersatz für require()/vm: das hätte
+// dieselbe "muss von Hand nachgezogen werden"-Schwäche wie der Pin unten
+// (s. KO_INDICATORS_JSON_COMMIT-Kommentar oben — ein gepinnter Commit kann
+// genauso veralten wie eine Vendor-Kopie) UND würde eine harte Netzwerk-
+// Abhängigkeit für etwas zwingend Benötigtes einführen, das heute felsenfest
+// lokal vorhanden ist (anders als die rein optionale Indicator-Registry-
+// Version oben). Stattdessen: Vendor-Kopie bleibt die tatsächlich
+// ausgeführte Quelle, zusätzlich aber gegen den kanonischen Stand
+// verglichen — bei Abweichung LAUT warnen statt still zu veralten.
+// Netzwerkfehler beim Vergleich selbst dürfen den Hauptlauf nicht brechen
+// (§4-Grundsatz, wie bei fetchIndicatorRegistryVersion oben).
+const KO_MODULES_VENDOR_DRIFT_COMMIT = 'a5473ac';  // Stand 10.09.2026 (aktueller HEAD)
+const KO_MODULES_VENDOR_FILES = ['ko-prompts.js', 'ko-markov.js'];
+
+async function checkVendorDrift() {
+  for (const file of KO_MODULES_VENDOR_FILES) {
+    try {
+      const canonicalUrl =
+        `https://raw.githubusercontent.com/ahsub/ko-modules/${KO_MODULES_VENDOR_DRIFT_COMMIT}/${file}`;
+      const resp = await fetch(canonicalUrl);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const canonical = await resp.text();
+      const local = fs.readFileSync(path.join(__dirname, 'vendor', file), 'utf-8');
+      if (canonical === local) {
+        console.log(`  ✓ Vendor-Kopie ${file} identisch zu ko-modules@${KO_MODULES_VENDOR_DRIFT_COMMIT}`);
+      } else {
+        console.warn(`  ⚠ VENDOR-DRIFT: scripts/vendor/${file} weicht von `
+          + `ko-modules@${KO_MODULES_VENDOR_DRIFT_COMMIT} ab! Vendor-Kopie aktualisieren `
+          + `und KO_MODULES_VENDOR_DRIFT_COMMIT auf den neuen Stand ziehen.`);
+      }
+    } catch (err) {
+      console.warn(`  ⚠ Vendor-Drift-Check für ${file} fehlgeschlagen (Netzwerk?): `
+        + `${err.message} — übersprungen, Lauf geht mit lokaler Vendor-Kopie weiter.`);
+    }
   }
 }
 
@@ -1483,6 +1538,9 @@ function parsePythonStyleJson(text) {
 
 
 async function main() {
+  console.log('\nVendor-Drift-Check (ko-prompts.js/ko-markov.js vs. ko-modules)...');
+  await checkVendorDrift();
+
   const masterDataPath = process.env.MASTER_DATA_PATH || path.join(process.cwd(), 'master_market_data.json');
   console.log(`Lese Aggregator-Output: ${masterDataPath}`);
   const rawJson = fs.readFileSync(masterDataPath, 'utf-8');
