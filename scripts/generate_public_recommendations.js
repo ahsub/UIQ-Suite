@@ -21,6 +21,21 @@
  * Skript-Version: v1.2 (vorheriger, unversionierter Stand = implizit v1.0)
  *
  * CHANGELOG (neueste zuerst):
+ * v1.3 (13.09.2026, Claude + Axel): neuer 'latest'-Pointer-Key pro Strategie
+ *      (public/ai_output/latest/{strategy}) zusätzlich zum bestehenden
+ *      Archiv-Key (archive/recommendations/{date}/{strategy}_ai_output.json)
+ *      — enthält dasselbe aiOutput-Objekt inkl. vollem recommendation_text.
+ *      Grund: der bisherige Public Digest (buildPublicDigest()) enthält nur
+ *      eine kurze, statisch-templatete rationale, NICHT die volle KI-
+ *      Narrative — für die eigentliche Sprint-Absicht (openKiBriefing()/
+ *      runAlphaLbKI() sollen die bereits generierte volle Narrative zeigen,
+ *      Cache-First statt täglich doppeltem Anthropic-Call) reichte das
+ *      Archiv allein nicht, da es keine öffentliche Route hat und nicht
+ *      tagesaktuell unter einem stabilen Key liegt. Neue Route dafür:
+ *      ko-sync-worker.js v2.3, GET /public/ai_output/:strategy. Platzierung
+ *      bewusst im bestehenden 'latest'-Pointer-Block (Archiv zuerst, s.
+ *      Kommentar dort) — gleiche Reihenfolge-Garantie wie bei
+ *      public/digest/latest und public/recommendations/latest.
  * v1.2 (10.09.2026, Axel + Claude): Vendor-Drift-Check ergänzt (Punkt 11
  *      Übergabeprotokoll 09.09.2026) — checkVendorDrift() vergleicht
  *      scripts/vendor/ko-prompts.js und ko-markov.js beim Start gegen den
@@ -1623,6 +1638,15 @@ async function main() {
     { date: snapshot.date, strategies: manifestStrategies },
     'public/recommendations/latest'
   );
+  // NEU (v1.3, 13.09.2026): volle KI-Narrative pro Strategie zusätzlich als
+  // eigener 'latest'-Pointer (s. Changelog oben) — ermöglicht Cache-First in
+  // openKiBriefing()/runAlphaLbKI() ohne erneuten Anthropic-Call am selben
+  // Handelstag. Gleicher Inhalt wie der Archiv-Key oben, nur unter stabilem,
+  // täglich ersetztem Key. Bewusst NACH den Archiv-Writes (s. Reihenfolge-
+  // Kommentar oben), zusammen mit den übrigen 'latest'-Pointern.
+  for (const res of successful) {
+    await pushToCloudflareKV(res.aiOutput, `public/ai_output/latest/${res.strategy}`);
+  }
 
   console.log('\nFertig.');
   return { snapshot, digest, results };
