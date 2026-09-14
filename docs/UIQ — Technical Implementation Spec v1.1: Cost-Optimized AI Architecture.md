@@ -1,351 +1,329 @@
-# UIQ — Technical Implementation Spec v1.2: Regime-Differenzierung & Quality-Layer
+# UIQ — Technical Implementation Spec v1.1: Cost-Optimized AI Architecture
 
-**Datum:** 14.09.2026
-**Autoren:** Axel + Claude, unter Einbeziehung einer Reviewer-Analyse der
-Makrolage (September 2026)
-**Bezug:** ergänzt v1.0 (Grundarchitektur) und v1.1 (Kostenoptimierung) um
-vier architektonische Verbesserungen der Decision Engine. Betrifft NICHT
-die AI-/Kostenseite (s. v1.1), sondern die deterministische Entscheidungs-
-und Scoring-Logik selbst.
+**Datum:** 13.09.2026
+**Autoren:** Axel + Claude, unter Einbeziehung der Vorschläge des externen Reviewers
+**Bezug:** ergänzt/verfeinert die bestehende „Technical Implementation Spec v1.0"
+(Canonical Snapshot → Decision Snapshot → Prediction Ledger → Presentation).
+Diese Spec ändert NICHT die Grundarchitektur — sie verkleinert ausschließlich
+die AI-Komponente innerhalb des bestehenden, 1× täglichen Public-Digest-Laufs.
 
-**Wichtiger Rahmen, bewusst eingehalten:** Diese Spec übernimmt aus der
-zugrundeliegenden Reviewer-Analyse ausschließlich die vier strukturellen
-Vorschläge (Regime-Granularität, CSP-Qualitätsscore, thematisches
-Clustering, Position-Re-Evaluation). Sie übernimmt NICHT die darin
-enthaltenen Markteinschätzungen, Einzeltitel-Calls oder tagesaktuellen
-Wirtschaftsdaten (Fed-Wahrscheinlichkeiten, Ölpreis, Einzelfirmenzahlen) —
-diese sind weder verifizierbar noch für eine Regime-Engine geeignet, die
-über den aktuellen Tag hinaus Bestand haben soll. Alle vier Punkte werden
-ausschließlich auf bereits in UIQ vorhandene, messbare Datenfelder gestützt.
-
-**Status:** Entwurf für eine zukünftige Coding-Session. Noch nicht
-umgesetzt. Keine der vier Änderungen ist von den anderen abhängig — jede
-kann einzeln umgesetzt und getestet werden.
+**Status:** Entwurf für die nächste Coding-Session. Noch nicht umgesetzt.
 
 ---
 
-## 0. Verifizierter Ausgangszustand (13./14.09.2026 gegen `market_aggregator.py` geprüft)
+## 0. Ausgangslage
 
-Vor der Formulierung dieser Spec wurde der tatsächliche Code-Stand
-geprüft, um keine bereits vorhandene Logik als "neu" misszuverstehen:
+Am 13.09.2026 wurde `openKiBriefing()`/`runAlphaLbKI()` an einen neu
+generierten Cache-Key (`public/ai_output/latest/{strategy}`, geschrieben von
+`generate_public_recommendations.js` v1.3) angebunden — Cache-First statt
+eines zweiten Live-Calls am selben Handelstag. Diese Arbeit bleibt
+bestehen und wird durch diese Spec NICHT verworfen, sondern ergänzt.
 
-- **`BULL_FRAGILE` existiert bereits** als Regime-Label in
-  `classify_regime_v2()` (Zeile 8263 ff.), Definition aktuell rein
-  VIX-basiert: `"BULL_FRAGILE" if vix > 25 else "BULL_QUIET"`.
-- Es wird bereits für **eine** Differenzierung genutzt:
-  `score_options_collar()` (Zeile 2607 ff.) gewichtet Collar-Absicherungen
-  bei `BULL_FRAGILE` deutlich höher (Prioritäts-1-Lücke laut dortigem
-  Kommentar, "Regime-Coverage-Analyse").
-- Die zentrale Master-Shortlist-Logik (`build_leaderboards()`, Zeile
-  5490 ff., Momentum/Minervini/Swing-Präferenz) unterscheidet
-  `BULL_QUIET` und `BULL_FRAGILE` **nicht** — beide erfüllen denselben
-  Substring-Match `is_bull = any(x in regime_upper for x in ["BULL", ...])`.
-- **Kein bestehendes CSP-Assignment-Quality-Feld** — nur der bestehende,
-  prämienorientierte `sCsp`-Score.
-- **`sector`/`industry`-Felder existieren bereits** (aus yfinance, Zeile
-  5163 ff.), aber kein thematisches Cluster-Tagging (z.B. "AI
-  Infrastructure") darüber.
-- **Kein bestehender Re-Evaluations-Mechanismus** für bereits offene/
-  getrackte Positionen gegen die aktuelle Decision Engine gefunden.
+Der externe Reviewer wies darauf hin, dass die eigentliche Kostenquelle
+nicht primär die Cache-Frage ist, sondern dass mehrere Strategien täglich
+volle, lange KI-Narrative erzeugen, obwohl UIQ die zugrundeliegende
+Entscheidung (Score, Regime, Fit) bereits selbst deterministisch berechnet
+hat. Diese Spec adressiert genau das — ohne das Produktversprechen
+"1× täglich generierte, gecachte KI-Einordnung, Public-Modus" aufzugeben.
 
-Diese vier Lücken sind der eigentliche Umsetzungsgegenstand dieser Spec —
-nicht die Einführung neuer Konzepte, sondern das Schließen bereits
-identifizierter Lücken zwischen vorhandenem Label/Datenfeld und dessen
-tatsächlicher Wirkung im System.
+**Ausdrücklich NICHT Teil dieser Spec** (bewusst zurückgestellt, s. Diskussion
+13.09.2026):
+- **Punkt 6 (AI komplett aus der Daily Pipeline entfernen, nur noch On-Demand)**
+  — als strategische Option offengehalten, keine Entscheidung jetzt.
+- **Punkt 5 (15 Strategien → 1 gemeinsamer AI-Call)** — Risiko von
+  Ticker-Scope-Vermischung zwischen Strategien zu hoch, bleibt vorerst bei
+  1 Call = 1 Strategie.
 
 ---
 
-## 1. Regime-Differenzierung in der Master-Shortlist-Logik erweitern
+## 1. Sofort umsetzbar, unabhängig vom Rest (kein Architekturrisiko)
 
-### 1.1 Kalibrierung, nicht neue Logik (präzisiert 14.09.2026, Reviewer)
+### 1.1 AI-Budget-Logging
 
-`build_leaderboards()` soll `BULL_QUIET` und `BULL_FRAGILE` innerhalb des
-`is_bull`-Zweigs unterschiedlich gewichten, statt sie zu vereinheitlichen
-— analog zum bereits etablierten Muster in `score_options_collar()`.
+**Ziel:** Sichtbarkeit, bevor weiter optimiert wird — "welche UIQ-Funktion
+kostet eigentlich Geld?"
 
-**Ausdrücklich kein pauschaler High-Beta-Ausschluss oder fester
-Strafpunkte-Abzug bei `BULL_FRAGILE`.** Ein hoher Beta-Wert kann bei
-außergewöhnlich starkem Earnings-Momentum/relativer Stärke weiterhin
-gerechtfertigt sein — eine harte Ausschlussregel würde genau solche Fälle
-fälschlich aussortieren. Stattdessen als multiplikativer Regime-Fit-Faktor
-umsetzen:
+Pro Anthropic-Call (in `callAnthropicWithRetry()`/`callAnthropic()`,
+`generate_public_recommendations.js`, und äquivalent in `ko-ai-worker.js`
+für die Live-Pfade) protokollieren:
 
 ```
-MasterScore = BaseScore × RegimeFit
+{
+  "date": "2026-09-13",
+  "caller": "public_digest" | "morning_briefing" | "eic_on_demand" | ...,
+  "strategy": "momentum" | null,
+  "calls_used": 1,
+  "token_input": 1234,
+  "token_output": 87,
+  "estimated_cost_usd": 0.0041
+}
 ```
 
-statt einer festen Bedingung wie "`BULL_FRAGILE` → High Beta raus".
-`RegimeFit` ist dabei selbst ein empirisch zu kalibrierender Faktor (nicht
-willkürlich gesetzt) — welche Eigenschaften in `BULL_FRAGILE` tatsächlich
-schlechter performen, ist eine Backtest-Frage, keine Annahme. Kalibrierung
-anhand von Backtests (`ahsub/regime-test`, bereits vorhandene
-Infrastruktur), nicht anhand einer einzelnen Markteinschätzung.
+Aggregiert pro Tag in einer neuen KV/Log-Struktur (z.B.
+`internal/ai_budget/{date}.json`, Owner-only, kein Public-Key). Am
+einfachsten als zusätzliches Feld im bestehenden Digest-Lauf mitgeschrieben,
+kein neuer Workflow-Step nötig.
 
-### 1.2 Optionale Erweiterung der Regimedefinition selbst (separat, größerer Schritt)
-
-Die aktuelle `BULL_FRAGILE`-Definition ist ein reiner VIX-Schwellenwert.
-Eine Anreicherung um weitere, bereits in UIQ vorhandene Faktoren (Credit
-Spreads/HY-Spread, Inflationstrend, Renditerichtung, Marktbreite — alle
-bereits Teil der bestehenden Market-Context-Engine laut
-`/areas/uiq.md`/RUNBOOK) wäre eine Verbesserung der Klassifikations-
-qualität selbst. **Dies ist explizit als eigener, größerer Schritt zu
-behandeln**, da er die Backtest-Infrastruktur in `ahsub/regime-test`
-berührt (dort läuft bereits ein Vergleich `classify_regime_v2()` vs.
-Ensemble-Modelle) — nicht leichtfertig parallel zur Produktions-Logik
-ändern, sondern im Rahmen des laufenden Regime-Detection-Research-Projekts
-evaluieren.
-
-**Wichtig:** Punkt 1.2 NICHT mit einer spezifischen, tagesaktuellen
-Markteinschätzung kalibrieren (z.B. "Fed restriktiv, Öl >$100 im
-September 2026 → so gewichten"). Jeder neue Faktor muss anhand
-historischer Daten über mehrere Regime-Zyklen hinweg validiert werden,
-exakt nach der bereits etablierten Methodik dieses Forschungsprojekts
-(Walk-Forward, DSR statt Sharpe, Persistenz-Baseline).
+**Kein Rollout-Risiko, keine Abhängigkeit zu den übrigen Punkten dieser
+Spec — kann als separater, kleinster erster Schritt vorgezogen werden.**
 
 ---
 
-## 2. Underlying Assignment Quality (UAQ) — implementiert; Contract Assignment Quality (CAQ) zurückgestellt
+## 2. Kern-Patch: Gate → Kurzprompt → Cache
 
-**Status (14.09.2026):** §2.1/UAQ ist umgesetzt (`market_aggregator.py`,
-`score_underlying_assignment_quality()`, Feld `sUaq`). §2.2/CAQ ist
-bewusst **nicht** implementiert — s. Begründung unten.
+Die Pipeline für den Public Digest (nur die 10 Equity-/KO-Strategien,
+`generate_public_recommendations.js`) ändert sich von:
 
-**Ziel:** Ergänzung zum bestehenden `sCsp` (prämienorientiert) um die
-Frage — wie gut wäre eine tatsächliche Zuteilung (Assignment) des
-Basiswerts, unabhängig von der Prämienhöhe.
+```
+Decision Snapshot → voller Strategiekontext → langer Prompt → AI Call
+→ volle 9-Punkte-Narrative → Cache
+```
 
-**Präzisierung 14.09.2026 (Reviewer):** Ein einzelner "Assignment
-Quality"-Score vermischt zwei unterschiedliche Fragen — ist der
-Basiswert selbst gut, UND ist gerade dieser konkrete Kontrakt (Strike/
-Laufzeit) dafür geeignet. Ein exzellenter Titel mit einem 15 % unter dem
-aktuellen Kurs liegenden Strike ist eine fundamental andere
-Assignment-Situation als derselbe Titel mit 5 % Abstand. Deshalb Split
-in zwei Teilscores statt einem — konsequent benannt als **Underlying
-Assignment Quality (UAQ)** statt nur "Assignment Quality", damit die
-spätere Dreiteilung von Anfang an klar ist:
+zu:
 
-| Ebene | Status | Aussage |
+```
+Decision Snapshot
+       │
+       ▼
+normalisierte Signal-Teilmenge extrahieren
+       │
+       ▼
+Score-Gate (strategie-granular)
+       │
+   score < Schwelle? ──── JA ──→ kein AI Call, kein Cache-Eintrag für
+       │                          diese Strategie (Digest zeigt nur die
+       │                          deterministischen Kennzahlen, s. §3)
+       │ NEIN
+       ▼
+material_change_hash bilden
+       │
+   Hash == gestriger Hash? ── JA ──→ kein neuer AI Call, alter Cache-
+       │                              Eintrag bleibt gültig (Datum wird
+       │                              NICHT hochgezogen — s. Hinweis 2.3)
+       │ NEIN
+       ▼
+Kurzprompt (≤ 40–50 Wörter Instruktion + JSON-Daten)
+       │
+       ▼
+AI Call (max_tokens 50–80, temperature niedrig/0)
+       │
+       ▼
+kurzer, komprimierter Text (1–2 Sätze)
+       │
+       ▼
+Cache: public/ai_output/latest/{strategy}  (unveraendert, bestehender Key)
+```
+
+### 2.1 Normalisierte Signal-Teilmenge
+
+Statt des vollen Strategiekontexts (komplette Aggregator-Daten, sämtliche
+Indikatoren, vollständige Strategy-Definition, Macro-Daten) nur der
+Decision Snapshot der Top-Kandidaten:
+
+```json
+{
+  "strategy": "momentum",
+  "regime": "BULL_QUIET",
+  "top": [
+    { "sym": "RKLB", "score": 94, "rs": 96, "macdHist": 1.23,
+      "obvTrend": "UP", "volRatio": 1.8, "dist200": 34 },
+    { "sym": "NVDA", "score": 91, ... },
+    { "sym": "PLTR", "score": 88, ... }
+  ]
+}
+```
+
+Exakte Feldliste je Strategie: siehe die bereits bestehenden
+`tickerLines`-Bauschleifen (`openKiBriefing()`, `runAlphaLbKI()`,
+`generate_public_recommendations.js`) — hier NICHT neu erfinden, sondern
+auf die schon vorhandenen, pro Strategie relevanten Felder reduzieren
+(Single-Source-of-Truth-Risiko beachten, s. bekannte Sieben-Feldlisten-
+Problematik in `index.html`).
+
+### 2.2 Score-Gate (strategie-granular, NICHT pro Kandidat)
+
+**Wichtig, Präzisierung gegenüber der Reviewer-Formulierung:** Da ein
+AI-Call pro Strategie (nicht pro Kandidat) erfolgt, muss das Gate auf den
+**besten Kandidaten der Strategie** greifen, nicht auf einzelne Ticker:
+
+```
+bester Score der Top-3 einer Strategie < Schwelle (Vorschlag: 70)
+       → gesamte Strategie überspringen, kein AI Call
+```
+
+Schwellenwert ist ein Produkt-/Kalibrierungsentscheidung, kein technischer
+Fixwert — Vorschlag 70 als Ausgangspunkt, nach den ersten Live-Tagen anhand
+der AI-Budget-Logs (§1.1) nachjustieren.
+
+### 2.3 `material_change_hash`
+
+```
+hash = sha256(normalisierte Signal-Teilmenge, gerundet auf sinnvolle
+              Präzision — z.B. Score auf ganze Zahl, keine Nachkomma-
+              Rauschen-Artefakte, die staendig neue Hashes erzeugen)
+```
+
+Vergleich gegen den Hash des letzten tatsächlich generierten Cache-Eintrags
+(im `aiOutput`-Objekt mitspeichern, neues Feld `signal_hash`). Bei
+Übereinstimmung: alter `recommendation_text` bleibt im Cache stehen,
+**aber das `date`-Feld wird nicht aktualisiert** — sonst würde die
+Freshness-Prüfung im Frontend (`fetchDigestAiOutput()`, s. `index.html`
+v511) einen inhaltlich unveränderten, alten Text fälschlich als
+"heutigen" Stand ausgeben. Für den Fall "Hash gleich, aber neuer
+Handelstag" bewusst festlegen, ob das Digest-`date`-Feld trotzdem auf den
+aktuellen Handelstag gesetzt wird (Anzeige "Stand: heute", Inhalt
+unverändert) oder auf dem Datum der letzten tatsächlichen Generierung
+bleibt (transparenter, aber ggf. verwirrend "veraltet" wirkend) — **diese
+Entscheidung ist Teil der nächsten Coding-Session, hier bewusst offen
+gelassen.**
+
+### 2.4 Kurzprompt
+
+Ersetzt `_publicNinePointPrompt()` für den Public-Digest-Pfad (NICHT für
+EIC/On-Demand, s. §3). Beispielhafte Instruktion (Feinschliff der
+konkreten Formulierung inkl. WpHG-Konformität ist Teil der Umsetzung, nicht
+dieser Spec):
+
+> "Du bist die sprachliche Zusammenfassung eines bereits berechneten
+> UIQ-Decision-Snapshots. Verwende ausschließlich die gelieferten Daten.
+> Keine neuen Informationen. Keine Kursprognosen. Keine Anlageempfehlung.
+> Maximal 40 Wörter."
+
+Die regulatorischen Pflichtformulierungen (WpHG §1, Modell-Grenze etc.)
+werden — analog zum separat geplanten Boilerplate-Fix aus
+`_publicNinePointPrompt()` — nicht mehr vom Modell neu formuliert, sondern
+als fester Text app-seitig um den kurzen KI-Satz herum ergänzt (Anzeige,
+nicht Teil des AI-Outputs selbst).
+
+### 2.5 `max_tokens` / `temperature`
+
+- `max_tokens: 80` für den Public-Digest-Pfad (aktuell deutlich höher).
+- `temperature`: niedrig bis 0 — reduziert Varianz UND das Risiko, dass aus
+  einem Kurzsatz wieder ein längerer Fließtext wird.
+
+---
+
+## 3. Zwei-Ebenen-Produktarchitektur (Public vs. EIC)
+
+| Ebene | Inhalt | AI-Aufwand |
 |---|---|---|
-| CSP Premium Score (`sCsp`) | vorhanden | Wie attraktiv ist die Prämie? |
-| **Underlying Assignment Quality (UAQ)** (`sUaq`) | **implementiert (14.09.2026)** | Wie gut wäre die Aktie, wenn ich sie tatsächlich übernehmen müsste? |
-| Contract Assignment Quality (CAQ) | **zurückgestellt** | Wie gut ist dieser konkrete Put-Kontrakt (Strike/DTE/Earnings/IV)? |
+| **Public Digest** | Kennzahlen-Karte (Score/RS/MACD/OBV/Regime/Fit, deterministisch, 0 AI) **+** ein komprimierter KI-Satz (≤ 40 Wörter, §2) | 1 kurzer Call/Strategie, gegated (§2.2/§2.3) |
+| **EIC / On-Demand** | Volle 9-Punkte-Narrative wie bisher (`_publicNinePointPrompt()`/EIC-Pfad unverändert) | 1 Call pro Nutzeraktion, wie heute |
 
-### 2.1 Underlying Assignment Quality (UAQ) — implementiert
+**Unverändert bleibt:** 1× täglicher Lauf, Public-Modus, kein AI-Call pro
+Klick im Public-Pfad, bestehende Cache-Struktur
+(`public/ai_output/latest/{strategy}`). Diese Spec ändert nur, WAS im
+Cache landet (kurz statt lang) und OB überhaupt ein neuer Call nötig ist
+(Score-Gate + Hash-Gate) — nicht WANN oder WIE OFT.
 
-Reine Unternehmens-/Regime-Ebene, unabhängig vom konkreten Kontrakt.
-Ausschließlich aus bereits in UIQ vorhandenen/berechenbaren Feldern:
+### 3.1 Frontend-Konsequenz (Nachtrag, aus der heutigen Cache-First-Arbeit)
 
-- Fundamentale Qualität (`fcfYield`, `roe`, `ownerEarningsYield`)
-- Bewertung (`peForward`, `pb`)
-- Verschuldung (`debtToEquity`)
-- Stabilität (`hvp` — bewusst **gegenteilig** zum Premium-Score gewichtet:
-  niedrige historische Vola = gut für UAQ, hohe Vola = gut für die Prämie)
-- Regime-Fit (dieselbe `REGIME_FIT`-Infrastruktur wie §1.1, neuer Key
-  `csp_underlying`, aktuell neutral bis kalibriert)
-
-**Kein IV/IV Rank in dieser Ebene** — IV ist ein Merkmal der
-Options-Attraktivität, nicht der Unternehmensqualität. Hohe IV kann
-gerade wegen erhöhten Risikos vorhanden sein; würde sie hier einfließen,
-könnte ein Score fälschlich "hohe IV → hohe Assignment Quality"
-suggerieren. IV/IV Rank bleibt entsprechend dem bestehenden
-Premium-Score (`sCsp`) vorbehalten.
-
-**Wichtige Design-Eigenschaft (Reviewer, 14.09.2026):** UAQ ist bewusst
-**kontraktunabhängig** — keine "halbe" Contract Quality, sondern ein
-eigenständiger DSS-Baustein. Eine hervorragende Firma bleibt eine
-hervorragende Firma, auch bei einem ungünstig gewählten Strike. Wenn CAQ
-später ergänzt wird, bleibt UAQ unverändert bestehen — es wird nicht neu
-gebaut, sondern nur um eine zweite, separate Ebene erweitert:
-
-```
-Underlying → Underlying Assignment Quality (UAQ) → konkreter Put-Kontrakt
-→ Contract Assignment Quality (CAQ) → CSP-Gesamtbeurteilung
-```
-
-### 2.2 Contract Assignment Quality (CAQ) — bewusst zurückgestellt
-
-**Verifikations-Fund (14.09.2026):** UIQ hat aktuell **keine echten
-Optionsketten-Daten** (Strike, DTE, Bid/Ask, echte IV) — bereits im Code
-dokumentiert (Kommentar bei `calc_multileg_season()`: "Stufe 2, wartet
-auf die CapTrader-Architekturentscheidung"). `ivRank` ist aktuell `None`
-(kein IV-Archiv), `hvp` ist explizit als Näherung für echte implizite
-Vola dokumentiert, keine echte IV. Es gibt auch keine echte Strike-
-Distanz — `strikeSuggestion`/`dte`/`deltaTarget` sind KI-*vorgeschlagene*
-Werte (Teil von `KI_SENSITIVE_OPTIONS_LEGACY`, bewusst aus dem
-Public-Output gefiltert), keine Marktdaten.
-
-**Entscheidung (Axel + Reviewer + Claude, 14.09.2026):** CAQ wird
-**nicht** mit Ersatzdaten (KI-Vorschläge, `hvp`-Näherung) gebaut — das
-wäre Scheingenauigkeit, keine Berechnung. CAQ bleibt bewusst offen, bis
-echte Optionsketten-Daten vorliegen (Stufe 2/CapTrader, ohnehin bereits
-als Abhängigkeit dokumentiert). Explizit ausgeschlossen für eine
-zukünftige CAQ-Umsetzung:
-
-- kein künstlicher Strike, kein künstliches DTE
-- keine Verwendung von `strikeSuggestion`/KI-vorgeschlagenen Feldern
-- keine Ableitung aus `hvp` als IV-Ersatz
-- kein Rückgriff auf `KI_SENSITIVE_OPTIONS_LEGACY`-Felder
-
-### 2.3 Ausgabeform
-
-```
-CSP Premium-Score:              87/100   (IV/IV-Rank-getrieben, unverändert)
-Underlying Assignment Quality:  91/100   (Unternehmen/Regime/Valuation — implementiert)
-Contract Assignment Quality:    —        (wartet auf CapTrader-Optionsketten-Daten)
-```
-
-Ein hoher Premium-Score bei niedriger UAQ ist ein legitimer, aber
-bewusst anderer Anwendungsfall (reine Prämienjagd) als ein hoher Wert in
-beiden Dimensionen — UIQ soll das zeigen, nicht vermischen.
+`openKiBriefing()`/`runAlphaLbKI()` zeigen den Cache-Inhalt aktuell in
+einem für lange Fließtexte ausgelegten Modal an. Mit einem 1–2-Satz-Ergebnis
+statt eines vollen Reports wirkt dieses Layout ggf. unpassend leer — **UI-
+Anpassung für den Public-Pfad ist Teil der Umsetzung**, EIC-Modal (volle
+Narrative) bleibt unverändert.
 
 ---
 
-## 3. Thematisches Sektor-/Branchen-Clustering
+## 4. EIC-Kostenoptimierung (später, eigener Schritt)
 
-**Ziel:** Kandidaten anhand des bereits vorhandenen `sector`/`industry`-
-Felds in grobe thematische Cluster einordnen (z.B. "AI-Infrastruktur:
-Semiconductor, Networking, Power, Cooling, Datacenter, Electrical
-Equipment, Industrial Automation" als eine mögliche Cluster-Definition
-unter mehreren) — **als Anzeige-/Filter-Dimension, nicht als neuer Score
-und nicht als neue Datenquelle.**
+**Ergänzung 13.09.2026 (Axel):** die Kostenoptimierung soll perspektivisch
+nicht auf den Public-Pfad beschränkt bleiben — auch der EIC-/On-Demand-Modus
+soll zu gegebener Zeit möglichst weit optimiert werden.
 
-Ausdrücklich **kein** neuer "Theme Indicator" mit eigener Gewichtung oder
-eigenem API-Call — reine Kategorisierung auf Basis dessen, was bereits
-vorhanden ist. Cluster-Zuordnung als statische, versionierte
-Zuordnungstabelle (sector/industry → Cluster-Label) im Code, keine
-KI-gestützte Klassifikation nötig oder sinnvoll.
+**Wichtige Einschränkung, die diese Optimierung von §1–§3 unterscheidet:**
+Bei EIC ist die ausführliche Narrative selbst der Wert (Axels eigene
+Handelsentscheidung stützt sich darauf) — das Kürzen des Outputs, wie es
+für Public sinnvoll ist (§2.4/§2.5), ist hier NICHT das richtige Mittel.
+"Größtmögliche Senkung" darf für EIC nicht heißen "kürzerer/dünnerer
+Output", sondern "gleicher analytischer Wert zu geringerem Preis pro
+Call". Die Hebel sind entsprechend andere:
 
-**Versionierung (präzisiert 14.09.2026, Reviewer):** Jede
-Cluster-Zuordnung erhält ein Versionsfeld, z.B.:
+1. **Boilerplate-Extraktion (Abschnitt 7/8) wirkt automatisch auch hier** —
+   `_publicNinePointPrompt()` wird von Public UND EIC gemeinsam genutzt
+   (`ctx.isEic`-Flag steuert nur Detailunterschiede, nicht die Grundstruktur).
+   Der separat geplante Boilerplate-Fix (§6, Schritt 2) spart also Input-
+   UND Output-Tokens bei EIC mit, ohne dass EIC etwas Eigenes braucht.
 
-```
-theme_cluster = "AI_INFRASTRUCTURE"
-theme_cluster_version = "1.0"
-```
+2. **Anthropic Prompt Caching (`cache_control`) für den statischen
+   Guardrail-/Instruktionsteil.** Der große, über Monate gehärtete
+   Regelblock (`KI_ANTI_HALLUZINATION`, `PUBLIC_REGULATORY_GUARDRAIL`,
+   die Abschnitts-1-9-Instruktionen) ändert sich von Call zu Call kaum —
+   das ist ein Lehrbuchfall für Prompt-Caching: der stabile Prefix wird
+   einmal gecacht, jeder folgende Call mit demselben Prefix zahlt nur noch
+   einen Bruchteil des Input-Preises dafür. Betrifft direkt EIC (häufige,
+   wiederholte Calls mit demselben Guardrail-Block, unterschiedlichen
+   Kandidatendaten) und ist orthogonal zu allem in §2 — reduziert Kosten
+   pro Call, ohne den Output anzutasten. Voraussetzung: der Guardrail-Block
+   muss als stabiler, unveränderter Prefix VOR den variablen Kandidatendaten
+   stehen (aktuell vermutlich schon so, da `_publicNinePointPrompt()` erst
+   die Guardrails, dann die dynamischen Teile zusammenbaut — im Detail bei
+   Umsetzung prüfen).
 
-Damit bleibt nachvollziehbar, unter welcher Definition ein Titel an einem
-bestimmten Datum klassifiziert wurde, und Cluster-Definitionen können
-später verändert werden, ohne historische Daten rückwirkend semantisch
-zu verfälschen — dieselbe Grundregel wie bei versionierten Prompts/
-Workflows im übrigen Projekt.
+3. **Session-lokale Dedup, analog zum Material-Change-Hash aus §2.3, aber
+   EIC-spezifisch:** fragt Axel innerhalb desselben Handelstags zweimal
+   nach derselben Ticker-/Strategie-Kombination, ohne dass sich die
+   zugrundeliegenden Daten geändert haben, kann ein clientseitiger Cache
+   (ähnlich dem bestehenden `_kiCache`/`_KI_CACHE_TTL` in `openKiBriefing()`)
+   den zweiten Call vermeiden. Ein Teil davon existiert vermutlich schon
+   (`_kiCache`) — prüfen, ob die TTL/Invalidierung tatsächlich optimal
+   eingestellt ist, oder ob unnötig oft neu geladen wird.
 
----
+4. **Modellwahl bewusst NICHT pauschal ändern.** Ein günstigeres Modell für
+   EIC-Calls einzusetzen wäre der aggressivste Hebel, senkt aber direkt die
+   Analysequalität, auf die sich Axels eigene Entscheidungen stützen —
+   das widerspricht dem Grundsatz "gleicher Wert, geringerer Preis" und
+   wird hier bewusst nicht empfohlen, es sei denn, Axel entscheidet das
+   explizit und getestet für einzelne, weniger kritische Anwendungsfälle.
 
-## 4. Position-Re-Evaluation-Loop
-
-**Ziel:** Bereits getrackte/offene Positionen (z.B. `backlog_tracking`-KV-
-Key, bestehende Watchlist-Mechanismen) sollen periodisch durch dieselbe
-Decision-Engine-Logik laufen wie ein Neukandidat — nicht nur beim
-Erst-Scan bewertet werden. Langfristig der wertvollste Punkt dieser Spec
-(Reviewer, 14.09.2026): der Übergang vom reinen Scanner zu einem Decision
-Support System, das auch die Qualität seiner eigenen früheren
-Entscheidungen überwacht.
-
-### 4.1 Datenmodell-Grundlage: `decision_snapshot`
-
-**Ergänzung 14.09.2026 (Reviewer):** kein zusätzlicher, fünfter
-Implementierungspunkt, sondern eine Datenmodell-Voraussetzung für §4.1/4.2
-unten. Bei Einstieg und bei jeder Re-Evaluation wird der relevante
-Entscheidungszustand versioniert festgehalten:
-
-```
-POSITION
-   │
-   ├── entry_snapshot
-   │     ├── regime
-   │     ├── scores          (inkl. Underlying/Contract Assignment Quality bei CSPs, s. §2)
-   │     ├── valuation
-   │     ├── strategy
-   │     └── timestamp
-   │
-   └── current_snapshot
-         ├── regime
-         ├── scores
-         ├── valuation
-         ├── strategy
-         └── timestamp
-```
-
-Diese Struktur ist die Voraussetzung für die Delta-Bildung in §4.2 und
-liefert später auch dem Prediction Ledger bzw. einer künftigen
-Lernkomponente die nötige Grundlage ("was hat sich tatsächlich
-verändert" statt nur "hat sich etwas verändert").
-
-**Wichtige Umsetzungs-Randbedingung (Reviewer, 14.09.2026 — bewusst hier
-mit aufgenommen statt nur mündlich vermerkt):** `entry_snapshot` muss den
-zum Einstiegszeitpunkt tatsächlich verwendeten Entscheidungszustand
-konservieren, nicht später aus aktuellen Daten/Regeln rekonstruiert
-werden. Andernfalls würde eine historische Entscheidung rückwirkend mit
-heute gültigen Berechnungsregeln "umgeschrieben" — für einen späteren
-Prediction Ledger fatal, da er dann nicht mehr die tatsächliche
-Entscheidungsgrundlage von damals auswerten würde, sondern eine
-nachträglich geglättete Version davon. `entry_snapshot` daher als
-einmalig geschriebenes, danach unveränderliches Feld implementieren
-(write-once, nie durch spätere Recompute-Läufe überschrieben).
-
-### 4.2 Prinzip
-
-```
-Bestehende Position (aus backlog_tracking o.ä.)
-       │
-       ▼
-dieselbe Scoring-Pipeline wie ein Neukandidat
-(Fundamental Quality, Regime-Fit [§1], Assignment Quality [§2] bei CSPs)
-       │
-       ▼
-current_snapshot (§4.1) gegen entry_snapshot vergleichen —
-nicht nur Gesamtscore, sondern komponentenweise:
-   score_delta
-   regime_delta
-   fundamental_delta
-   technical_delta
-   valuation_delta
-       │
-       ▼
-Kennzeichnung bei signifikanter Verschlechterung, mit Hauptursachen
-statt einem einzelnen roten Flag, z.B.:
-
-   Position Quality ↓ 14 Punkte
-   Hauptursachen: Regime Fit −8 · Technical Quality −5 · Fundamental Quality −1
-
-(kein automatisches Handeln — reine Kennzeichnung/Information für Axel)
-```
-
-**Präzisierung 14.09.2026 (Reviewer):** die komponentenweise Differenz
-statt eines einzelnen Score-Deltas ist der eigentliche Mehrwert — sie
-sagt nicht nur "diese Position hat sich verschlechtert", sondern WARUM,
-und ist damit deutlich handlungsleitender als ein einzelnes rotes Flag.
-
-### 4.3 Bewusste Einschränkung
-
-Dies ist **ausschließlich eine Kennzeichnungs-/Informationsfunktion**,
-keine automatisierte Handelsentscheidung — UIQ zeigt an, dass sich die
-Bewertungsgrundlage einer bestehenden Position seit Ersteinstieg
-verändert hat; die Entscheidung (halten/anpassen/schließen) bleibt bei
-Axel. Passt zum bestehenden Grundsatz: UIQ als Decision Support System,
-nicht als automatisierter Trader.
+**Reihenfolge:** Punkt 1 kommt automatisch mit dem in §6 geplanten
+Boilerplate-Fix. Punkte 2–3 sind eigenständige, spätere Schritte — bewusst
+nicht Teil der nächsten Coding-Session (§6), da sie eigene Tests brauchen
+(Prompt-Caching-Verhalten ist nicht immer intuitiv, muss live geprüft
+werden) und keine Abhängigkeit zum Public-Patch haben.
 
 ---
 
-## 5. Umsetzungsreihenfolge (Vorschlag)
+## 5. Explizit zurückgestellt (nicht Teil dieser Session)
 
-Alle vier Punkte sind unabhängig voneinander — Reihenfolge nach Aufwand/
-Risiko, nicht nach Abhängigkeit:
+- **Punkt 6:** AI vollständig aus der Daily Pipeline entfernen, Public
+  Digest komplett ohne AI (reine Kennzahlen-Karte). Bleibt als
+  strategische Option im Raum — abhängig davon, wie das Produkt sich
+  entwickelt und ob der kurze KI-Satz aus §2/§3 vom Public-Nutzer als
+  Mehrwert wahrgenommen wird (lässt sich nach ein paar Wochen anhand
+  Nutzungsdaten/Feedback klären, nicht heute vorab entscheiden).
+- **Punkt 5:** 15 Strategien in einem gemeinsamen AI-Call. Bleibt bei
+  1 Call = 1 Strategie, wegen Ticker-Scope-Risiko.
+- **Morning Briefing / Macro Analysis Umbau** (Reviewer-Punkt 8): separates
+  Thema, eigene Session — dieselbe Gate/Hash-Logik (§2.2/§2.3) ist
+  grundsätzlich übertragbar, aber Morning Briefing hat eine andere
+  Architektur (serverseitig, KV-Key `daily_market_snapshot`) und verdient
+  eigene Betrachtung.
 
-1. **§1.1** ✅ implementiert & committed (14.09.2026) — kleinster Eingriff,
-   nutzt ausschließlich bereits vorhandene Daten und ein bereits
-   etabliertes Muster (`score_options_collar()`).
-2. **§3** ✅ implementiert & committed (14.09.2026) — reine
-   Kategorisierungstabelle, kein neuer Datenpfad.
-3. **§2 (UAQ)** ✅ implementiert & committed (14.09.2026) — CAQ bewusst
-   zurückgestellt, s. §2.2.
-4. **§4** — größter Umfang (neue periodische Pipeline-Stufe), separat
-   testen.
-5. **§1.2** — bewusst zuletzt und als eigenständiges Forschungsthema
-   behandelt, nicht als Teil des übrigen Patches — gehört inhaltlich zum
-   laufenden Regime-Detection-Research-Projekt (`ahsub/regime-test`) und
-   sollte dessen bereits etablierte Validierungsmethodik durchlaufen,
-   nicht ad hoc in die Produktionslogik einfließen.
+---
 
-Jeder Punkt einzeln mit Live-Test, wie bei allen bisherigen Umbauten
-dieses Projekts.
+## 6. Umsetzungsreihenfolge (Vorschlag)
+
+1. **§1.1 AI-Budget-Logging** — sofort, unabhängig, kein Risiko.
+2. **§2 Kern-Patch, zunächst als vollständiger Vertical Slice für EINE
+   Strategie** (Ergänzung Reviewer, 13.09.2026): normalisierte Signale →
+   Score-Gate → Hash-Gate → Kurzprompt → `max_tokens`/Temperatur, komplett
+   end-to-end für z.B. `momentum` (bereits als Test-Strategie etabliert,
+   s. heutige curl-Tests), inklusive Cache-Schreib-/Lesepfad. Erst nach
+   erfolgreichem Live-Test dieser einen Strategie auf die übrigen 9
+   ausrollen — nicht alle 10 gleichzeitig umstellen. Der separat geplante
+   Boilerplate-Fix aus `_publicNinePointPrompt()` (Abschnitt 7/8 app-seitig
+   templaten statt vom Modell generieren) gehört in denselben Umbau, da
+   beide dieselben Code-Stellen betreffen.
+3. **§3.1 Frontend-Anpassung** für das kürzere Cache-Ergebnis.
+4. Nach ca. 1–2 Wochen Live-Betrieb: anhand der AI-Budget-Logs (§1.1)
+   Score-Schwelle (§2.2) und Hash-Präzision (§2.3) kalibrieren.
+
+Jeder Schritt einzeln testbar — kein „großer Bang"-Umbau an einem Tag.
+
+**Ausdrücklich NICHT Teil dieses Patches** (Reviewer-Ergänzung, 13.09.2026):
+Morning Briefing/Macro Analysis bleiben unangetastet, bis der Public-Pfad
+sauber läuft (s. §5) — die Kostenoptimierung darf nicht dazu führen, dass
+an anderer Stelle neue, unkoordinierte AI-Schichten übereinander entstehen,
+während der Public-Pfad noch nicht abgeschlossen ist.
