@@ -1,6 +1,6 @@
 # UIQ — Backlog #64: CSP-ATMNA Specification v1.0
 
-**Datum:** 14.09.2026
+**Datum:** 14.09.2026 (Ergänzung 15.09.2026: verbindlicher Event-Prüfung-Warnhinweis, §2/§5)
 **Autoren:** Axel + Reviewer + Claude, ausgelöst durch ein konkretes EIC-Briefing
 (ACAD/HON/VMC, 14.09.2026), das den Architekturfehler sichtbar machte.
 **Status:** Spezifikation. Noch nicht implementiert — erst nach Freigabe coden,
@@ -78,6 +78,29 @@ Wird nicht mit einer Näherung/KI-Schätzung ersetzt (Scheingenauigkeits-
 Vermeidung, gleiches Prinzip wie bei Contract Assignment Quality, UIQ Spec
 v1.2 §2.2).
 
+**Verbindliche Konsequenz aus dieser Datenlücke (Ergänzung 15.09.2026,
+Axel):** Da UIQ binäre klinische/regulatorische Katalysator-Events nicht
+erkennen kann, MUSS jede ATM/NA-Kandidatenausgabe einen expliziten,
+nicht unterdrückbaren Warnhinweis tragen — unabhängig davon, ob die
+übrigen Gates (Earnings, Falling-Knife, Regime) grün sind. Ziel: verhindern,
+dass ein Kandidat, der zufällig alle prüfbaren Gates besteht, aber einen
+UIQ-unsichtbaren binären Katalysator vor sich hat (wie der ACAD-Fall vom
+14.09.), unreflektiert in eine Handelsentscheidung übernommen wird — "die
+Ampel war ja grün" darf nicht zur Fehlinterpretation "UIQ hat geprüft"
+führen, wenn UIQ diese eine Risikoklasse strukturell gar nicht prüfen kann.
+
+Anforderungen an den Warnhinweis:
+- Erscheint bei **jedem** ATM/NA-Kandidaten, nicht nur bei auffälligen
+  IVP-Werten — die Lücke besteht strukturell für jeden Titel, nicht nur
+  für Ausreißer (eine Bedingung wie "nur ab IVP>90 warnen" würde die
+  eigentliche Lücke nur für einen Teil der Fälle abdecken und dem
+  Anwender fälschlich Sicherheit für alle anderen Fälle suggerieren).
+- Klar von der bestehenden WpHG-§1-Pflichtformulierung UND vom
+  Earnings-Gate-Hinweis unterschieden — eigene, eigenständige Zeile, kein
+  Untertitel eines anderen Hinweises.
+- Fordert eine konkrete Handlung ein, kein bloßer Disclaimer-Satz (s.
+  Formulierungsvorschlag in §5).
+
 ---
 
 ## 3. Score-Struktur (nach den Hard Gates)
@@ -129,17 +152,29 @@ ATM/NA Score:        62/100
   Premium Quality:    Hoch (HVP 98%ile) — NICHT ausschlaggebend
   Gates:              Falling-Knife-Gate: NICHT ausgelöst
                        Earnings-Gate: NICHT ausgelöst
+
+⚠ EVENT-PRÜFUNG ERFORDERLICH: UIQ prüft keine klinischen/regulatorischen
+  Katalysator-Termine (z.B. Studienergebnisse, Zulassungsentscheide).
+  Vor Positionsaufbau selbst prüfen, ob ein bevorstehendes binäres
+  Ereignis die aktuelle IV/den Kurs beeinflusst — insbesondere bei
+  Biotech-/Pharma-Titeln und hoher IVP.
 ```
 
 Kein einzelner Gesamtscore ohne die Gate-/Downside-Transparenz — genau das
 Problem, das das heutige EIC-Briefing zeigte (hohe IVP allein wirkte wie
-ein starkes Signal).
+ein starkes Signal). Der Event-Prüfung-Hinweis erscheint bei **jedem**
+Kandidaten (s. §2), unabhängig vom Score oder Gate-Status — er ersetzt
+keine Prüfung, er macht nur sichtbar, dass UIQ sie nicht selbst
+durchführen kann.
 
 ---
 
 ## 6. Nicht Teil dieser Version
 
-- Klinische/regulatorische Event-Erkennung (s. §2, Datenlücke).
+- Klinische/regulatorische Event-**Erkennung** (s. §2, Datenlücke) — der
+  dafür vorgesehene Kompensations-Mechanismus ist der verbindliche
+  Warnhinweis (s. §2/§5), NICHT eine automatische Erkennung. Beides zu
+  verwechseln wäre der eigentliche Fehler, den dieser Punkt vermeiden soll.
 - Echte Optionsketten-Daten (Delta/Bid-Ask) — wie bei Contract Assignment
   Quality (UIQ Spec v1.2 §2.2), wartet auf CapTrader-Architekturentscheidung.
 - Rückwirkende Neuberechnung historischer ATM/NA-Empfehlungen — sinnvoller
