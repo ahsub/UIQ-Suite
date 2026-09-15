@@ -57,6 +57,9 @@ Vereinbarte Reihenfolge (bestätigt 10.09.2026, heute nochmal bekräftigt):
 ### Zweites Thema: Backlog #64 — `score_options_atmna()`
 Bestätigt fehlend (nur `_get_atmna_flag()` vorhanden, regime-weiter Ampel-Tag, kein Score pro Ticker). Eigenständig von der Fair-Value-Kette, kann parallel oder danach angegangen werden.
 
+### Drittes Thema (heute Abend ergänzt): fünf Options-Strategien in den Digest aufnehmen
+Aus der Digest-Cache-First-Entscheidung vom 13.09. explizit zurückgestellt: `csp_wheel`/`cc`/`collar`/`atmna`/`weekly_income` laufen bisher NICHT über den nächtlich generierten, gecachten Pfad (`generate_public_recommendations.js` → `public/ai_output/latest/{strategy}`) — nur die 10 Equity-/KO-Strategien wurden umgestellt. Diese fünf laufen weiterhin ausschließlich live bei Bedarf über `ko-ai-worker.js`. Streng genommen dieselbe Kosten-/Konsistenzlogik wie beim 13.09.-Umbau — noch nicht begonnen, kein Umsetzungsstand vorhanden. Sollte vor dem eigentlichen Umbau geklärt werden: hängt das mit Backlog #64 zusammen (macht ein fehlender `score_options_atmna()`-Score die Digest-Integration für `atmna` schwieriger), oder sind beide unabhängig genug, um in beliebiger Reihenfolge anzugehen?
+
 ### Optional, kein Muss
 - Sauberer EIC-Test: PIN neu eingeben, **innerhalb** von 10 Minuten einen `ki_briefing`-Call auslösen, danach `/logs?budget=1` prüfen — sollte jetzt `expertMode:true` zeigen. Nur zur zusätzlichen Bestätigung, die Diskrepanz von heute ist bereits inhaltlich geklärt.
 
