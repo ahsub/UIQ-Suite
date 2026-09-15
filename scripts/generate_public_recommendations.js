@@ -1079,6 +1079,52 @@ const ANTHROPIC_MAX_TOKENS = 4096; // ERHOEHT 09.09.2026 nach echtem API-Test:
 // Key, momentum-Strategie, synthetische Daten). 4096 gibt ausreichend
 // Puffer fuer Markdown-Formatierung/Ueberschriften obendrauf.
 
+// ─── Baustein 8b: AI-Budget-Logging (UIQ Spec v1.1 §1.1, 15.09.2026) ──────
+//
+// Ziel: Sichtbarkeit, bevor weiter optimiert wird — "welche UIQ-Funktion
+// kostet eigentlich Geld?". Owner-only, kein Public-Key.
+//
+// PREISE NOCH NICHT VERIFIZIERT (Claude kann Anthropic-Preisseiten in
+// dieser Sandbox nicht live prüfen) — bewusst als `null` belassen statt
+// eine möglicherweise falsche Zahl zu hinterlegen. estimated_cost_usd
+// bleibt dadurch `null`, bis Axel die beiden Konstanten unten gegen
+// https://docs.claude.com/en/docs/about-claude/pricing befüllt (Preis pro
+// Modell = ANTHROPIC_MODEL oben, "claude-sonnet-4-6"). token_input/
+// token_output sind ab dem ersten Lauf vollständig verlässlich, unabhängig
+// von den Preis-Konstanten.
+const ANTHROPIC_PRICE_PER_INPUT_TOKEN_USD = null;  // TODO(Axel): verifizieren
+const ANTHROPIC_PRICE_PER_OUTPUT_TOKEN_USD = null; // TODO(Axel): verifizieren
+
+const AI_BUDGET_LOG = [];
+
+function estimateCostUsd(inputTokens, outputTokens) {
+  if (ANTHROPIC_PRICE_PER_INPUT_TOKEN_USD == null || ANTHROPIC_PRICE_PER_OUTPUT_TOKEN_USD == null) {
+    return null;
+  }
+  return +(inputTokens * ANTHROPIC_PRICE_PER_INPUT_TOKEN_USD
+    + outputTokens * ANTHROPIC_PRICE_PER_OUTPUT_TOKEN_USD).toFixed(6);
+}
+
+// `caller` folgt der Spec-Vorgabe: "public_digest" | "morning_briefing" |
+// "eic_on_demand" | ... . Dieses Skript deckt ausschließlich den
+// public_digest-Pfad ab (s. Changelog-Hinweis unten) — morning_briefing/
+// eic_on_demand laufen über ko-ai-worker.js und sind hier NICHT erfasst.
+function recordBudgetEntry({ date, caller, strategy = null, usage, truncated = false, retried = false }) {
+  const inputTokens = usage?.input_tokens ?? null;
+  const outputTokens = usage?.output_tokens ?? null;
+  AI_BUDGET_LOG.push({
+    date,
+    caller,
+    strategy,
+    calls_used: 1,
+    token_input: inputTokens,
+    token_output: outputTokens,
+    estimated_cost_usd: estimateCostUsd(inputTokens ?? 0, outputTokens ?? 0),
+    truncated,
+    retried,
+  });
+}
+
 async function callAnthropic(prompt, { apiKey, maxTokens = ANTHROPIC_MAX_TOKENS } = {}) {
   const key = apiKey || process.env.ANTHROPIC_API_KEY;
   if (!key) {
@@ -1475,14 +1521,19 @@ function archiveDatePath(dateStr) {
 }
 
 // ─── Baustein 18: Anthropic-Call mit Retry (s. Abschnitt 8, Fehlerfall 1) ─
-async function callAnthropicWithRetry(prompt, { apiKey } = {}) {
+async function callAnthropicWithRetry(prompt, { apiKey, caller = 'public_digest', strategy = null, date = null } = {}) {
   let result = await callAnthropic(prompt, { apiKey });
+  recordBudgetEntry({ date, caller, strategy, usage: result.usage, truncated: result.truncated === true });
   if (result.ok && !result.truncated) return result;
 
   const reason = result.ok ? 'Antwort abgeschnitten (max_tokens)' : result.error.message;
   console.warn(`  ⚠️  Anthropic-Call fehlgeschlagen/unvollstaendig (${reason}) — einmaliger Retry nach 10s...`);
   await new Promise((r) => setTimeout(r, 10000));
   result = await callAnthropic(prompt, { apiKey });
+  // Retry zaehlt budgetseitig als eigener Call (echte Kosten, nicht nur
+  // der finale Versuch) — genau der Fall, den ein reines "letzter Call
+  // gewinnt"-Logging verschleiern wuerde.
+  recordBudgetEntry({ date, caller, strategy, usage: result.usage, truncated: result.truncated === true, retried: true });
   return result;
 }
 
@@ -1500,7 +1551,7 @@ async function runStrategy(strategy, masterData, snapshot, promptVersion) {
 
     const tickerListStr = buildTickerListString(top10);
     const prompt = buildPromptForStrategy(strategy, snapshot, tickerListStr, top10.length);
-    const apiResult = await callAnthropicWithRetry(prompt);
+    const apiResult = await callAnthropicWithRetry(prompt, { caller: 'public_digest', strategy, date: snapshot.date });
 
     if (!apiResult.ok) {
       return { ok: false, strategy, error: apiResult.error };
@@ -1648,6 +1699,32 @@ async function main() {
     await pushToCloudflareKV(res.aiOutput, `public/ai_output/latest/${res.strategy}`);
   }
 
+  // ── AI-Budget-Log schreiben (UIQ Spec v1.1 §1.1, Baustein 8b) ───────────
+  // Owner-only, kein Public-Key. Deckt nur den public_digest-Pfad dieses
+  // Skripts ab — morning_briefing/eic_on_demand (ko-ai-worker.js) sind
+  // NICHT enthalten, s. Kommentar bei recordBudgetEntry().
+  if (AI_BUDGET_LOG.length > 0) {
+    const tokenInputTotal = AI_BUDGET_LOG.reduce((sum, e) => sum + (e.token_input || 0), 0);
+    const tokenOutputTotal = AI_BUDGET_LOG.reduce((sum, e) => sum + (e.token_output || 0), 0);
+    const costUnknown = AI_BUDGET_LOG.some((e) => e.estimated_cost_usd == null);
+    const estimatedCostUsdTotal = costUnknown
+      ? null
+      : +(AI_BUDGET_LOG.reduce((sum, e) => sum + e.estimated_cost_usd, 0)).toFixed(6);
+
+    const budgetSummary = {
+      date: snapshot.date,
+      calls_used: AI_BUDGET_LOG.length,
+      token_input_total: tokenInputTotal,
+      token_output_total: tokenOutputTotal,
+      estimated_cost_usd_total: estimatedCostUsdTotal,
+      entries: AI_BUDGET_LOG,
+    };
+    await pushToCloudflareKV(budgetSummary, `internal/ai_budget/${snapshot.date}`);
+    console.log(`\nAI-Budget-Log geschrieben (internal/ai_budget/${snapshot.date}): `
+      + `${AI_BUDGET_LOG.length} Calls, ${tokenInputTotal}/${tokenOutputTotal} `
+      + `Input/Output-Tokens` + (costUnknown ? ' (Kosten-Konstanten noch nicht kalibriert)' : `, geschätzt $${estimatedCostUsdTotal}`));
+  }
+
   console.log('\nFertig.');
   return { snapshot, digest, results };
 }
@@ -1685,6 +1762,9 @@ module.exports = {
   buildPromptForStrategy,
   callAnthropic,
   ANTHROPIC_MODEL,
+  recordBudgetEntry,
+  estimateCostUsd,
+  AI_BUDGET_LOG,
   STRATEGY_SIGNAL_MAP,
   buildSignals,
   buildDecisionSnapshot,
