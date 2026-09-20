@@ -1,4 +1,4 @@
-# Übergabeprotokoll — 20.09.2026
+UIQ — Übergabeprotokoll 20.09.2026
 
 **Thema:** ATMNA-Explainability-Gap-Fix — Bausteine A, B, Nachträge
 **Beteiligte Dateien:** `ko-modules/ko-prompts.js`, `UIQ-Suite/scripts/generate_public_recommendations.js` (inkl. `scripts/vendor/ko-prompts.js`), `axel-scanner/workers/ko-ai.js`, `axel-scanner/index.html`
