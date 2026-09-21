@@ -18,9 +18,20 @@
  * um den Diff auf den Trading-Day-Skip-Check zu beschränken.]
  * ====================================================================
  *
- * Skript-Version: v1.10
+ * Skript-Version: v1.11
  *
  * CHANGELOG (neueste zuerst):
+ * v1.11 (21.09.2026, Backlog #1 — API-Kosten-Auswertung): Preis-Konstanten
+ *      (ANTHROPIC_PRICE_PER_INPUT_TOKEN_USD/..._OUTPUT_...) kalibriert
+ *      gegen https://docs.claude.com/en/docs/about-claude/pricing — waren
+ *      seit ihrer Einfuehrung (Baustein 8b, 15.09.2026) durchgehend `null`.
+ *      Claude Sonnet 4.6: $3/MTok Input, $15/MTok Output — dieses Skript
+ *      nutzt ausschliesslich dieses eine Modell (ANTHROPIC_MODEL-Konstante,
+ *      keine Strategie-abhaengige Variation), daher genuegt ein einziges
+ *      globales Preispaar (anders als ko-ai.js, das mehrere Modelle mischt
+ *      und deshalb in v1.28 eine modellabhaengige Lookup-Tabelle bekam).
+ *      estimated_cost_usd in AI_BUDGET_LOG/internal/ai_budget/{date}
+ *      liefert ab sofort echte Dollarbetraege statt durchgehend `null`.
  * v1.10 (21.09.2026, Claude + Axel, LLM-Auswahl-Drift-Fix): Der v1.9-
  *      Diagnose-Log lieferte den Beweis: top3Syms und der daraus gebaute
  *      Faktor-Block wurden korrekt berechnet und korrekt an Anthropic
@@ -1592,8 +1603,17 @@ const ANTHROPIC_MAX_TOKENS = 4096; // ERHOEHT 09.09.2026 nach echtem API-Test:
 // Modell = ANTHROPIC_MODEL oben, "claude-sonnet-4-6"). token_input/
 // token_output sind ab dem ersten Lauf vollständig verlässlich, unabhängig
 // von den Preis-Konstanten.
-const ANTHROPIC_PRICE_PER_INPUT_TOKEN_USD = null;  // TODO(Axel): verifizieren
-const ANTHROPIC_PRICE_PER_OUTPUT_TOKEN_USD = null; // TODO(Axel): verifizieren
+// GEAENDERT (v1.11, 21.09.2026, Backlog #1 — API-Kosten-Auswertung):
+// verifiziert gegen https://docs.claude.com/en/docs/about-claude/pricing
+// (21.09.2026). Dieses Skript nutzt durchgaengig NUR ein einziges Modell
+// fuer alle 15 Strategien (ANTHROPIC_MODEL = 'claude-sonnet-4-6' oben,
+// keine Strategie-abhaengige Variation) — anders als ko-ai.js (dort
+// mischen sich Haiku/Sonnet je Action, s. dortige v1.28-Aenderung mit
+// modellabhaengiger MODEL_PRICING-Lookup-Tabelle), reicht hier EIN
+// globales Preispaar tatsaechlich aus, keine Modell-Lookup-Logik noetig.
+// Claude Sonnet 4.6: $3/MTok Input, $15/MTok Output.
+const ANTHROPIC_PRICE_PER_INPUT_TOKEN_USD = 3 / 1e6;
+const ANTHROPIC_PRICE_PER_OUTPUT_TOKEN_USD = 15 / 1e6;
 
 const AI_BUDGET_LOG = [];
 
