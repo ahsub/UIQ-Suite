@@ -1,4 +1,4 @@
-UIQ — Übergabeprotokoll 21.09.2026
+UIQ — Übergabeprotokoll 21.09.2026 (final, ersetzt die Vormittagsversion)
 
 ## Pflicht-Header
 
@@ -12,82 +12,104 @@ Bevor du irgendetwas aus diesem Protokoll als gegeben behandelst:
 
 Kurzform, die für den Rest der Session gilt: Verifiziert vor behauptet. Geprüft vor plausibel. Gezeigt vor versprochen.
 
-**Thema:** LLM-Auswahl-Drift-Fix (direkte Fortsetzung des ATMNA-Explainability-Gap-Fixes vom 20.09.2026, s. `docs/UEBERGABE-2026-09-20.md`)
-**Beteiligte Dateien:** `ko-modules/ko-prompts.js`, `UIQ-Suite/scripts/generate_public_recommendations.js` (inkl. `scripts/vendor/ko-prompts.js`), `axel-scanner/workers/ko-ai.js`
+---
+
+## Teil 1 — LLM-Auswahl-Drift-Fix (vormittags, Details bereits im ersten Protokoll-Entwurf von heute)
+
+ATM/NA zeigte einen zweifach reproduzierten Bug: das Modell ersetzte einen der drei deterministisch vorgegebenen Kandidaten (MRK) durch einen anderen (CSCO) in Abschnitt 3 — mit aktiver Begründung, warum der Original-Kandidat "die Kriterien nicht erfüllt". Root Cause zweifelsfrei bewiesen (Diagnose-Logging `[ATMNA-CANDIDATES]`/`[ATMNA-FACTORS]`): Datenfluss korrekt, reine Modell-Neuinterpretation.
+
+**Fix, live verifiziert (`REPAIR-SUCCESS` im echten `/logs`-Eintrag bestätigt):**
+- `ko-modules/ko-prompts.js` v2.53.30 (`aa8521c`) — verbindliche Top-3-Kandidatenliste im deterministischen Faktor-Block, Abschnitt-3-Instruktion verbietet Ticker-Ersatz, `validateBriefingCompliance()` um Top-3-Konsistenzcheck erweitert
+- `axel-scanner/workers/ko-ai.js` v1.26 (`ec1cc79`) — Extraktion aus `payload`, Repair-Hinweis mit konkreter Ersetzungsanweisung
+- `UIQ-Suite/scripts/generate_public_recommendations.js` v1.10 (`2c037f6`) — gleiche Logik im Batch-Pfad
+- Nebenbefund behoben: fehlerhaft mit hochgeladene `scripts/vendor/generate_public_recommendations.js` gelöscht
+
+**Bewusst dokumentierte, nicht umgesetzte Folge-Tickets (Reviewer-Konsens):**
+- Candidate Selection Integrity — Equity/KO Audit (Beobachtungsmodus, kein Live-Beleg für Equity)
+- Model-Refusal Detection im REPAIR-Loop (nur künstlicher Testfund, kein Produktionsfall)
+- Repair Data Provenance Guard (architektonisch wichtigster der drei, aber nur Prinzip dokumentiert: "Repair darf keine fehlenden Daten erzeugen")
 
 ---
 
-## Ausgangslage
+## Teil 2 — Backlog-Bereinigung (nachmittags)
 
-Ein am 20.09. gepostetes, live erzeugtes atmna-Briefing zeigte eine neue, bis dahin unbekannte Fehlerklasse: Abschnitt 3 nannte "JNJ, CSCO, MDT" (inkl. aktiver Begründung, warum MRK "die Kriterien nicht erfüllt"), während der deterministische Faktor-Block (Abschnitt 4) für "JNJ, MRK, MDT" echte BB-/Tightness-Werte auswies. Mittels neuem Diagnose-Logging (v1.9, `[ATMNA-CANDIDATES]`/`[ATMNA-FACTORS]`, s. Vortagesprotokoll) wurde zweifelsfrei bewiesen: `top3Syms` und der Faktor-Block waren korrekt — das Modell hat eigenmächtig einen der drei vorgegebenen Kandidaten ersetzt. Kein Datenfluss-Bug, sondern freie Modell-Neuinterpretation trotz bereits abgeschlossener Score-Rang-Entscheidung ("LLM-Auswahl-Drift").
+Vollständige 26-Punkte-Backlog-Analyse aus den letzten ~8 Wochen Session-Notizen erstellt, mit Reviewer-Priorisierung in P0–P3 + Statusklassen (Bug/technische Schuld/Produktentscheidung/Research/externe Abhängigkeit). **Separates Dokument:** `UIQ-BACKLOG-2026-09-21.md` (heute Vormittag erstellt) — dort steht die vollständige Liste mit Begründungen; dieses Protokoll enthält nur den **Status-Nachtrag** für die Punkte, die heute Nachmittag tatsächlich bearbeitet wurden.
 
----
+### Heute abgeschlossen und live verifiziert
 
-## Architekturentscheidung (mit Reviewer abgestimmt)
+**#7 — `/logs`-Route-Paginierung** (`ko-ai.js` v1.27, Commit `56457df`)
+Root Cause: `AUTH_KV.list()` sortiert lexikographisch, nicht chronologisch — bei mehreren `tokenHash`-Präfixen und überschrittenem `limit` wurden systematisch veraltete Daten geliefert (live bestätigt: `limit=300` zeigte tagelang denselben 269-Eintrage-Stand vom 01.09., obwohl neue Daten unter einem anderen Hash existierten). Fix: zweistufig — erst alle Key-Namen einsammeln, Zeitstempel aus dem Namen selbst extrahieren, sortieren, dann erst `get()`. **Live verifiziert:** `limit=300`-Abfrage zeigt jetzt korrekt bis zum aktuellen Zeitpunkt durchgehend chronologische Daten, `listTruncated: false`.
 
-**Candidate Selection Integrity**: Die Score-Engine bestimmt die Kandidaten deterministisch; das LLM darf diese Auswahl nicht durch eine eigene Auswahlentscheidung ersetzen — es darf ausschließlich erklären, kontextualisieren, vergleichen. Umgesetzt für die fünf Options-Strategien (Scope-Entscheidung, s. u.), NICHT generalisiert auf Equity/KO — bewusst zurückgestellt, s. Folge-Ticket 1.
+**#1 — API-Kosten kalibriert** (`ko-ai.js` v1.28 + `generate_public_recommendations.js` v1.11, Commits `289db15`/`d56b078`)
+Preise verifiziert gegen `docs.claude.com/en/docs/about-claude/pricing` (Haiku 4.5: $1/$5 pro MTok; Sonnet 4.6: $3/$15 pro MTok). `ko-ai.js` bekam eine **modellabhängige** `MODEL_PRICING`-Lookup-Tabelle (wichtiger Fund: ein einziges globales Preispaar wäre falsch gewesen, da Haiku und Sonnet dort gemischt genutzt werden — `generate_public_recommendations.js` nutzt dagegen nur ein Modell, dort genügt ein globales Preispaar). **Live verifiziert:** exakte Übereinstimmung zwischen manueller Berechnung und tatsächlich persistiertem `estimatedCostUsd`-Wert ($0,001871 für einen Testaufruf).
 
----
+**Zentrale Erkenntnis aus der Auswertung:** Der nächtliche Public-Digest-Lauf (~$2,26/Nacht, ~$68/Monat hochgerechnet) ist der **dominierende Kostentreiber** — deutlich mehr als der komplette Live-Pfad über 6 Tage (~$0,67).
 
-## Umgesetzt, getestet, committet und live verifiziert
+**#21 — Compliance-Scanner-Negationslogik** (`ko-ai.js` v1.29, Commit `eae1a90`)
+"Top-Kandidat" wurde auch bei verneinenden Sätzen fälschlich geflaggt. Fix bewusst klein gehalten (keine NLP-Lösung): klausel-lokale Negationsprüfung nur für dieses eine Pattern (`negationAware`-Flag), alle anderen ~30 Patterns unverändert. **Live verifiziert:** "kein Top-Kandidat" → kein Flag, "ist Top-Kandidat" → Flag korrekt gesetzt, inkl. dem kniffligen Edge Case "Nicht X, sondern Y ist Top-Kandidat" (muss Treffer bleiben) — 11/11 lokale Tests plus 2/2 Live-Tests bestanden.
 
-### `ko-prompts.js` v2.53.30
-Commit: `ahsub/ko-modules@aa8521c` (+ Vendor-Sync nach `UIQ-Suite@2c037f6`, dort ergänzt um Löschung einer fehlerhaft mit hochgeladenen `scripts/vendor/generate_public_recommendations.js`)
-- `_deterministicOptionsFactBlock()`: neue Pflichtzeile "VERBINDLICHE TOP-3-KANDIDATEN FÜR ABSCHNITT 3" aus `o.top3Syms`, für alle 5 Options-Strategien
-- Abschnitt-3-Instruktion: explizites Verbot, Kandidaten zu ersetzen oder als "erfüllt Kriterien nicht" auszuschließen
-- `top3Syms: ctx.top3Syms || null` an allen 10 Aufrufstellen (5 Strategien × Public/EIC)
-- `_validateBriefingCompliance()`: neuer optionaler 3. Parameter `options.expectedTop3`, Mengenvergleich via `_extractSection3Tickers()`, rückwärtskompatibel (ohne Parameter: Check übersprungen)
-- **Verifiziert (von mir selbst per Node-Skript gegen den committeten Stand):** 6 Testfälle (PASS, Ticker-Ersatz, fehlender/zusätzlicher Ticker, Rückwärtskompatibilität, Generalisierung auf csp_wheel)
+### Heute geprüft, Status korrigiert (ohne Code-Änderung)
 
-### `ko-ai.js` v1.26
-Commit: `ahsub/axel-scanner@ec1cc79`, deployt (von Axel im CF-Dashboard bestätigt)
-- `_extractExpectedTop3FromPayload()`: liest die Kandidatenliste direkt aus dem Prompt-Text (kein neues Frontend-Feld nötig)
-- `validateBriefingCompliance()`-Kopie um denselben Top-3-Check erweitert
-- `buildRepairPrompt()`: neue Fehlerklasse `top3-ticker-konsistenz` mit konkretem Ersetzungshinweis ("Ersetze CSCO durch MRK")
-- **Live verifiziert (Beleg: `/logs`-Eintrag `log:def1d4b95cc8b12d:1789974497097`, `2026-09-21T07:08:17Z`):** `complianceFlags: ["TICKER-SCOPE:BB", "REPAIR-ATTEMPTED", "REPAIR-SUCCESS"]` — kompletter Ablauf (Extraktion aus payload → Validator erkennt Fehler → Repair-Call → PASS) am echten System bestätigt, nicht nur lokal
+- **#25 Scanner-Tab/Alpha-Desk Score-Feld-Mismatch** → bestätigt bereits erledigt (Code-Beleg: `STRAT_SCORE_FIELD`-Mapping in `index.html`)
+- **#26 Dividend/Value im Scanner-Dropdown** → bestätigt bereits erledigt (Code-Beleg: beide im Dropdown)
+- **#24 Freshness-Check Vormittag/Nachmittag** → bestätigt gegenstandslos durch die 11.09.-Umstellung auf einen Tageslauf
+- **#2 API-Key-Exponierung** → deutlich entschärft als ursprünglich angenommen: Finnhub/TwelveData sind bereits Per-Nutzer-Keys (BYOK, `localStorage`), keine geteilten Secrets; `loadSektorRS()` nutzt bereits KV-Cache-First. Umbenannt zu reiner Produktentscheidung ("BYOK-UX für Public Beta"), kein Sicherheitsfund mehr.
+- **#17 STYLE/SETUP/VEHICLE-Ontologie** → nicht verifizierbar mit verfügbarem Zugriff (keine Code-Spuren, vermutlich reine `SUITE.md`-Dokumentationsentscheidung)
 
-### `generate_public_recommendations.js` v1.10
-Commit: `ahsub/UIQ-Suite@2c037f6`
-- `ctx.top3Syms` in `buildOptionsPromptForStrategy()` für alle 5 Options-Strategien
-- `expectedTop3` an beide `validateBriefingCompliance()`-Aufrufe in `runStrategy()` (Erst- und Repair-Check)
-- `buildRepairPrompt()` identisch zu `ko-ai.js` erweitert
-- **Verifiziert:** vollständiger End-to-End-Test mit dem exakt reproduzierten Live-Bug (CSCO statt MRK, mit Ausschluss-Begründung) — Repair-Prompt enthält korrekten Hinweis, Ergebnis `repair_status: REPAIR-SUCCESS`. **Noch NICHT gegen einen echten GHA-Lauf verifiziert** — nächster GHA-Lauf steht als Bestätigung für den Batch-Pfad noch aus.
+### Neu entstanden
 
-### Nebenbefund, behoben
-`KO_MODULES_VENDOR_DRIFT_COMMIT` war vom 20.09. noch auf einen veralteten Stand von vor mehreren Tagen gesetzt (unabhängig vom heutigen Thema, aus derselben Session). War bereits am 20.09. korrigiert (`ko-modules@c4f7c93`) — heute nicht erneut angefasst, da nicht betroffen.
+**#27 — Anthropic Batch API: Public-Digest A/B-Test** (Status: Research/Optimization, nicht Bugfix)
+Batch API bietet 50% Rabatt auf Input+Output, passt strukturell gut zum ohnehin nächtlichen, asynchronen Digest-Lauf. Rechnerisch ~$34/Monat Ersparnis allein durch den Transportweg-Wechsel, ohne Prompt-/Guardrail-Änderung. **Drei-Stufen-Plan (Reviewer-Konsens, noch nicht begonnen):**
+1. Synchroner Pfad bleibt unangetastet als Referenz
+2. Batch-Modus danebenbauen: 15 Prompts → Anthropic Message Batch → Polling bis `ended` → JSONL-Ergebnisse → `custom_id`→Strategie-Zuordnung → bestehende Post-Processing-/KV-Logik unverändert
+3. Echter A/B-Vergleich (Erfolgsrate, Compliance/Candidate-Validatoren, Repair-Rate, Tokenverbrauch, echte Kosten, Laufzeit, KV-Ergebnis-Äquivalenz) — erst danach Umstellung auf Batch als Standard
+
+**Bewusst nicht gleichzeitig:** Prompt Caching als zweiter Kostenhebel — separat nacheinander testen (erst Batch, messen, dann Caching, messen), damit die Wirkung beider Mechanismen sauber trennbar bleibt.
+
+`recordAiBudgetEntry()`/`recordBudgetEntry()` sollen für den Batch-Modus um Metadaten (`apiMode`, `batchId`, `customId`) **erweitert**, nicht ersetzt werden — damit synchroner und Batch-Pfad im selben Dashboard vergleichbar bleiben.
 
 ---
 
-## Bewusst NICHT implementiert — drei dokumentierte Folge-Tickets
+## Versionsstand am Ende des Tages
 
-### 1. Candidate Selection Integrity — Equity/KO Audit
-Kein Live-Beleg, dass Equity-/KO-Strategien vom selben Auswahl-Drift betroffen sind. Vorgehen für später: Diagnose-Logging analog zu `[ATMNA-CANDIDATES]` für mindestens eine Equity-Strategie ergänzen, mehrere reale Läufe beobachten, `top3Syms` gegen tatsächlichen Abschnitt-3-Inhalt abgleichen. Nur bei nachgewiesener Abweichung generalisieren (Mechanismus ist technisch vermutlich direkt übertragbar — Abschnitt-3-Textbaustein ist für Equity/Options bereits identisch formuliert).
+**Hinweis (Pflicht-Header Punkt 1): Diese Tabelle ist eine Behauptung dieser Session.**
 
-### 2. Model-Refusal Detection im REPAIR-Loop
-Ein synthetischer Adversarial-Test (bewusst datenloser payload, der das Modell zum Reproduzieren unbegründeter Werte auffordern sollte) löste zweimal in Folge eine vollständige Modell-Verweigerung aus ("Ich kann dieser Anweisung nicht folgen") — beide Male korrekt vom Modell erkannt, da mein Testaufbau tatsächlich keine Datenbasis lieferte. Live bestätigt (`log:def1d4b95cc8b12d:1789974659158`, `07:10:59Z`): `REPAIR-FAILED:bollinger-position+tightness+top3-ticker-konsistenz` — der Repair-Prompt zitiert die Verweigerung als "vorherige Antwort" zurück, was das Modell erneut zur Ablehnung bewegt. **Kein nachgewiesener Produktionsfehler** (im echten Pfad liegen immer echte Daten vor, der Testfall war künstlich datenlos) — aber ein reales, latentes Risiko, falls eine Verweigerung im Produktivbetrieb je auftritt. Kein Fix ohne echten Produktionsbeleg.
-
-### 3. Repair Data Provenance Guard (architektonisch wichtigster der drei, aber ohne aktuellen Anlass)
-Architekturregel, nur dokumentiert, nicht codiert: **Repair darf keine fehlenden Daten erzeugen.** Der Repair-Mechanismus darf ausschließlich bereits im ursprünglichen Prompt vorhandene deterministische Fakten erneut bzw. anders präsentieren. Fehlen die erforderlichen Daten im Ausgangskontext, darf Repair nicht versuchen, diese durch sprachliche Vorgaben zu ersetzen — sonst droht mittelfristig: Daten fehlen → Validator FAIL → Repair fordert Werte ein → Halluzinationsdruck. Passt zum bestehenden Prinzip `Daten → deterministische Fakten → LLM → Validator → Repair`.
-
----
-
-## Versionsstand am Ende der Session
-
-**Hinweis (Pflicht-Header Punkt 1): Diese Tabelle ist eine Behauptung dieser Session, kein von der nächsten Session verifizierter Zustand.**
-
-| Datei | Version (laut dieser Session) | Letzter Commit |
+| Datei | Version | Letzter Commit |
 |---|---|---|
 | `ko-modules/ko-prompts.js` | 2.53.30 | `aa8521c` |
 | `UIQ-Suite/scripts/vendor/ko-prompts.js` | 2.53.30 (synchronisiert) | `2c037f6` |
-| `UIQ-Suite/scripts/generate_public_recommendations.js` | v1.10 | `2c037f6` |
-| `axel-scanner/workers/ko-ai.js` | v1.26 | `ec1cc79` |
+| `UIQ-Suite/scripts/generate_public_recommendations.js` | v1.11 | `d56b078` |
+| `axel-scanner/workers/ko-ai.js` | **v1.29** | `eae1a90` |
+| `axel-scanner/index.html` | — | `7fbc11e` (unverändert seit gestern) |
 
 ## Deploy-Status
-- `ko-ai.js` v1.26: **deployt und live verifiziert** (echter `/logs`-Beleg für `REPAIR-SUCCESS` am 21.09., 07:08 UTC)
-- `generate_public_recommendations.js` v1.10: **committet, lokal End-to-End getestet, noch KEIN echter GHA-Lauf-Beleg** — nächster Lauf sollte `[ATMNA-CANDIDATES]`/`[ATMNA-FACTORS]` UND (falls ein Mismatch auftritt) einen erfolgreichen Repair im Log zeigen
+- `ko-ai.js` v1.29: **deployt und live verifiziert** (mehrfach, zuletzt #21-Negationstest)
+- `generate_public_recommendations.js` v1.11: **committet**, Preiskalibrierung noch **nicht** durch einen echten GHA-Lauf mit realen Kosten bestätigt — nächster Lauf sollte `estimated_cost_usd` mit echtem Wert statt `null` zeigen
+- `index.html`: unverändert seit gestern, kein heutiger Änderungsbedarf
 
-## Bekannter, separater Nebenbefund (nicht heute behoben)
-`/logs?limit=N`-Route liefert bei zwei unterschiedlichen `tokenHash`-Präfixen in KV (`2af7e7...`, `def1d4...`) mit kleinem `limit` systematisch veraltete Ergebnisse — bestätigt durch direkten KV-Dashboard-Vergleich (Schreibvorgang selbst funktioniert nachweislich einwandfrei bis heute, nur die Lese-/Aggregationslogik der `/logs`-Route ist betroffen). Nicht Teil des heutigen Themas, aber real und reproduzierbar — eigenes Ticket wert.
+---
 
-## Bekannte, bewusst in Kauf genommene Wartungslast (aus dem 20.09.-Protokoll, weiterhin gültig, jetzt erweitert)
-`validateBriefingCompliance()`-Logik lebt an zwei Stellen (`ko-prompts.js` Original, `ko-ai.js`-Kopie inkl. der neuen Top-3-Prüfung), `buildRepairPrompt()` an drei Stellen (`ko-ai.js`, `generate_public_recommendations.js`). Bei künftigen Änderungen müssen alle Kopien von Hand synchron gehalten werden.
+## RUNMAP FÜR MORGEN
+
+**Reihenfolge, wie besprochen — nichts davon ist heute begonnen, alles offen:**
+
+### 1. `generate_public_recommendations.js` v1.11 — GHA-Lauf-Verifikation
+Kurzer Check: liefert der nächste nächtliche Lauf tatsächlich einen echten `estimated_cost_usd`-Wert in `internal/ai_budget/{date}`? (Reine Bestätigung, kein Code-Änderungsbedarf erwartet.)
+
+### 2. #27 — Anthropic Batch API, Stufe 1+2 (Batch-Modus bauen)
+- Neue Funktion(en) in `generate_public_recommendations.js`: Batch-Request-Array aus den 15 Strategie-Prompts bauen, `custom_id` pro Strategie (z. B. `public_{strategy}`), Batch erstellen, Polling-Logik bis `ended`, `results_url` abrufen und JSONL parsen, Ergebnisse per `custom_id` zurück auf Strategien mappen
+- **Synchroner Pfad bleibt unangetastet** — Batch-Modus als eigener, parallel existierender Codepfad (z. B. über eine Umgebungsvariable wie `USE_BATCH_API=true` umschaltbar), nicht als Ersatz
+- `recordBudgetEntry()` um `apiMode`/`batchId`/`customId` erweitern (rückwärtskompatibel, bestehende Felder unverändert)
+
+### 3. #27 — Stufe 3 (A/B-Test)
+- Einen Nachtlauf synchron, einen Nachtlauf Batch — Vergleich anhand der von Axel festgelegten Kriterien (Erfolgsrate, Compliance-/Candidate-Validatoren, Repair-Rate, Tokenverbrauch, echte Kosten, Laufzeit, KV-Ergebnis-Äquivalenz)
+- Erst nach sauberem Vergleich: Entscheidung, ob Batch zum Standard wird
+
+### 4. Falls Zeit bleibt — die bewusst zurückgestellten Punkte im Blick behalten (kein aktiver Auftrag, nur nicht vergessen)
+- Candidate Selection Integrity — Equity/KO Audit (Diagnose-Logging für eine Equity-Strategie, dann beobachten)
+- Prompt Caching als zweiter Kostenhebel (erst NACH dem Batch-A/B-Test, nicht gleichzeitig)
+- `UIQ-BACKLOG-2026-09-21.md` enthält weitere P1/P2-Punkte, falls #27 schneller als erwartet durch ist
+
+### Nicht vergessen beim Sessionstart morgen
+- Dieses Protokoll UND `UIQ-BACKLOG-2026-09-21.md` zuerst lesen, aber gemäß Pflicht-Header als ungeprüfte Behauptungen behandeln, nicht als bestätigten Zustand
+- Bei Bedarf den aktuellen Deploy-/Commit-Stand der vier Hauptdateien kurz gegenchecken, bevor auf dieser Basis weitergearbeitet wird
