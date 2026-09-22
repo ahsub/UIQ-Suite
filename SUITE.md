@@ -1,12 +1,12 @@
 # Investment-Suite — Dachdokument
 
+
 **Version:** 4.26
 **Stand:** 22.09.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
 **Fortschreibung:** Claude, versioniert, analog den Modul-Strategiedokumenten.
-
----
+| 4.26 | 22.09.2026 | Grundgesetz #9 (Debug-Protokoll) verallgemeinert: Scope von "Laufzeit-Bug" auf jedes unerwartete Verhalten erweitert (Validierungs-/Compliance-Fehlschläge, KI-Output-Abweichungen), Titel auf "Never guess, always correctly diagnose" geschärft. Zweite Herleitung ergänzt: `ko-prompts.js` top3-ticker-konsistenz-Fehlschlag (22.09.2026, drei Fehlversuche) — ein begründeter, aber unverifizierter Fix (v2.54.1) schlug live fehl; reines Diagnose-Logging (`generate_public_recommendations.js` v1.17) deckte die tatsächliche Root Cause auf, danach griff der gezielte Fix (v2.54.2). |---
 
 ## 0. UIQ-Leitprinzip (verbindlich, schlägt alle anderen Abschnitte)
 
