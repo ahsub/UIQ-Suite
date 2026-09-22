@@ -18,9 +18,39 @@
  * um den Diff auf den Trading-Day-Skip-Check zu beschränken.]
  * ====================================================================
  *
- * Skript-Version: v1.11
+ * Skript-Version: v1.12
  *
  * CHANGELOG (neueste zuerst):
+ * v1.12 (22.09.2026, Claude + Axel, KRITISCHER PUBLISH-BUG-FIX): Fund
+ *      beim Debugging eines GHA-Laufs mit vier von fünf Options-Strategien
+ *      auf REPAIR-FAILED (csp_wheel/atmna/weekly_income/cc) — trotzdem
+ *      liefen alle vier als "✅ Top-3" durch. Root Cause: im REPAIR-LOOP
+ *      (v1.7) wurde `apiResult = repairResult` VOR der Prüfung des
+ *      repairCheck-Ergebnisses zugewiesen — sowohl bei REPAIR-FAILED
+ *      (weiterhin nicht-konformer Repair-Text ersetzt den Original) als
+ *      auch bei REPAIR-ERROR (Original, ebenfalls nicht-konform, bleibt
+ *      unveraendert) lief runStrategy() mit `{ ok: true, ... }` durch —
+ *      der Text landete unveraendert in buildAiOutput() -> Archiv ->
+ *      public/ai_output/latest/{strategy} -> Public Digest. Das einzige
+ *      sichtbare Signal war aiOutput.repair_status, das buildPublicDigest()
+ *      NICHT in die oeffentlichen opportunities[]-Eintraege uebernimmt —
+ *      ein Leser des Public Digest hatte keine Moeglichkeit, einen
+ *      fehlgeschlagenen Compliance-Check zu erkennen. Das unterlaeuft die
+ *      mit v2.53.30/v1.10 eingefuehrte Grundgarantie ("Score-Engine
+ *      entscheidet, Modell erklaert nur") genau an der Stelle, an der sie
+ *      zaehlt: der tatsaechlichen Veroeffentlichung.
+ *      FIX: `apiResult = repairResult` nur noch bei repairCheck.status
+ *      === 'PASS'. Bei REPAIR-FAILED oder REPAIR-ERROR gibt runStrategy()
+ *      jetzt { ok: false, strategy, error, repairStatus } zurueck — die
+ *      Strategie wird fuer diesen Lauf uebersprungen (Archiv-/Digest-/KV-
+ *      Schreibvorgaenge finden fuer sie nicht statt), exakt dasselbe
+ *      Fehlerisolations-Muster, das main() fuer jeden anderen Fehlerfall
+ *      bereits nutzt (eine fehlerhafte Strategie blockiert nie den
+ *      Gesamtlauf der uebrigen 14). KEIN neues Konzept, nur konsequente
+ *      Anwendung des bestehenden Prinzips auf einen bisher uebersehenen
+ *      Fall. Noch KEIN Live-Test (naechster GHA-Lauf mit einem erneuten
+ *      REPAIR-FAILED-Fall zeigt, ob die betroffene Strategie jetzt korrekt
+ *      als uebersprungen statt als erfolgreich geloggt wird).
  * v1.11 (21.09.2026, Backlog #1 — API-Kosten-Auswertung): Preis-Konstanten
  *      (ANTHROPIC_PRICE_PER_INPUT_TOKEN_USD/..._OUTPUT_...) kalibriert
  *      gegen https://docs.claude.com/en/docs/about-claude/pricing — waren
@@ -135,9 +165,11 @@
  *      im 'latest'-Pointer — damit ist das Ergebnis genauso sichtbar wie
  *      ko-ai.js' complianceFlags, nur an der fuer diesen Batch-Pfad
  *      passenden Stelle (kein KV-Request-Log hier, aber der aiOutput
- *      selbst wird ohnehin bereits archiviert). Noch KEIN Live-Test (naechster
- *      GHA-Lauf bzw. FORCE_REGENERATE=true zeigt, ob der Fix in der Praxis
- *      greift).
+ *      selbst wird ohnehin bereits archiviert). [KORRIGIERT 22.09.2026,
+ *      s. v1.12: dieses Feld war zwar vorhanden, aber der Publish-Pfad
+ *      selbst pruefte es nicht ab — s. dortiger Fix.] Noch KEIN Live-Test
+ *      (naechster GHA-Lauf bzw. FORCE_REGENERATE=true zeigt, ob der Fix in
+ *      der Praxis greift).
  * v1.6 (20.09.2026, Claude + Axel): ATMNA-Explainability-Gap-Fix, Teil 2 —
  *      echte BB-/Tightness-Datenanbindung fuer den in ko-prompts.js
  *      v2.53.29 ("Deterministic Briefing Compliance") bereits vorbereiteten
@@ -328,7 +360,7 @@ async function fetchIndicatorRegistryVersion() {
 // verglichen — bei Abweichung LAUT warnen statt still zu veralten.
 // Netzwerkfehler beim Vergleich selbst dürfen den Hauptlauf nicht brechen
 // (§4-Grundsatz, wie bei fetchIndicatorRegistryVersion oben).
-const KO_MODULES_VENDOR_DRIFT_COMMIT = 'c4f7c93';  // Stand 20.09.2026 (v1.8, ATMNA-Explainability-Gap-Fix)
+const KO_MODULES_VENDOR_DRIFT_COMMIT = 'aa8521c';  // Stand 21.09.2026 (ko-prompts.js v2.53.30, LLM-Auswahl-Drift-Fix)
 const KO_MODULES_VENDOR_FILES = ['ko-prompts.js', 'ko-markov.js'];
 
 async function checkVendorDrift() {
@@ -1595,14 +1627,6 @@ const ANTHROPIC_MAX_TOKENS = 4096; // ERHOEHT 09.09.2026 nach echtem API-Test:
 // Ziel: Sichtbarkeit, bevor weiter optimiert wird — "welche UIQ-Funktion
 // kostet eigentlich Geld?". Owner-only, kein Public-Key.
 //
-// PREISE NOCH NICHT VERIFIZIERT (Claude kann Anthropic-Preisseiten in
-// dieser Sandbox nicht live prüfen) — bewusst als `null` belassen statt
-// eine möglicherweise falsche Zahl zu hinterlegen. estimated_cost_usd
-// bleibt dadurch `null`, bis Axel die beiden Konstanten unten gegen
-// https://docs.claude.com/en/docs/about-claude/pricing befüllt (Preis pro
-// Modell = ANTHROPIC_MODEL oben, "claude-sonnet-4-6"). token_input/
-// token_output sind ab dem ersten Lauf vollständig verlässlich, unabhängig
-// von den Preis-Konstanten.
 // GEAENDERT (v1.11, 21.09.2026, Backlog #1 — API-Kosten-Auswertung):
 // verifiziert gegen https://docs.claude.com/en/docs/about-claude/pricing
 // (21.09.2026). Dieses Skript nutzt durchgaengig NUR ein einziges Modell
@@ -1854,6 +1878,12 @@ function buildAiOutput(strategy, snapshot, apiResult, candidateSyms, promptVersi
     // Sonst "REPAIR-SUCCESS" | "REPAIR-FAILED:<fehlend>" | "REPAIR-ERROR:<meldung>"
     // — s. runStrategy() fuer die Erzeugung. Landet im Archiv UND im
     // 'latest'-Pointer, analog zu ko-ai.js' complianceFlags im /logs-Endpunkt.
+    // WICHTIG (v1.12, 22.09.2026): buildAiOutput() wird nach dem Fix in
+    // runStrategy() nur noch fuer Strategien aufgerufen, die entweder von
+    // Anfang an compliant waren ODER deren Repair tatsaechlich erfolgreich
+    // war (repairStatus ist dann null oder "REPAIR-SUCCESS") — der Fall
+    // "REPAIR-FAILED"/"REPAIR-ERROR" fuehrt jetzt zu einem fruehen return
+    // in runStrategy() und erreicht diese Funktion gar nicht mehr.
     repair_status: repairStatus || null,
   };
 }
@@ -2173,6 +2203,28 @@ async function runStrategy(strategy, masterData, snapshot, promptVersion) {
     // NEU (v1.10, 21.09.2026, LLM-Auswahl-Drift-Fix): top3Syms als
     // expectedTop3 an den Validator durchreichen — s. ko-prompts.js
     // v2.53.30 fuer den vollstaendigen Kontext des Live-Funds.
+    //
+    // KRITISCHER FIX (v1.12, 22.09.2026, PUBLISH-BUG): bis einschliesslich
+    // v1.11 wurde `apiResult = repairResult` VOR der Pruefung des
+    // repairCheck-Ergebnisses zugewiesen — sowohl bei REPAIR-FAILED
+    // (weiterhin nicht-konformer Text ersetzte den Original) als auch bei
+    // REPAIR-ERROR (der ORIGINALE, ebenfalls nicht-konforme Text blieb
+    // unveraendert in apiResult) lief die Funktion mit { ok: true, ... }
+    // durch und der Text landete unveraendert im Public Digest — das
+    // einzige sichtbare Signal (aiOutput.repair_status) wird von
+    // buildPublicDigest() NICHT in die oeffentlichen opportunities[]
+    // uebernommen, war also fuer einen Leser des Digest unsichtbar. Live
+    // beobachtet am 21.09.2026: vier von fuenf Options-Strategien liefen
+    // mit REPAIR-FAILED durch das Log, wurden aber als "✅ Top-3" geloggt
+    // und regulaer archiviert/veroeffentlicht.
+    // FIX: bei REPAIR-FAILED oder REPAIR-ERROR wird die Strategie jetzt
+    // als { ok: false, ... } zurueckgegeben — main()s bestehender Fehler-
+    // isolations-Mechanismus (jede Strategie unabhaengig, ein Fehlschlag
+    // blockiert nie die uebrigen) greift dadurch automatisch: kein Archiv-
+    // Write, kein Digest-Eintrag, kein 'latest'-Pointer fuer DIESE eine
+    // Strategie in DIESEM Lauf. Kein neues Konzept — nur die konsequente
+    // Anwendung des bereits ueberall sonst geltenden Prinzips auf einen
+    // bisher uebersehenen Fall.
     let repairStatus = null;
     if (isOptions && typeof KoPrompts.validateBriefingCompliance === 'function') {
       const complianceCheck = KoPrompts.validateBriefingCompliance(strategy, apiResult.text, { expectedTop3: top3Syms });
@@ -2185,20 +2237,23 @@ async function runStrategy(strategy, masterData, snapshot, promptVersion) {
           });
           if (repairResult.ok) {
             const repairCheck = KoPrompts.validateBriefingCompliance(strategy, repairResult.text, { expectedTop3: top3Syms });
-            apiResult = repairResult;
             if (repairCheck.status === 'PASS') {
+              apiResult = repairResult;
               repairStatus = 'REPAIR-SUCCESS';
             } else {
               repairStatus = `REPAIR-FAILED:${repairCheck.missing.join('+')}`;
-              console.warn(`  ⚠ ${strategy}: Repair fehlgeschlagen, fehlt weiterhin: ${repairCheck.missing.join(', ')}`);
+              console.warn(`  ⚠ ${strategy}: Repair fehlgeschlagen, fehlt weiterhin: ${repairCheck.missing.join(', ')} — Strategie wird NICHT veröffentlicht.`);
+              return { ok: false, strategy, error: `Compliance-Check nach Repair fehlgeschlagen: ${repairCheck.missing.join(', ')}`, repairStatus };
             }
           } else {
             repairStatus = `REPAIR-ERROR:${(repairResult.error && repairResult.error.message) || 'unbekannter Fehler'}`;
             console.error(`  ❌ ${strategy}: Repair-Call fehlgeschlagen:`, repairResult.error);
+            return { ok: false, strategy, error: `Repair-Call fehlgeschlagen: ${repairStatus}`, repairStatus };
           }
         } catch (repairErr) {
           repairStatus = `REPAIR-ERROR:${repairErr.message}`;
           console.error(`  ❌ ${strategy}: Repair-Call wirft Exception:`, repairErr.message);
+          return { ok: false, strategy, error: `Repair-Call wirft Exception: ${repairErr.message}`, repairStatus };
         }
       }
     }
