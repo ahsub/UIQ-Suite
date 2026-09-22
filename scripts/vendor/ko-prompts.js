@@ -1,6 +1,81 @@
 /**
  * ko-prompts.js — UnderlyingIQ Strategy Prompts Module
  * ══════════════════════════════════════════════════════════════════
+ *  Version: 2.54.0 (22.09.2026) — "CANDIDATE-SELECTION-INTEGRITY-
+ *  ANPASSUNG" (Reviewer-abgestimmter Folge-Fix zu generate_public_
+ *  recommendations.js v1.14, drei Antwortrunden mit Axel/Reviewer,
+ *  22.09.2026 — direkte Fortsetzung des LLM-Auswahl-Drift-Funds vom
+ *  20.09.2026, s. v2.53.30). NEUE ARCHITEKTURREGEL, wortwörtlich wie mit
+ *  dem Reviewer festgelegt und ab jetzt bindend für alle 15 Strategien:
+ *
+ *  "The LLM possesses no Candidate Selection Authority."
+ *  "Das LLM besitzt keine Candidate Selection Authority. Es darf
+ *  Kandidaten weder auswählen noch ersetzen, hinzufügen oder entfernen.
+ *  Die Kandidatenauswahl erfolgt ausschließlich deterministisch vor dem
+ *  Prompt-Aufruf."
+ *
+ *  HINTERGRUND: v2.53.30 (21.09.2026) hatte den MRK/CSCO-Auswahl-Drift-
+ *  Fund mit einem Safety-Net bekämpft — Top-10-Pool weiterhin sichtbar,
+ *  aber eine "VERBINDLICHE TOP-3"-Pflichtzeile + Validator dagegen. Der
+ *  aufrufende Client (generate_public_recommendations.js v1.14, selber
+ *  Tag) hat die Fehlerklasse jetzt stattdessen an der Wurzel beseitigt:
+ *  ein neues, vorgeschaltetes Eligibility-Gate (earningsDTE-Ausschluss,
+ *  konfigurierbar) plus eine Vier-Stufen-Kandidatenarchitektur (PRIMARY
+ *  vollständig archiviert → ELIGIBLE POOL → SECONDARY, max. 3, EINZIGES
+ *  was die KI sieht → RESERVE Rang 4-5, NIEMALS an die KI) sorgen dafür,
+ *  dass ab jetzt für ALLE 15 Strategien (nicht nur die fünf Options-
+ *  Strategien) kein größerer, sichtbarer Kandidatenpool mehr existiert,
+ *  aus dem substituiert werden könnte — der Top-10/Top-25-Pool, den das
+ *  Modell bisher sah, entfällt komplett zugunsten der bereits final
+ *  feststehenden Secondary-Liste.
+ *
+ *  DREI ÄNDERUNGEN IN DIESER VERSION, direkte Folge dieser neuen
+ *  Realität — der bisherige v2.53.30-Text ging noch von einem sichtbaren
+ *  größeren Pool aus (Top-10, aus dem "nicht ersetzt" werden durfte) und
+ *  ist damit strukturell veraltet, nicht falsch, aber irreführend, wenn
+ *  unverändert belassen:
+ *  (1) Abschnitt 3 (scan-Modus, _publicNinePointPrompt()): die bisherige
+ *  Auswahl-Formulierung ("Welche bis zu 3 Titel weisen die höchste
+ *  Kriterien-Übereinstimmung ... auf?") impliziert eine Auswahlentschei-
+ *  dung der KI aus einem größeren Pool — ERSETZT durch eine rein
+ *  deklarative Formulierung ("Die folgenden, bereits deterministisch
+ *  feststehenden Titel sind ..."), die keine Auswahlbefugnis mehr
+ *  suggeriert. Der bisherige "Titel, die die Kriterien NICHT erfüllen"-
+ *  Absatz samt der zugehörigen "alle übrigen Titel erfüllen die
+ *  Kriterien ebenfalls"-Warnung ENTFÄLLT ERSATZLOS — beide setzten einen
+ *  sichtbaren größeren Pool voraus, aus dem nicht-qualifizierende Titel
+ *  hätten berichtet werden können; dieser Pool existiert nicht mehr,
+ *  jeder sichtbare Kandidat ist per Konstruktion bereits eligible und in
+ *  der Secondary-Liste. Diese Streichung war bereits vor dem heutigen
+ *  Dreiergespräch als Option (a) benannt worden ("Ausschluss-Absatz
+ *  ersatzlos streichen — einfachste Lösung, kleinster Informations-
+ *  verlust") und wird durch die jetzt umgesetzte Architektur automatisch
+ *  zur einzig konsistenten Wahl, nicht mehr nur zur einfachsten.
+ *  (2) Abschnitt 3 (holding_review-Modus, Collar): dieselbe Anpassung —
+ *  der "Titel, für die die Modellkriterien AKTUELL KEINEN Absicherungs-
+ *  Hinweis liefern"-Absatz entfällt aus demselben Grund.
+ *  (3) _deterministicOptionsFactBlock(): die "VERBINDLICHE TOP-3-
+ *  KANDIDATEN"-Pflichtzeile bleibt als Verteidigung in der Tiefe
+ *  bestehen (Reviewer-Vorgabe: der Validator behält seine Rolle, prüft
+ *  aber jetzt primär Ticker-Scope-Treue statt Auswahl-Korrektheit) —
+ *  Wortlaut vereinfacht, da der Satzteil "NICHT durch andere Kandidaten
+ *  aus der Titelliste ersetzen" nicht mehr zutrifft: es gibt keine
+ *  größere Titelliste mehr, aus der ersetzt werden könnte, die KI sieht
+ *  ausschließlich genau diese Kandidaten.
+ *  SCOPE: alle 15 Strategien (Candidate Selection Integrity ist eine
+ *  UIQ-Architekturregel, keine ATM/NA-Sonderregel — Reviewer-Formulierung,
+ *  von Axel bestätigt). Betrifft NUR Abschnitt 3 und den deterministischen
+ *  Faktor-Block; alle übrigen REASONING-GUARDRAILS (a-i), die TICKER-
+ *  SCOPE-SPERRE (Regel f, Abschnitt 4-9) und die SCHLUSS-SELBSTPRÜFUNG
+ *  bleiben unverändert in Kraft — sie schützen weiterhin davor, dass das
+ *  Modell Ticker außerhalb der (jetzt kleineren) Secondary-Liste erwähnt,
+ *  unabhängig davon, wie groß der ursprünglich nicht mehr sichtbare Pool
+ *  war. Noch KEIN Live-Test — nächster sinnvoller Test: ein Lauf mit
+ *  USE_BATCH_API und aktivem Eligibility-Gate, um zu prüfen, ob die neue
+ *  Abschnitt-3-Formulierung beim Modell tatsächlich als "hier gibt es
+ *  nichts mehr zu entscheiden" ankommt statt nur als kürzere Auswahl-
+ *  Aufgabe.
+ *
  *  Version: 2.53.30 (21.09.2026) — "LLM-AUSWAHL-DRIFT-FIX":
  *  Live-Fund 20.09.2026 (zweifach reproduziert bei atmna, per Diagnose-
  *  Logging in generate_public_recommendations.js v1.9 bewiesen): top3Syms
@@ -3172,19 +3247,31 @@ Das bedeutet konkret:
     // Abschnitt 3 eigenmaechtig einen der drei Kandidaten (MRK) durch einen
     // anderen aus der Top-10-Liste (CSCO) — inkl. aktiver Begruendung,
     // warum der ersetzte Kandidat angeblich NICHT die Kriterien erfuellt.
-    // Architekturprinzip ab jetzt fest verankert: die Score-Engine hat die
-    // Kandidaten bereits ausgewaehlt, das Modell hat KEINE Entscheidungs-
-    // rolle mehr dabei, nur noch eine Erklaerungsrolle. Gilt fuer ALLE
-    // fuenf Options-Strategien (nicht nur atmna, wo der Fund auftrat) —
-    // dieselbe freie Abschnitt-3-Formulierung ("Welche bis zu 3 Titel...")
-    // gilt fuer alle fuenf gleichermassen.
+    // ANGEPASST (v2.54.0, 22.09.2026, Candidate-Selection-Integrity): der
+    // urspruengliche v2.53.30-Wortlaut ("NICHT durch andere Kandidaten aus
+    // der Titelliste ersetzen") ging noch von einem sichtbaren groesseren
+    // Pool aus (Top-10), aus dem substituiert werden konnte — dieser Pool
+    // existiert seit generate_public_recommendations.js v1.14 nicht mehr,
+    // die KI sieht ausschliesslich die hier genannten Kandidaten, keinen
+    // groesseren Kontext. Die Pflichtzeile bleibt trotzdem bestehen
+    // (Reviewer-Vorgabe: Verteidigung in der Tiefe, falls durch einen noch
+    // unbekannten Bug doch ein groesserer Kontext durchsickert, PLUS
+    // Grundlage fuer den Ticker-Scope-Teil des Validators) — Wortlaut auf
+    // die neue Realitaet vereinfacht: keine Ersetzungs-Sperre mehr (es
+    // gibt nichts, wogegen ersetzt werden koennte), sondern eine reine
+    // Bestaetigungs-Pflicht (exakt diese Ticker verwenden, keine anderen
+    // erwaehnen). "Das LLM besitzt keine Candidate Selection Authority" —
+    // s. Changelog-Eintrag v2.54.0 oben fuer den vollen Kontext.
     lines.push(
-      '- VERBINDLICHE TOP-3-KANDIDATEN FÜR ABSCHNITT 3 (bereits durch die ' +
-      'UIQ-Kandidatenlogik/Score-Rang bestimmt, NICHT neu auswählen, ' +
-      'NICHT durch andere Kandidaten aus der Titelliste ersetzen, auch ' +
-      'wenn ein anderer Kandidat auf den ersten Blick besser zu den ' +
-      'Kriterien zu passen scheint — die Auswahl ist bereits abgeschlossen, ' +
-      'diese Antwort erklärt sie, ersetzt sie aber nicht): ' +
+      '- VERBINDLICHE KANDIDATEN FÜR ABSCHNITT 3 (die einzigen Titel, die ' +
+      'dieser Prompt überhaupt enthält — bereits vollständig deterministisch ' +
+      'durch die UIQ-Score-/Eligibility-Logik bestimmt, bevor dieser Prompt ' +
+      'gebaut wurde. Das LLM besitzt keine Candidate Selection Authority: ' +
+      'es darf diese Kandidaten weder ersetzen noch ergänzen noch einen ' +
+      'davon als "erfüllt die Kriterien nicht" ausschließen — es gibt ' +
+      'keinen größeren Kandidatenpool im Hintergrund, gegen den ersetzt ' +
+      'werden könnte. Diese Antwort erklärt die Auswahl, sie trifft sie ' +
+      'nicht): ' +
       ((o && Array.isArray(o.top3Syms) && o.top3Syms.length)
         ? o.top3Syms.join(', ')
         : 'NICHT VERFÜGBAR (im aktuellen Datenkontext für diesen Lauf ' +
@@ -3778,6 +3865,13 @@ Das bedeutet konkret:
         + 'Kriterienlage grundsätzlich geeignet, um bestehende Positionen '
         + 'auf Absicherungsbedarf zu prüfen? (2-3 Sätze, KEINE Aussage über '
         + 'tatsächlich gehaltene Positionen, rein hypothetisch)\n';
+      // UMGEBAUT (v2.54.0, 22.09.2026, Candidate-Selection-Integrity):
+      // dieselbe Anpassung wie im scan-Zweig — "für welche bis zu 3 Titel
+      // ... liefern die Modellkriterien einen Hinweis" impliziert eine
+      // Auswahlentscheidung der KI aus einem größeren Pool, den es seit
+      // generate_public_recommendations.js v1.14 nicht mehr gibt. Der
+      // "Titel, für die AKTUELL KEINEN Absicherungs-Hinweis liefern"-Absatz
+      // entfällt ersatzlos aus demselben Grund (s. Changelog v2.54.0 oben).
       abschnitt3 = '3. TITEL MIT MODELLBASIERTEM ABSICHERUNGS-HINWEIS: '
         + '(niemals "Kandidaten", "Top-Kandidaten", "Ranking" oder ähnliche '
         + 'Ranking-Wörter in der Überschrift — hier wird keine Kaufgelegenheit '
@@ -3789,20 +3883,18 @@ Das bedeutet konkret:
         + 'darüber dar, dass eine Position verkauft oder abgesichert werden '
         + 'sollte. Er beschreibt ausschließlich eine vom Modell erkannte '
         + 'Konstellation, bei der eine bestehende Position hinsichtlich ihres '
-        + 'individuellen Downside-Risikos überprüft werden kann." Für welche '
-        + 'bis zu 3 Titel aus dem Universum liefern die Modellkriterien einen '
-        + 'Hinweis, eine — falls gehaltene — Position hinsichtlich Absicherung '
-        + 'zu überprüfen? Die Titel NIEMALS als bloße Aufzählung nennen (z.B. '
-        + '"LMT / PH / NUE") — das erzeugt allein durch die Listenform einen '
-        + 'Ranking-Eindruck, auch ohne Ranking-Wörter. Stattdessen in einen '
-        + 'Satzrahmen einbetten, PFLICHT-FORMULIERUNG sinngemäß: "Folgende '
-        + 'Titel erfüllen die definierten Modellkriterien für eine '
-        + 'Absicherungsüberprüfung (Reihenfolge ohne Wertung): [Titel 1], '
-        + '[Titel 2], [Titel 3]." Danach in einem kurzen Absatz: Titel, für '
-        + 'die die Modellkriterien AKTUELL KEINEN Absicherungs-Hinweis '
-        + 'liefern, formuliert als "erfüllt die Kriterien für eine '
-        + 'Absicherungsüberprüfung nicht" — NIEMALS als "ist für dich nicht '
-        + 'geeignet" und NIEMALS als "Ausschluss".\n';
+        + 'individuellen Downside-Risikos überprüft werden kann." Die '
+        + 'folgenden, bereits deterministisch feststehenden Titel (Auswahl '
+        + 'bereits VOR diesem Prompt abgeschlossen — das LLM besitzt keine '
+        + 'Candidate Selection Authority) liefern laut Modellkriterien einen '
+        + 'Hinweis, eine — falls gehaltene — Position hinsichtlich '
+        + 'Absicherung zu überprüfen. Die Titel NIEMALS als bloße Aufzählung '
+        + 'nennen (z.B. "LMT / PH / NUE") — das erzeugt allein durch die '
+        + 'Listenform einen Ranking-Eindruck, auch ohne Ranking-Wörter. '
+        + 'Stattdessen in einen Satzrahmen einbetten, PFLICHT-FORMULIERUNG '
+        + 'sinngemäß: "Folgende Titel erfüllen die definierten '
+        + 'Modellkriterien für eine Absicherungsüberprüfung (Reihenfolge '
+        + 'ohne Wertung): [Titel 1], [Titel 2], [Titel 3]."\n';
     } else {
       abschnitt2 = '2. STRATEGY FIT: ' + o.marktumfeldFrage + ' (2-3 Sätze, '
         + 'direkt auf die in Abschnitt 1 genannte Marktlage bezogen, '
@@ -3824,34 +3916,38 @@ Das bedeutet konkret:
         + 'niveau auf die strukturelle Prämienbasis aus — unabhängig vom '
         + 'reinen Gate-Status). Datenbasiert, als Modellsignal formuliert, '
         + 'nicht als Tatsachenbehauptung.)\n';
+      // UMGEBAUT (v2.54.0, 22.09.2026, Candidate-Selection-Integrity): der
+      // bisherige Wortlaut ("Welche bis zu 3 Titel weisen die höchste
+      // Kriterien-Übereinstimmung ... auf?") impliziert eine Auswahl-
+      // entscheidung der KI aus einem größeren Pool — seit generate_public_
+      // recommendations.js v1.14 sieht die KI aber ausschließlich die
+      // bereits final feststehende Secondary-Liste (max. 3, deterministisch
+      // vorgefiltert), keinen größeren Kontext mehr. Formulierung deshalb
+      // von einer Auswahlfrage auf eine deklarative Feststellung
+      // umgestellt. Der bisherige "Titel, die die Kriterien NICHT
+      // erfüllen"-Absatz samt "alle übrigen Titel erfüllen die Kriterien
+      // ebenfalls"-Warnung ENTFÄLLT ERSATZLOS (s. Changelog v2.54.0 oben)
+      // — beide setzten einen sichtbaren größeren Pool voraus, den es
+      // nicht mehr gibt.
       abschnitt3 = '3. Überschrift EXAKT "HÖCHSTE ' + o.stratName.toUpperCase() + ' STRATEGY-FITS" '
         + '(niemals "Kandidaten", "Top-Kandidaten" oder ähnliche Ranking-Wörter '
-        + 'in der Überschrift). Welche bis zu 3 Titel weisen die höchste '
-        + 'Kriterien-Übereinstimmung mit ' + o.stratName + ' auf? Die Titel '
-        + 'NIEMALS als bloße Aufzählung nennen — stattdessen in einen '
-        + 'Satzrahmen einbetten, PFLICHT-FORMULIERUNG sinngemäß: "Folgende '
-        + 'Titel weisen im betrachteten Snapshot den höchsten Strategy Fit '
-        + 'auf (Rangfolge gemäß UIQ-Kriterien-Score, keine Anlageempfehlung): '
-        + '[Titel 1], [Titel 2], [Titel 3]." NIEMALS "Reihenfolge ohne '
-        + 'Wertung" hier verwenden (korrigierter Fund 03.09.2026 — im '
-        + 'Gegensatz zum holding_review-Zweig liegt hier tatsächlich eine '
-        + 'kriterienbasierte Rangfolge vor; sie neutral zu behaupten wäre '
-        + 'weniger transparent, nicht mehr — stattdessen wird die Rangfolge '
-        + 'offen benannt UND ihre Quelle attribuiert).\n'
-        + 'Danach in einem kurzen Absatz: Titel, die die Kriterien für ' + o.stratName
-        + ' NICHT erfüllen, formuliert als "erfüllt die Kriterien nicht" — '
-        + 'NIEMALS als "ist für dich nicht geeignet" und NIEMALS als '
-        + '"Ausschluss". WICHTIG (belegter Fund 04.09.2026, Momentum-Live-'
-        + 'Test — Reviewer-Feedback): NIEMALS pauschal behaupten, "alle '
-        + 'übrigen Titel erfüllen die Kriterien ebenfalls" oder sinngemäß '
-        + '"unterscheiden sich nicht in der Kriterien-Stärke", wenn die in '
-        + 'Abschnitt 3 genannten Top-Titel tatsächlich die höchsten Scores '
-        + 'im Snapshot aufweisen — das verwässert den eigentlichen '
-        + 'Strategy-Fit-Gedanken. Stattdessen klar zwischen "erfüllt die '
-        + 'Mindestkriterien" (qualifiziert) und "zeigt die stärkste '
-        + 'Kriterien-Übereinstimmung" (Top-Fit) unterscheiden — beide Ebenen '
-        + 'nicht gleichsetzen, auch wenn mehrere Titel denselben Score-Wert '
-        + 'teilen.'
+        + 'in der Überschrift). Die folgenden, bereits deterministisch '
+        + 'feststehenden Titel (Auswahl bereits VOR diesem Prompt '
+        + 'abgeschlossen, s. VERBINDLICHE KANDIDATEN oben bzw. die '
+        + 'mitgelieferte Titelliste) weisen die höchste Kriterien-'
+        + 'Übereinstimmung mit ' + o.stratName + ' im aktuellen Snapshot auf '
+        + '— erkläre für jeden Titel, WELCHE Kriterien in welchem Grad '
+        + 'erfüllt sind. Die Titel NIEMALS als bloße Aufzählung nennen — '
+        + 'stattdessen in einen Satzrahmen einbetten, PFLICHT-FORMULIERUNG '
+        + 'sinngemäß: "Folgende Titel weisen im betrachteten Snapshot den '
+        + 'höchsten Strategy Fit auf (Rangfolge gemäß UIQ-Kriterien-Score, '
+        + 'keine Anlageempfehlung): [Titel 1], [Titel 2], [Titel 3]." '
+        + 'NIEMALS "Reihenfolge ohne Wertung" hier verwenden (korrigierter '
+        + 'Fund 03.09.2026 — im Gegensatz zum holding_review-Zweig liegt '
+        + 'hier tatsächlich eine kriterienbasierte Rangfolge vor; sie '
+        + 'neutral zu behaupten wäre weniger transparent, nicht mehr — '
+        + 'stattdessen wird die Rangfolge offen benannt UND ihre Quelle '
+        + 'attribuiert).'
                 + (istOptions
             ? (' PFLICHT-ZUSATZ OPTION-VALIDIERUNGSSTATUS (v2.53.29, '
                + 'Deterministic Briefing Compliance — ERSETZT die bisherige '
@@ -3868,20 +3964,20 @@ Das bedeutet konkret:
                + 'Diesen Satz NIEMALS weglassen, auch nicht wenn er wie eine '
                + 'Wiederholung des STRATEGIEPRINZIP-Absatzes wirkt — er bezieht '
                + 'sich explizit auf DIESEN Bewertungsschritt.'
-               + ' PFLICHT: VERBINDLICHE TOP-3-KANDIDATEN (v2.53.30, LLM-'
-               + 'Auswahl-Drift-Fix — Live-Fund 20.09.2026, zweifach '
-               + 'reproduziert): die in dieser Titelliste zu nennenden bis '
-               + 'zu drei Ticker sind bereits unter "VERPFLICHTENDE '
-               + 'FAKTORENPRÜFUNG" oben als "VERBINDLICHE TOP-3-KANDIDATEN '
-               + 'FÜR ABSCHNITT 3" vorgegeben — verwende in DIESEM Abschnitt '
-               + 'GENAU diese Ticker (beliebige Reihenfolge erlaubt) und '
-               + 'ersetze KEINEN davon durch einen anderen Kandidaten aus '
-               + 'der Titelliste, selbst wenn ein anderer Kandidat auf den '
-               + 'ersten Blick besser zu den Kriterien zu passen scheint. '
-               + 'Die Kandidatenauswahl selbst wurde bereits durch die UIQ-'
-               + 'Score-Logik getroffen — diese Antwort darf sie erläutern, '
-               + 'aber NICHT neu vornehmen oder einen der vorgegebenen '
-               + 'Kandidaten als "erfüllt die Kriterien nicht" ausschließen.')
+               + ' PFLICHT: VERBINDLICHE KANDIDATEN (v2.54.0, Candidate-'
+               + 'Selection-Integrity — Fortsetzung des LLM-Auswahl-Drift-'
+               + 'Funds vom 20.09.2026): die in dieser Titelliste zu '
+               + 'nennenden Ticker sind bereits unter "VERPFLICHTENDE '
+               + 'FAKTORENPRÜFUNG" oben als "VERBINDLICHE KANDIDATEN FÜR '
+               + 'ABSCHNITT 3" vorgegeben — verwende in DIESEM Abschnitt '
+               + 'GENAU diese Ticker (beliebige Reihenfolge erlaubt). Das '
+               + 'LLM besitzt keine Candidate Selection Authority: es darf '
+               + 'keinen der vorgegebenen Kandidaten als "erfüllt die '
+               + 'Kriterien nicht" ausschließen und keinen weiteren Ticker '
+               + 'ergänzen — die Kandidatenauswahl wurde bereits vollständig '
+               + 'durch die UIQ-Score-/Eligibility-Logik getroffen, bevor '
+               + 'dieser Prompt gebaut wurde; diese Antwort erklärt sie, '
+               + 'trifft sie nicht neu.')
             : '')
         + (o.kriterienDifferenzierungText ? ' ' + o.kriterienDifferenzierungText : '')
         + '\n';
@@ -6725,7 +6821,7 @@ Das ist der eigentliche Mehrwert des EIC-Modus.
 
   // ── PUBLIC API ─────────────────────────────────────────────────────────────
   const KoPrompts = {
-    VERSION: '2.53.30',
+    VERSION: '2.54.0',
 
     STRATEGIES,
     KI_ANTI_HALLUZINATION,
