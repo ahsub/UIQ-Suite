@@ -18,9 +18,191 @@
  * um den Diff auf den Trading-Day-Skip-Check zu beschränken.]
  * ====================================================================
  *
- * Skript-Version: v1.12
+ * Skript-Version: v1.14
  *
  * CHANGELOG (neueste zuerst):
+ * v1.14 (22.09.2026, Claude + Axel + Reviewer, Candidate-Selection-
+ *      Integrity-Refactoring — Ergebnis der Diskussion nach dem ATMNA-
+ *      Auswahl-Drift-Fund vom 20.09.2026): grundlegende Architektur-
+ *      aenderung der Kandidatenauswahl, mit Reviewer abgestimmt (drei
+ *      Antwortrunden, 22.09.2026). NEUE ARCHITEKTURREGEL, wortwoertlich
+ *      wie mit dem Reviewer festgelegt:
+ *
+ *      "The LLM possesses no Candidate Selection Authority."
+ *      "Das LLM besitzt keine Candidate Selection Authority. Es darf
+ *      Kandidaten weder auswaehlen noch ersetzen, hinzufuegen oder
+ *      entfernen. Die Kandidatenauswahl erfolgt ausschliesslich
+ *      deterministisch vor dem Prompt-Aufruf."
+ *
+ *      HINTERGRUND: der bisherige v2.53.30/v1.10-Mechanismus (KI sieht
+ *      Top-10, bekommt eine "VERBINDLICHE TOP-3"-Pflichtzeile, Validator
+ *      prueft expectedTop3, Repair bei Abweichung) war ein Safety-Net GEGEN
+ *      ein strukturelles Problem — die KI konnte die Substitution ueberhaupt
+ *      erst versuchen, weil sie die Top-10 sah. Diese Version beseitigt die
+ *      Fehlerklasse an der Wurzel: die KI sieht nur noch genau die Kandidaten,
+ *      die tatsaechlich in der Public-Empfehlung landen sollen — keinen
+ *      groesseren Pool, aus dem substituiert werden koennte.
+ *
+ *      NEUE VIER-STUFEN-KANDIDATENARCHITEKTUR (ersetzt die bisherige
+ *      zweistufige top25/top10-Logik in selectCandidates()/
+ *      selectOptionsCandidates()):
+ *      1. PRIMARY — vollstaendige, score-sortierte Rangliste je Strategie
+ *         (bei Equity: das komplette masterData.leaderboards[key]-Array,
+ *         normalisiert und mit Value-/Fundamental-/IOS-Quellen gemergt wie
+ *         bisher; bei Options: die rohen Leaderboard-Zeilen unveraendert).
+ *         KEINE willkuerliche Kappung mehr auf 25 — die Primaerliste ist
+ *         so vollstaendig, wie der Aggregator sie liefert, und wird
+ *         unveraendert archiviert (s. Punkt 4 unten). NUR im Fallback-Zweig
+ *         (leaderboards fehlt/leer, seltener Ausnahmefall) bleibt eine
+ *         Kappung bei 50 bestehen, um eine versehentliche Archivierung des
+ *         kompletten ~700-Ticker-Universums zu vermeiden.
+ *      2. ELIGIBILITY GATE — deterministischer, NICHT score-basierter
+ *         Filter auf der Primaerliste: aktuell ein einziges Kriterium,
+ *         earningsDTE < ELIGIBILITY_CONFIG.earningsExclusionDays (Default 7
+ *         Kalendertage) -> ausgeschlossen. Bewusst KEIN Score-/Kriterien-
+ *         Ersatz (kein zweites RSI/IVP/Dist200-Gate) — das waere eine
+ *         verdeckte zweite Score-Engine, keine Eligibility-Regel (Reviewer-
+ *         Einwand, uebernommen). earningsDTE wird NICHT aus den strategie-
+ *         eigenen Kandidatenfeldern gelesen (Options-Leaderboard-Zeilen
+ *         haben dieses Feld gar nicht, s. Kommentar bei normalizeTicker()),
+ *         sondern einheitlich aus einem separaten, aus masterData.tickers[]
+ *         gebauten Symbol->earningsDTE-Lookup (buildEarningsLookup()) — ein
+ *         einziger, strategieunabhaengiger Datenpfad fuer alle 15
+ *         Strategien. ELIGIBILITY_CONFIG.earningsExclusionDays ist ein
+ *         operativer Eligibility-Parameter, KEINE empirisch validierte
+ *         Prognosegrenze (Reviewer-Formulierung, uebernommen) — spaeter frei
+ *         kalibrierbar, ohne die Architektur zu aendern.
+ *      3. ELIGIBLE POOL -> SECONDARY (max. 3, NICHT zwanghaft genau 3 — s.
+ *         Reviewer-Korrektur: bleiben nach dem Gate nur 1-2 Kandidaten
+ *         uebrig, werden genau diese verwendet, niemals ein ausgeschlossener
+ *         Kandidat nachgezogen) und RESERVE (Rank 4-5 aus dem Eligible Pool)
+ *         — RESERVE WIRD NIEMALS AN DIE KI UEBERGEBEN, nur archiviert (Audit-
+ *         /Backtest-/spaetere-Fallback-Zwecke, s. Punkt 4). Die KI (Prompt-
+ *         Bau in buildPromptForStrategy()/buildOptionsPromptForStrategy())
+ *         sieht ab dieser Version AUSSCHLIESSLICH die Secondary-Liste — dort,
+ *         wo bisher `top10` (bis zu 10 Kandidaten) in die Ticker-Listen-
+ *         Formatierung und den Prompt floss, fliesst jetzt `secondary` (bis
+ *         zu 3) hinein. `top3Syms` (Name aus Kompatibilitaetsgruenden
+ *         beibehalten — ko-prompts.js erwartet weiterhin ctx.top3Syms) ist
+ *         ab jetzt IMMER exakt die Symbole der Secondary-Liste, nicht mehr
+ *         eine separate "Top-3-aus-Top-10"-Auswahl.
+ *      4. ARCHIVIERUNG — neuer Archiv-Key je Strategie/Tag,
+ *         archive/recommendations/{date}/{strategy}_candidate_pool.json,
+ *         mit dem vollstaendigen Entscheidungsweg (primary, eligible,
+ *         secondary, reserve, selectionMethod, eligibilityExclusions —
+ *         jeweils schlank serialisiert: Rang/Symbol/Score/Grade, nicht die
+ *         vollen Kandidatenobjekte). Wird geschrieben, SOBALD die Kandidaten-
+ *         auswahl steht (buildStrategyRequest() erfolgreich), UNABHAENGIG
+ *         vom Ausgang des anschliessenden Anthropic-Calls — damit bleibt
+ *         auch bei einem spaeter fehlgeschlagenen/uebersprungenen Call
+ *         nachvollziehbar, welche Kandidaten zur Auswahl standen und warum
+ *         (eligibilityExclusions ist strukturiert, maschinenlesbar:
+ *         { sym, reason: "EARNINGS_TOO_CLOSE", earningsDTE, thresholdDays,
+ *         primaryRank }).
+ *
+ *      SCOPE (Reviewer-Entscheidung, uebernommen): ALLE 15 Strategien, nicht
+ *      nur die fuenf Options-Strategien, in denen der urspruengliche Fund
+ *      auftrat — "Candidate Selection Integrity ist eine Architekturregel
+ *      von UIQ, keine ATM/NA-Sonderregel." Die bestehende Strategieauswahl
+ *      selbst (Score-Berechnung, Leaderboard-Sortierung in
+ *      market_aggregator.py) bleibt UNVERAENDERT — das Eligibility Gate
+ *      sitzt als zusaetzliche Schicht NACH der bestehenden Sortierung,
+ *      VOR der Prompt-Erzeugung.
+ *
+ *      NICHT TEIL DIESER VERSION (bewusst zurueckgestellt, Reviewer-Fall-B-
+ *      Unterscheidung): eine Nachsteuerung, falls ein Ausschlussgrund ERST
+ *      NACH der Generierung bekannt wird (z.B. eine Earnings-Ueberraschung
+ *      am selben Tag) — das ist eine eigene, spaetere Architekturfrage
+ *      (Fallback-/Neuberechnungs-/Verwerfungs-Mechanik), kein Teil der
+ *      Secondary-List-Architektur selbst.
+ *
+ *      OFFENER FOLGE-SCHRITT (naechster Commit, noch NICHT Teil dieser
+ *      Version): ko-prompts.js muss entsprechend angepasst werden — die
+ *      bestehende Abschnitt-3-Instruktion ("GERINGER STRATEGY FIT NACH
+ *      MODELLKRITERIEN"/Beobachtungsliste fuer nicht-qualifizierende
+ *      Kandidaten aus einem groesseren sichtbaren Pool) ist mit dieser
+ *      Aenderung STRUKTURELL VERALTET — es gibt ab jetzt keinen sichtbaren
+ *      groesseren Pool mehr, aus dem "nicht qualifizierende" Kandidaten
+ *      berichtet werden koennten (jeder sichtbare Kandidat ist per
+ *      Definition bereits eligible und in der Secondary-Liste). Bis dieser
+ *      Folge-Schritt umgesetzt ist, bleibt der bestehende ko-prompts.js-
+ *      Text technisch lauffaehig (die Instruktion wird schlicht folgenlos,
+ *      da kein auszuschliessender Kandidat mehr im Kontext steht), ist aber
+ *      inhaltlich nicht mehr korrekt beschrieben — NICHT fuer den
+ *      Produktivbetrieb deployen, bevor dieser Folge-Schritt erledigt ist.
+ * v1.13 (22.09.2026, Claude + Axel, Backlog #27, Stufe 1+2): Anthropic
+ *      Message Batches API als paralleler, per USE_BATCH_API=true
+ *      zuschaltbarer Codepfad — Reaktion auf den 21.09.2026-Fund (#1 API-
+ *      Kosten-Auswertung), dass der naechtliche Public-Digest-Lauf mit
+ *      ~$68/Monat der dominierende Kostentreiber ist, sowie den Job-
+ *      Timeout-Abbruch desselben Tages (s. market-aggregator.yml v1.4) —
+ *      15 sequenzielle synchrone Calls plus bis zu vier Repair-Calls sind
+ *      strukturell sowohl teuer (kein Batch-Rabatt) als auch langsam
+ *      (Job-Zeitbudget). Anthropic Message Batches API bietet 50% Rabatt
+ *      auf Input+Output bei asynchroner Verarbeitung (bis zu 24h Fenster,
+ *      i.d.R. deutlich schneller) — passt strukturell zum ohnehin
+ *      naechtlichen, nicht zeitkritischen Digest-Lauf.
+ *      ARCHITEKTUR (Axel-Vorgabe, "erst Batch fuer Erstversuch, Repair
+ *      bleibt synchron wie bisher" — Option (a) von drei besprochenen):
+ *      runStrategy() in zwei Teile zerlegt, OHNE dessen Verhalten zu
+ *      aendern: buildStrategyRequest() (Kandidatenauswahl + Prompt-Bau,
+ *      identisch zum bisherigen Anfang von runStrategy()) und
+ *      finalizeStrategyResult() (Repair-Loop + Ledger-/Output-Bau,
+ *      identisch zum bisherigen Ende von runStrategy(), INKLUSIVE des
+ *      v1.12-Publish-Bug-Fixes — der Fix gilt dadurch automatisch auch
+ *      fuer den Batch-Pfad, ohne Duplikation). runStrategy() selbst bleibt
+ *      als duenner synchroner Wrapper bestehen (buildStrategyRequest ->
+ *      callAnthropicWithRetry -> finalizeStrategyResult) — der bestehende
+ *      Sync-Pfad ist dadurch NICHT veraendert, nur umgezogen.
+ *      NEU: createMessageBatch()/pollBatchUntilEnded()/fetchBatchResults()/
+ *      parseBatchResultsJsonl() (Baustein 18b) — direkter REST-Aufruf
+ *      gegen POST/GET https://api.anthropic.com/v1/messages/batches,
+ *      Endpoint-Schema am 22.09.2026 live gegen die aktuelle Anthropic-
+ *      Dokumentation verifiziert (nicht aus Trainingswissen uebernommen):
+ *      Request-Body {requests:[{custom_id, params:{model,max_tokens,
+ *      messages}}]}, Response traegt processing_status ("in_progress" bei
+ *      Erstellung, "ended" nach Abschluss) und nach Abschluss results_url;
+ *      Ergebnis-Zeilen dort im Format {custom_id, result:{type:
+ *      "succeeded"|"errored"|"expired"|"canceled", message:{...}}}. Kein
+ *      anthropic-beta-Header noetig fuer den Grundfall (Batches API ist
+ *      GA, der in ihrer Retrieve-Doku gezeigte Beta-Header ist Legacy/
+ *      optional fuer Zusatzfeatures wie erweiterten Output, hier nicht
+ *      benoetigt). NEU: runAllStrategiesBatch() (Baustein 18c) — baut alle
+ *      15 Requests via buildStrategyRequest(), reicht sie als EINEN Batch
+ *      ein, pollt bis "ended" (Timeout POLL_TIMEOUT_MS, Default 20min —
+ *      bei Ueberschreitung werden die betroffenen Strategien als
+ *      { ok:false } markiert, KEIN Fallback auf synchronen Einzelaufruf in
+ *      dieser Ausbaustufe, s. Scope-Entscheidung unten), mapped Ergebnisse
+ *      per custom_id (Format "public_{strategy}") zurueck, ruft fuer jede
+ *      erfolgreiche Antwort finalizeStrategyResult() auf — DIESELBE
+ *      Repair-/Ledger-/Output-Logik wie im Sync-Pfad, kein zweiter,
+ *      abweichender Codepfad dafuer. Truncation (stop_reason==="max_tokens")
+ *      wird im Batch-Pfad NICHT automatisch retried (die Batches API hat
+ *      keinen Truncation-Retry-Mechanismus wie callAnthropicWithRetry() im
+ *      Sync-Pfad) — eine abgeschnittene Batch-Antwort wird als { ok:false }
+ *      behandelt, faellt also fuer den betreffenden Tag aus (Fehler-
+ *      isolation greift, blockiert nicht die uebrigen Strategien).
+ *      SCOPE-ENTSCHEIDUNG (Option (a), Axel bestaetigt 22.09.2026): Repair
+ *      bleibt in DIESER Ausbaustufe vollstaendig synchron (finalize
+ *      StrategyResult() ruft bei Compliance-FAIL weiterhin
+ *      callAnthropicWithRetry() fuer den Repair-Prompt auf, exakt wie im
+ *      Sync-Pfad) — kein zweiter Batch nur fuer Repairs (Option (b)), kein
+ *      Repair-Verzicht im Batch-Modus (Option (c)). Begruendung: der
+ *      groesste Kosten-/Zeitgewinn kommt ohnehin aus dem Erstversuch (15
+ *      von potenziell bis zu 19 Calls), zusaetzliche Batch-Komplexitaet
+ *      fuer ggf. nur 1-4 Repair-Strategien lohnt den Mehraufwand in dieser
+ *      Stufe nicht. recordBudgetEntry() um drei neue, optionale Felder
+ *      erweitert (apiMode: "sync"|"batch", batchId, customId) —
+ *      rueckwaertskompatibel, bestehende Aufrufe ohne diese Parameter
+ *      liefern weiterhin apiMode:"sync"/batchId:null/customId:null.
+ *      main() verzweigt nach USE_BATCH_API-Env-Var (Default: unveraendert
+ *      synchron) — SYNCHRONER PFAD BLEIBT UNVERAENDERT ALS REFERENZ, wie
+ *      im Protokoll vom 21.09.2026 festgelegt; Stufe 3 (A/B-Test) folgt
+ *      als eigener, spaeterer Schritt, sobald genug echte Laeufe in
+ *      beiden Modi vorliegen. Noch KEIN Live-Test (weder Batch-Erstellung
+ *      noch Polling wurden gegen einen echten API-Key ausgefuehrt) —
+ *      naechster Schritt ist ein manueller workflow_dispatch-Lauf mit
+ *      USE_BATCH_API=true.
  * v1.12 (22.09.2026, Claude + Axel, KRITISCHER PUBLISH-BUG-FIX): Fund
  *      beim Debugging eines GHA-Laufs mit vier von fünf Options-Strategien
  *      auf REPAIR-FAILED (csp_wheel/atmna/weekly_income/cc) — trotzdem
@@ -789,6 +971,83 @@ function enrichWithMarkov(candidate, closesFullByCandidate, KoMarkovModule) {
   return candidate;
 }
 
+// ─── Candidate-Selection-Integrity (v1.14, 22.09.2026) ────────────────────
+//
+// ARCHITEKTURREGEL (wortwoertlich mit dem Reviewer abgestimmt, s. Changelog
+// oben fuer den vollen Kontext des ATMNA-Auswahl-Drift-Funds vom 20.09.2026):
+//
+//   "The LLM possesses no Candidate Selection Authority."
+//   "Das LLM besitzt keine Candidate Selection Authority. Es darf
+//   Kandidaten weder auswaehlen noch ersetzen, hinzufuegen oder entfernen.
+//   Die Kandidatenauswahl erfolgt ausschliesslich deterministisch vor dem
+//   Prompt-Aufruf."
+//
+// Diese Konstante und die beiden folgenden Funktionen sind die technische
+// Umsetzung dieser Regel: ein Eligibility-Gate, das VOR jedem Prompt-Bau
+// entscheidet, welche Kandidaten der KI ueberhaupt sichtbar werden — die KI
+// selbst bekommt danach nur noch die bereits final feststehende Secondary-
+// Liste zu sehen (s. buildStrategyRequest() unten), nie einen groesseren Pool.
+//
+// ELIGIBILITY_CONFIG.earningsExclusionDays ist ein operativer Eligibility-
+// Parameter, KEINE empirisch validierte Prognosegrenze (Reviewer-
+// Formulierung) — spaeter frei kalibrierbar, ohne die Architektur selbst
+// anzufassen.
+const ELIGIBILITY_CONFIG = {
+  earningsExclusionDays: 7,
+};
+
+// earningsDTE liegt NUR flach auf masterData.tickers[] (verifiziert gegen
+// den echten Aggregator-Output, s. Kommentar bei normalizeTicker() weiter
+// unten — 27% Praesenz, nicht jeder Ticker hat einen bekannten Termin).
+// Equity-Kandidaten bekommen das Feld ueber mergeTickerSources() bereits
+// mitgemerged (als candidate.er = {days, date}), Options-Kandidaten
+// (rohe Leaderboard-Zeilen, KEIN Merge, s. selectOptionsCandidates())
+// haben es dagegen GAR NICHT. Fuer ein Gate, das strategieuebergreifend
+// (alle 15 Strategien, s. Scope-Entscheidung im Changelog) einheitlich
+// funktionieren soll, wird deshalb EIN einziger, von der Kandidaten-
+// struktur unabhaengiger Symbol->earningsDTE-Lookup direkt aus dem
+// flachen Ticker-Array gebaut, statt sich auf unterschiedliche
+// Kandidatenfelder zu verlassen.
+function buildEarningsLookup(masterData) {
+  const map = new Map();
+  for (const t of (masterData.tickers || [])) {
+    if (t.sym && t.earningsDTE != null) {
+      map.set(t.sym, t.earningsDTE);
+    }
+  }
+  return map;
+}
+
+// Wendet das Eligibility-Gate auf eine bereits score-sortierte Primaerliste
+// an. Reihenfolge bleibt erhalten (kein Re-Sort — Eligibility ist ein
+// Filter, keine Score-Regel, s. Changelog-Begruendung). Jedem eligiblen
+// Kandidaten wird sein urspruenglicher Rang in der Primaerliste als
+// `_primaryRank` angehaengt (unterstrich-praefixiert, analog zu den
+// bestehenden internen Feldern _snapshotRegime/_ivp — kein Prompt-
+// relevantes Feld, nur fuer Archivierung/Nachvollziehbarkeit gedacht).
+// Gibt { eligible, exclusions } zurueck — exclusions ist strukturiert und
+// maschinenlesbar (Reviewer-Vorgabe), nicht nur ein Logtext.
+function applyEligibilityGate(primaryCandidates, earningsLookup, config) {
+  const eligible = [];
+  const exclusions = [];
+  primaryCandidates.forEach((candidate, idx) => {
+    const primaryRank = idx + 1;
+    const dte = earningsLookup.get(candidate.sym);
+    if (dte != null && dte < config.earningsExclusionDays) {
+      exclusions.push({
+        sym: candidate.sym,
+        reason: 'EARNINGS_TOO_CLOSE',
+        earningsDTE: dte,
+        thresholdDays: config.earningsExclusionDays,
+        primaryRank,
+      });
+      return;
+    }
+    eligible.push({ ...candidate, _primaryRank: primaryRank });
+  });
+  return { eligible, exclusions };
+}
+
 // ─── Baustein 5: Kandidatenauswahl je Strategie ───────────────────────────
 //
 // UMGEBAUT (09.09.2026, echte Daten geprueft): Primaerquelle ist jetzt
@@ -941,7 +1200,17 @@ function mergeTickerSources(entry, maps) {
   return merged;
 }
 
-function selectCandidates(strategy, masterData) {
+// UMGEBAUT (v1.14, 22.09.2026, Candidate-Selection-Integrity): liefert jetzt
+// die vollstaendige Vier-Stufen-Struktur { primary, eligible, secondary,
+// reserve, exclusions, selectionMethod } statt der bisherigen { top10,
+// top3Syms }. `primary` ist die VOLLSTAENDIGE normalisierte Rangliste (keine
+// willkuerliche 25er-Kappung mehr — die Primaerliste soll fuer Backtests/
+// Backlooks unveraendert bleiben, s. Changelog) — NUR im seltenen Fallback-
+// Zweig (leaderboards fehlt/leer) auf 50 gekappt, um keine ~700-Ticker-
+// Archivierung zu erzeugen. `secondary` (max. 3, aus dem Eligible Pool) ist
+// ab jetzt die EINZIGE Kandidatenmenge, die die KI ueberhaupt zu Gesicht
+// bekommt (s. buildStrategyRequest()).
+function selectCandidates(strategy, masterData, earningsLookup) {
   const leaderboardKey = LEADERBOARD_KEY[strategy];
   if (!leaderboardKey) {
     throw new Error(`selectCandidates: unbekannte oder Options-Strategie "${strategy}" (nur die 10 Equity-/KO-Strategien werden hier unterstützt)`);
@@ -951,18 +1220,25 @@ function selectCandidates(strategy, masterData) {
   const lbEntries = masterData.leaderboards?.[leaderboardKey];
 
   let mergedRawList;
+  let isFallback = false;
   if (Array.isArray(lbEntries) && lbEntries.length > 0) {
     mergedRawList = lbEntries.map((e) => mergeTickerSources(e, maps));
   } else {
     // Fallback nur falls leaderboards fehlt/leer ist (sollte im Regelfall
-    // nicht vorkommen) — alte Sortierlogik ueber den flachen Bestand.
+    // nicht vorkommen) — alte Sortierlogik ueber den flachen Bestand. Auf
+    // 50 gekappt (s. Funktionskommentar oben) — anders als der Regelfall
+    // ist dieser Zweig NICHT "die vollstaendige Aggregator-Rangliste",
+    // sondern eine Notlösung ueber alle ~700 Ticker; eine Archivierung des
+    // kompletten Universums waere weder gewollt noch fuer Backtests nuetzlich.
     console.warn(`  ⚠️  masterData.leaderboards.${leaderboardKey} fehlt oder leer — Fallback auf manuelle Sortierung ueber tickers[]`);
+    isFallback = true;
     const scoreField = STRAT_SCORE_FIELD[strategy];
     mergedRawList = (masterData.tickers || []).slice()
-      .sort((a, b) => (b[scoreField] ?? -Infinity) - (a[scoreField] ?? -Infinity));
+      .sort((a, b) => (b[scoreField] ?? -Infinity) - (a[scoreField] ?? -Infinity))
+      .slice(0, 50);
   }
 
-  const normalized = mergedRawList.map((raw) => {
+  const primary = mergedRawList.map((raw) => {
     const candidate = normalizeTicker(raw);
     if (Array.isArray(raw.closes_full)) {
       enrichWithMarkov(candidate, raw.closes_full, KoMarkov);
@@ -971,13 +1247,11 @@ function selectCandidates(strategy, masterData) {
     return candidate;
   });
 
-  // Bereits vom leaderboard korrekt sortiert (bzw. im Fallback-Zweig schon
-  // oben sortiert) — kein erneutes Sortieren noetig.
-  const top25 = normalized.slice(0, 25);
-  const top10 = top25.slice(0, 10);
-  const top3Syms = top25.slice(0, 3).map((r) => r.sym); // fürs Ledger — mechanisch, nicht aus KI-Text
+  const { eligible, exclusions } = applyEligibilityGate(primary, earningsLookup, ELIGIBILITY_CONFIG);
+  const secondary = eligible.slice(0, 3);
+  const reserve = eligible.slice(3, 5);
 
-  return { top10, top3Syms };
+  return { primary, eligible, secondary, reserve, exclusions, selectionMethod: 'deterministic_strategy_score', isFallback };
 }
 
 // Options-Pendant zu selectCandidates() (16.09.2026). BEWUSST kein
@@ -989,7 +1263,17 @@ function selectCandidates(strategy, masterData) {
 // von Namen vermutet) — die equity-spezifische Mehrfach-Quellen-Anreicherung
 // (valueScanner/masterShortlist-Merge, SEPA/Markov/Fibo) ist fuer Options-
 // Strategien weder vorhanden noch noetig.
-function selectOptionsCandidates(strategy, masterData) {
+// UMGEBAUT (v1.14, 22.09.2026, Candidate-Selection-Integrity): analog zu
+// selectCandidates() oben — liefert jetzt { primary, eligible, secondary,
+// reserve, exclusions, selectionMethod }. `primary` sind die vollstaendigen
+// rohen Leaderboard-Zeilen (unveraendert, kein Merge — s. bestehender
+// Funktionskommentar unten), NICHT mehr auf 20 gekappt (die Kappung war
+// zuvor eine reine Prompt-Groessen-Vorsichtsmassnahme, die mit dieser
+// Version entfaellt, da ohnehin nur `secondary`, max. 3, in den Prompt
+// fliesst). `earningsLookup` s. buildEarningsLookup() — Options-
+// Leaderboard-Zeilen haben KEIN eigenes earningsDTE-Feld, das Gate nutzt
+// deshalb denselben externen, strategieunabhaengigen Lookup wie bei Equity.
+function selectOptionsCandidates(strategy, masterData, earningsLookup) {
   const leaderboardKey = OPTIONS_LEADERBOARD_KEY[strategy];
   if (!leaderboardKey) {
     throw new Error(`selectOptionsCandidates: unbekannte Options-Strategie "${strategy}"`);
@@ -998,14 +1282,15 @@ function selectOptionsCandidates(strategy, masterData) {
   const lbEntries = masterData.leaderboards?.[leaderboardKey];
   if (!Array.isArray(lbEntries) || lbEntries.length === 0) {
     console.warn(`  ⚠️  masterData.leaderboards.${leaderboardKey} fehlt oder leer — keine Kandidaten fuer ${strategy}`);
-    return { top10: [], top3Syms: [] };
+    return { primary: [], eligible: [], secondary: [], reserve: [], exclusions: [], selectionMethod: 'deterministic_strategy_score' };
   }
 
-  const top20 = lbEntries.slice(0, 20);
-  const top10 = top20.slice(0, 10);
-  const top3Syms = top20.slice(0, 3).map((r) => r.sym);
+  const primary = lbEntries;
+  const { eligible, exclusions } = applyEligibilityGate(primary, earningsLookup, ELIGIBILITY_CONFIG);
+  const secondary = eligible.slice(0, 3);
+  const reserve = eligible.slice(3, 5);
 
-  return { top10, top3Syms };
+  return { primary, eligible, secondary, reserve, exclusions, selectionMethod: 'deterministic_strategy_score' };
 }
 
 // ─── Baustein 6: tickerList-String (Prompt-Kontext) ───────────────────────
@@ -1653,7 +1938,17 @@ function estimateCostUsd(inputTokens, outputTokens) {
 // "eic_on_demand" | ... . Dieses Skript deckt ausschließlich den
 // public_digest-Pfad ab (s. Changelog-Hinweis unten) — morning_briefing/
 // eic_on_demand laufen über ko-ai-worker.js und sind hier NICHT erfasst.
-function recordBudgetEntry({ date, caller, strategy = null, usage, truncated = false, retried = false }) {
+//
+// ERWEITERT (v1.13, 22.09.2026, Backlog #27): drei neue, optionale Felder
+// (apiMode, batchId, customId) — rueckwaertskompatibel, bestehende
+// Aufrufe (Sync-Pfad) liefern weiterhin apiMode:"sync"/batchId:null/
+// customId:null, keine bestehenden Felder geaendert. Damit bleiben
+// synchroner und Batch-Pfad im selben AI_BUDGET_LOG/Dashboard
+// vergleichbar (s. geplanter A/B-Test, Stufe 3).
+function recordBudgetEntry({
+  date, caller, strategy = null, usage, truncated = false, retried = false,
+  apiMode = 'sync', batchId = null, customId = null,
+}) {
   const inputTokens = usage?.input_tokens ?? null;
   const outputTokens = usage?.output_tokens ?? null;
   AI_BUDGET_LOG.push({
@@ -1666,6 +1961,9 @@ function recordBudgetEntry({ date, caller, strategy = null, usage, truncated = f
     estimated_cost_usd: estimateCostUsd(inputTokens ?? 0, outputTokens ?? 0),
     truncated,
     retried,
+    apiMode,
+    batchId,
+    customId,
   });
 }
 
@@ -2134,12 +2432,179 @@ async function callAnthropicWithRetry(prompt, { apiKey, caller = 'public_digest'
   return result;
 }
 
+// ─── Baustein 18b: Anthropic Message Batches API (Backlog #27, v1.13) ────
+//
+// Endpoint-Schema am 22.09.2026 live gegen die aktuelle Anthropic-
+// Dokumentation verifiziert, s. Changelog-Eintrag oben — nicht aus
+// Trainingswissen uebernommen. POST/GET https://api.anthropic.com/v1/
+// messages/batches, kein anthropic-beta-Header fuer den Grundfall noetig.
+// Request-Body: {requests:[{custom_id, params:{model,max_tokens,
+// messages}}]}. Response traegt processing_status ("in_progress" bei
+// Erstellung, "ended" nach Abschluss) und nach Abschluss results_url.
+// Fehlerbehandlung durchgehend nach demselben Muster wie callAnthropic()
+// oben — NIE werfen, immer { ok:false, error } zurueckgeben, damit der
+// Aufrufer (runAllStrategiesBatch()) entscheiden kann, wie er mit einem
+// Batch-weiten Fehlschlag umgeht (betrifft dann potenziell mehrere
+// Strategien gleichzeitig, anders als ein einzelner Sync-Call-Fehler).
+
+const ANTHROPIC_BATCHES_URL = 'https://api.anthropic.com/v1/messages/batches';
+
+async function createMessageBatch(requests, { apiKey } = {}) {
+  const key = apiKey || process.env.ANTHROPIC_API_KEY;
+  if (!key) {
+    return { ok: false, error: { status: null, type: 'no_api_key', message: 'createMessageBatch: kein API-Key' } };
+  }
+  const body = {
+    requests: requests.map((r) => ({
+      custom_id: r.customId,
+      params: {
+        model: ANTHROPIC_MODEL,
+        max_tokens: r.maxTokens || ANTHROPIC_MAX_TOKENS,
+        messages: [{ role: 'user', content: r.prompt }],
+      },
+    })),
+  };
+
+  let resp;
+  try {
+    resp = await fetch(ANTHROPIC_BATCHES_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': ANTHROPIC_API_VERSION,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (networkErr) {
+    return { ok: false, error: { status: null, type: 'network_error', message: networkErr.message } };
+  }
+
+  const respBody = await resp.json().catch(() => null);
+  if (!resp.ok) {
+    return {
+      ok: false,
+      error: { status: resp.status, type: respBody?.error?.type ?? null, message: respBody?.error?.message ?? `HTTP ${resp.status}` },
+    };
+  }
+  if (!respBody?.id) {
+    return { ok: false, error: { status: resp.status, type: 'malformed_response', message: 'Keine batch id in der Antwort' } };
+  }
+  return { ok: true, batchId: respBody.id, processingStatus: respBody.processing_status ?? null };
+}
+
+// Pollt GET /v1/messages/batches/{id}, bis processing_status === 'ended'
+// ODER maxWaitMs ueberschritten ist. Intervall bewusst nicht-konstant
+// (kurze Intervalle am Anfang, laengere spaeter) — vermeidet unnoetig
+// viele Requests bei laenger laufenden Batches, ohne bei schnell
+// abgeschlossenen Batches unnoetig lange zu warten.
+async function pollBatchUntilEnded(batchId, { apiKey, maxWaitMs = 20 * 60 * 1000 } = {}) {
+  const key = apiKey || process.env.ANTHROPIC_API_KEY;
+  if (!key) {
+    return { ok: false, error: { status: null, type: 'no_api_key', message: 'pollBatchUntilEnded: kein API-Key' } };
+  }
+  const url = `${ANTHROPIC_BATCHES_URL}/${batchId}`;
+  const startedAt = Date.now();
+  let pollIntervalMs = 15000; // erste Polls alle 15s
+
+  while (true) {
+    let resp;
+    try {
+      resp = await fetch(url, {
+        headers: { 'x-api-key': key, 'anthropic-version': ANTHROPIC_API_VERSION },
+      });
+    } catch (networkErr) {
+      return { ok: false, error: { status: null, type: 'network_error', message: networkErr.message } };
+    }
+    const body = await resp.json().catch(() => null);
+    if (!resp.ok) {
+      return {
+        ok: false,
+        error: { status: resp.status, type: body?.error?.type ?? null, message: body?.error?.message ?? `HTTP ${resp.status}` },
+      };
+    }
+    if (body?.processing_status === 'ended') {
+      return { ok: true, batch: body };
+    }
+    if (Date.now() - startedAt > maxWaitMs) {
+      return {
+        ok: false,
+        error: { status: null, type: 'poll_timeout', message: `Batch nach ${Math.round(maxWaitMs / 60000)}min noch nicht "ended" (letzter Status: ${body?.processing_status ?? 'unbekannt'})` },
+      };
+    }
+    console.log(`  … Batch ${batchId}: processing_status=${body?.processing_status ?? 'unbekannt'}, warte ${Math.round(pollIntervalMs / 1000)}s...`);
+    await new Promise((r) => setTimeout(r, pollIntervalMs));
+    pollIntervalMs = Math.min(pollIntervalMs * 1.5, 60000); // wächst bis max. 60s/Poll
+  }
+}
+
+// Holt results_url ab und parst die JSONL-Zeilen. Jede Zeile:
+// {custom_id, result:{type:"succeeded"|"errored"|"expired"|"canceled", message?:{...}, error?:{...}}}
+function parseBatchResultsJsonl(text) {
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => JSON.parse(line));
+}
+
+async function fetchBatchResults(resultsUrl, { apiKey } = {}) {
+  const key = apiKey || process.env.ANTHROPIC_API_KEY;
+  if (!key) {
+    return { ok: false, error: { status: null, type: 'no_api_key', message: 'fetchBatchResults: kein API-Key' } };
+  }
+  let resp;
+  try {
+    resp = await fetch(resultsUrl, {
+      headers: { 'x-api-key': key, 'anthropic-version': ANTHROPIC_API_VERSION },
+    });
+  } catch (networkErr) {
+    return { ok: false, error: { status: null, type: 'network_error', message: networkErr.message } };
+  }
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    return { ok: false, error: { status: resp.status, type: null, message: `HTTP ${resp.status}: ${text.slice(0, 200)}` } };
+  }
+  const text = await resp.text();
+  try {
+    return { ok: true, results: parseBatchResultsJsonl(text) };
+  } catch (parseErr) {
+    return { ok: false, error: { status: null, type: 'parse_error', message: parseErr.message } };
+  }
+}
+
 // ─── Baustein 19: Eine Strategie komplett durchlaufen ─────────────────────
 //
-// Fehlerisoliert: wirft NIE — bei jedem Fehlschlag wird { ok:false, ... }
-// zurueckgegeben, main() entscheidet dann pro Strategie weiter (s.
-// Abschnitt 8: "Ein Fehlschlag blockiert nicht den gesamten Lauf").
-async function runStrategy(strategy, masterData, snapshot, promptVersion) {
+// UMGEBAUT (v1.13, 22.09.2026, Backlog #27): runStrategy() war bisher EIN
+// Block (Kandidatenauswahl -> Prompt-Bau -> Anthropic-Call -> Repair-Loop
+// -> Ledger-/Output-Bau). Fuer den neuen Batch-Pfad muss der Anthropic-
+// Call selbst ausgetauscht werden koennen (synchron vs. Batch-Ergebnis),
+// OHNE die Logik davor/danach zu duplizieren — deshalb in zwei Funktionen
+// zerlegt: buildStrategyRequest() (alles VOR dem Call) und
+// finalizeStrategyResult() (alles NACH dem Call, inkl. Repair-Loop,
+// UNVERAENDERT identisch zum bisherigen runStrategy()-Ende samt v1.12-
+// Publish-Bug-Fix). runStrategy() selbst bleibt als duenner Wrapper fuer
+// den Sync-Pfad bestehen — sein Verhalten ist dadurch NICHT veraendert,
+// nur umgezogen (dieselben drei Funktionsaufrufe in derselben Reihenfolge,
+// dieselbe Fehlerisolation).
+
+// Kandidatenauswahl + Prompt-Bau — identisch zum bisherigen Anfang von
+// runStrategy(), bis unmittelbar vor dem Anthropic-Call. Wirft NIE (analog
+// zum Gesamt-Prinzip), gibt bei Fehlschlag { ok:false, strategy, error }
+// zurueck, sonst { ok:true, strategy, isOptions, primary, eligible,
+// secondary, reserve, exclusions, selectionMethod, top3Syms, prompt }.
+//
+// UMGEBAUT (v1.14, 22.09.2026, Candidate-Selection-Integrity): der Prompt
+// wird jetzt AUSSCHLIESSLICH aus `secondary` gebaut (max. 3 Kandidaten,
+// bereits eligibility-gefiltert) — nicht mehr aus `top10` (bis zu 10). Das
+// ist die technische Umsetzung von "Das LLM besitzt keine Candidate
+// Selection Authority" (s. Changelog): es gibt schlicht keinen groesseren,
+// sichtbaren Pool mehr, aus dem substituiert werden koennte. `top3Syms`
+// bleibt als Feldname bestehen (ko-prompts.js erwartet ctx.top3Syms), ist
+// aber ab jetzt IMMER exakt secondary.map(c=>c.sym) — bei weniger als 3
+// eligiblen Kandidaten entsprechend kuerzer (NICHT zwanghaft auf 3
+// aufgefuellt, s. Reviewer-Korrektur im Changelog).
+function buildStrategyRequest(strategy, masterData, snapshot, promptVersion, earningsLookup) {
   try {
     // NEU (16.09.2026, Thema 3): interne Verzweigung Equity/Options — nur
     // bei Kandidatenauswahl/Prompt-Bau unterschiedlich, alles danach
@@ -2148,28 +2613,41 @@ async function runStrategy(strategy, masterData, snapshot, promptVersion) {
     // o.ae. — genau das wollten wir vermeiden (Axel-Vorgabe).
     const isOptions = OPTIONS_STRATEGIES.includes(strategy);
 
-    const { top10, top3Syms } = isOptions
-      ? selectOptionsCandidates(strategy, masterData)
-      : selectCandidates(strategy, masterData);
-    if (top3Syms.length === 0) {
-      return { ok: false, strategy, error: 'keine Kandidaten nach Filterung/Sortierung' };
+    const { primary, eligible, secondary, reserve, exclusions, selectionMethod } = isOptions
+      ? selectOptionsCandidates(strategy, masterData, earningsLookup)
+      : selectCandidates(strategy, masterData, earningsLookup);
+
+    if (secondary.length === 0) {
+      return {
+        ok: false, strategy,
+        error: eligible.length === 0 && exclusions.length > 0
+          ? `alle Kandidaten durch Eligibility-Gate ausgeschlossen (${exclusions.map((e) => e.sym).join(', ')})`
+          : 'keine Kandidaten nach Filterung/Sortierung',
+      };
     }
+
+    const top3Syms = secondary.map((c) => c.sym);
 
     // DIAGNOSE (v1.9, 20.09.2026, rein loggend, keine Verhaltensaenderung —
     // s. Changelog-Eintrag oben): beweist, ob top3Syms bereits an dieser
     // Stelle von dem abweicht, was spaeter tatsaechlich in Abschnitt 3 der
     // Antwort erscheint. Nur fuer atmna (bisher einzige betroffene Strategie).
+    // WEITERHIN AUSSAGEKRAEFTIG (v1.14): top3Syms ist jetzt zwar per
+    // Konstruktion identisch mit dem, was die KI sieht — die Diagnose bleibt
+    // trotzdem sinnvoll, um zu bestaetigen, dass auch nach dem Architektur-
+    // umbau keine Drift zwischen Auswahl und tatsaechlichem Prompt-Inhalt
+    // auftritt.
     if (strategy === 'atmna') {
       console.log(`  [ATMNA-CANDIDATES] top3Syms=${JSON.stringify(top3Syms)} `
-        + `top10=${JSON.stringify(top10.map((c) => c.sym))}`);
+        + `(Secondary-Liste, ${eligible.length} eligible von ${primary.length} primary)`);
     }
 
     const tickerListStr = isOptions
-      ? buildOptionsTickerListString(top10)
-      : buildTickerListString(top10);
+      ? buildOptionsTickerListString(secondary)
+      : buildTickerListString(secondary);
     const prompt = isOptions
-      ? buildOptionsPromptForStrategy(strategy, snapshot, tickerListStr, top10, top3Syms)
-      : buildPromptForStrategy(strategy, snapshot, tickerListStr, top10.length);
+      ? buildOptionsPromptForStrategy(strategy, snapshot, tickerListStr, secondary, top3Syms)
+      : buildPromptForStrategy(strategy, snapshot, tickerListStr, secondary.length);
 
     // DIAGNOSE (v1.9, 20.09.2026, rein loggend): der tatsaechliche
     // atmnaFactors.summary-String, der ins VERPFLICHTENDE FAKTORENPRUEFUNG
@@ -2182,12 +2660,27 @@ async function runStrategy(strategy, masterData, snapshot, promptVersion) {
       const _factorBlockMatch = prompt.match(/-\s*Bollinger-Position \(BB\) und Tightness je Kandidat[^\n]*/);
       console.log(`  [ATMNA-FACTORS] ${_factorBlockMatch ? _factorBlockMatch[0] : '(Faktor-Block nicht gefunden im Prompt)'}`);
     }
-    let apiResult = await callAnthropicWithRetry(prompt, { caller: 'public_digest', strategy, date: snapshot.date });
 
-    if (!apiResult.ok) {
-      return { ok: false, strategy, error: apiResult.error };
-    }
+    return {
+      ok: true, strategy, isOptions,
+      primary, eligible, secondary, reserve, exclusions, selectionMethod,
+      top3Syms, prompt,
+    };
+  } catch (err) {
+    return { ok: false, strategy, error: err.message };
+  }
+}
 
+// Repair-Loop + Ledger-/Output-Bau — UNVERAENDERT identisch zum bisherigen
+// Ende von runStrategy() (inkl. v1.12-Publish-Bug-Fix: bei REPAIR-FAILED/
+// REPAIR-ERROR wird { ok:false } zurueckgegeben, nicht der nicht-konforme
+// Text veroeffentlicht). `req` ist das Ergebnis von buildStrategyRequest()
+// (muss ok:true sein), `apiResult` das Ergebnis des Erstversuch-Calls
+// (synchron ODER aus einem Batch-Ergebnis rekonstruiert — beide haben
+// dieselbe Form { ok, text, usage, stop_reason, truncated }).
+async function finalizeStrategyResult(req, apiResult, snapshot, promptVersion) {
+  const { strategy, isOptions, primary, eligible, secondary, reserve, exclusions, selectionMethod, top3Syms } = req;
+  try {
     // ── REPAIR-LOOP (v1.7, 20.09.2026, ATMNA-Explainability-Gap-Fix Teil 3) ──
     // Nur fuer die fuenf Options-Strategien relevant (KoPrompts.
     // validateBriefingCompliance() prueft fuer alle anderen ohnehin nichts,
@@ -2224,7 +2717,10 @@ async function runStrategy(strategy, masterData, snapshot, promptVersion) {
     // Write, kein Digest-Eintrag, kein 'latest'-Pointer fuer DIESE eine
     // Strategie in DIESEM Lauf. Kein neues Konzept — nur die konsequente
     // Anwendung des bereits ueberall sonst geltenden Prinzips auf einen
-    // bisher uebersehenen Fall.
+    // bisher uebersehenen Fall. Gilt UNVERAENDERT sowohl fuer den Sync- als
+    // auch den Batch-Pfad, da beide dieselbe finalizeStrategyResult()-
+    // Instanz durchlaufen — kein separater Fix noetig fuer Batch (s.
+    // Changelog v1.13).
     let repairStatus = null;
     if (isOptions && typeof KoPrompts.validateBriefingCompliance === 'function') {
       const complianceCheck = KoPrompts.validateBriefingCompliance(strategy, apiResult.text, { expectedTop3: top3Syms });
@@ -2258,28 +2754,252 @@ async function runStrategy(strategy, masterData, snapshot, promptVersion) {
       }
     }
 
-    const decisionSnapshots = top3Syms.map((sym, i) => {
-      const candidate = top10.find((c) => c.sym === sym);
-      return buildDecisionSnapshot(strategy, candidate, i + 1, snapshot);
-    });
+    const decisionSnapshots = secondary.map((candidate, i) =>
+      buildDecisionSnapshot(strategy, candidate, i + 1, snapshot)
+    );
     const aiOutput = buildAiOutput(strategy, snapshot, apiResult, top3Syms, promptVersion, repairStatus);
     const ledgerEntries = decisionSnapshots.map((ds, i) =>
       buildLedgerEntry(strategy, i + 1, ds, snapshot, aiOutput.ai_output_id)
     );
 
     return {
-      ok: true, strategy, top10, top3Syms, apiResult, promptVersion,
+      ok: true, strategy, isOptions,
+      primary, eligible, secondary, reserve, exclusions, selectionMethod,
+      top3Syms, apiResult, promptVersion,
       decisionSnapshots, aiOutput, ledgerEntries,
     };
   } catch (err) {
     // Pflichtfeld nicht befuellbar o.ae. (Abschnitt 8, Fehlerfall 2) —
     // kein stiller null-Wert, expliziter Fehler statt Absturz des Laufs.
-    // Gilt unveraendert fuer Equity UND Options: eine einzelne fehlerhafte
-    // Strategie (egal welcher Klasse) beendet NICHT den gesamten Lauf, s.
-    // main()-Schleife unten (for-Schleife pro Strategie, kein Promise.all
-    // mit gemeinsamem Fehlschlag).
     return { ok: false, strategy, error: err.message };
   }
+}
+
+// Schlanke Serialisierung eines Kandidaten fuer den Archiv-Key (v1.14,
+// 22.09.2026) — NICHT das volle Kandidatenobjekt (das trüge z.B. bei Equity
+// saemtliche technischen Felder mit, unnötig gross fürs Archiv), sondern nur
+// das, was fuer Backtests/Backlooks/Audit tatsaechlich gebraucht wird:
+// Symbol, strategieeigener Score, Grade, urspruenglicher Primaerlisten-Rang.
+function leanCandidateEntry(strategy, candidate, fallbackRank) {
+  const scoreField = STRAT_SCORE_FIELD[strategy] ?? OPTIONS_STRAT_SCORE_FIELD[strategy];
+  return {
+    sym: candidate.sym,
+    score: candidate[scoreField] ?? candidate.score ?? null,
+    grade: candidate.grade ?? null,
+    primaryRank: candidate._primaryRank ?? fallbackRank ?? null,
+  };
+}
+
+// Baut den vollstaendigen Entscheidungsweg fuer den neuen Archiv-Key
+// archive/recommendations/{date}/{strategy}_candidate_pool.json (v1.14,
+// 22.09.2026, Candidate-Selection-Integrity — s. Changelog Punkt 4).
+// `req` ist das Ergebnis von buildStrategyRequest() (muss ok:true sein).
+function buildCandidatePoolArchive(req, snapshot) {
+  const { strategy, primary, eligible, secondary, reserve, exclusions, selectionMethod } = req;
+  return {
+    strategy,
+    date: snapshot.date,
+    selectionMethod,
+    primary: primary.map((c, i) => leanCandidateEntry(strategy, c, i + 1)),
+    eligible: eligible.map((c) => leanCandidateEntry(strategy, c)),
+    secondary: secondary.map((c) => leanCandidateEntry(strategy, c)),
+    reserve: reserve.map((c) => leanCandidateEntry(strategy, c)),
+    eligibilityExclusions: exclusions,
+  };
+}
+
+
+// buildStrategyRequest() + callAnthropicWithRetry() + finalizeStrategyResult()
+// — Verhalten UNVERAENDERT gegenueber vorher, nur in drei Funktionen
+// aufgeteilt, damit der Batch-Pfad (runAllStrategiesBatch() unten) dieselbe
+// Logik ohne Duplikation wiederverwenden kann.
+async function runStrategy(strategy, masterData, snapshot, promptVersion, earningsLookup) {
+  const req = buildStrategyRequest(strategy, masterData, snapshot, promptVersion, earningsLookup);
+  if (!req.ok) return req;
+
+  // NEU (v1.14, 22.09.2026, Candidate-Selection-Integrity, Changelog Punkt 4):
+  // Archivierung des vollstaendigen Entscheidungswegs, SOBALD die Auswahl
+  // steht — unabhaengig vom Ausgang des nachfolgenden Anthropic-Calls, damit
+  // auch bei einem spaeter fehlgeschlagenen/uebersprungenen Call
+  // nachvollziehbar bleibt, welche Kandidaten zur Auswahl standen.
+  await writeArchiveIfAbsent(
+    `archive/recommendations/${archiveDatePath(snapshot.date)}/${strategy}_candidate_pool.json`,
+    buildCandidatePoolArchive(req, snapshot)
+  );
+
+  const apiResult = await callAnthropicWithRetry(req.prompt, {
+    caller: 'public_digest', strategy, date: snapshot.date,
+  });
+  if (!apiResult.ok) {
+    return { ok: false, strategy, error: apiResult.error };
+  }
+
+  return finalizeStrategyResult(req, apiResult, snapshot, promptVersion);
+}
+
+// ─── Baustein 18c: Alle Strategien ueber EINEN Message Batch (Backlog #27,
+// v1.13) ─────────────────────────────────────────────────────────────────
+//
+// Ersetzt im Batch-Modus die beiden runStrategy()-Schleifen in main() durch
+// EINEN Aufruf, der alle 15 Strategien in einem einzigen Anthropic-Batch
+// als Erstversuch einreicht. custom_id-Format: "public_{strategy}" (z.B.
+// "public_momentum", "public_csp_wheel") — eindeutig ueber alle 15
+// Strategien, da EQUITY_STRATEGIES und OPTIONS_STRATEGIES disjunkte
+// Namensraeume sind (verifiziert: keine Ueberschneidung).
+//
+// Repair bleibt SYNCHRON (Scope-Entscheidung Option (a), s. Changelog) —
+// finalizeStrategyResult() ruft bei Compliance-FAIL weiterhin
+// callAnthropicWithRetry() auf, exakt wie im Sync-Pfad. Truncation wird im
+// Batch-Ergebnis selbst NICHT automatisch retried (keine Batches-API-
+// Entsprechung zu callAnthropicWithRetry()s Truncation-Retry) — eine
+// abgeschnittene Batch-Antwort gilt als Fehlschlag fuer diese Strategie.
+//
+// Rueckgabe: Array im selben Format wie die bisherigen runStrategy()-
+// Ergebnisse (main() kann results.push(...) unveraendert weiterverwenden).
+async function runAllStrategiesBatch(masterData, snapshot, promptVersion, earningsLookup) {
+  const allStrategies = [...EQUITY_STRATEGIES, ...OPTIONS_STRATEGIES];
+  const requestByStrategy = new Map();
+  const batchRequests = [];
+  const results = [];
+
+  for (const strategy of allStrategies) {
+    const req = buildStrategyRequest(strategy, masterData, snapshot, promptVersion, earningsLookup);
+    if (!req.ok) {
+      results.push(req);
+      continue;
+    }
+    // s. Kommentar bei runStrategy() (v1.14) — dieselbe Archivierung, hier
+    // im Batch-Pfad an derselben logischen Stelle (sofort nach erfolgreicher
+    // Kandidatenauswahl, unabhaengig vom spaeteren Batch-Ergebnis).
+    await writeArchiveIfAbsent(
+      `archive/recommendations/${archiveDatePath(snapshot.date)}/${strategy}_candidate_pool.json`,
+      buildCandidatePoolArchive(req, snapshot)
+    );
+    requestByStrategy.set(strategy, req);
+    batchRequests.push({ customId: `public_${strategy}`, prompt: req.prompt, maxTokens: ANTHROPIC_MAX_TOKENS });
+  }
+
+  if (batchRequests.length === 0) {
+    console.warn('  ⚠ runAllStrategiesBatch: keine Strategie lieferte einen gueltigen Request — kein Batch erstellt.');
+    return results;
+  }
+
+  console.log(`\nErstelle Anthropic Message Batch mit ${batchRequests.length} Requests...`);
+  const createResult = await createMessageBatch(batchRequests, {});
+  if (!createResult.ok) {
+    console.error('  ❌ Batch-Erstellung fehlgeschlagen:', createResult.error);
+    for (const req of requestByStrategy.values()) {
+      results.push({ ok: false, strategy: req.strategy, error: `Batch-Erstellung fehlgeschlagen: ${createResult.error.message}` });
+    }
+    return results;
+  }
+  console.log(`  Batch erstellt: ${createResult.batchId} (processing_status=${createResult.processingStatus})`);
+
+  const pollResult = await pollBatchUntilEnded(createResult.batchId, {});
+  if (!pollResult.ok) {
+    console.error(`  ❌ Batch ${createResult.batchId}: Polling fehlgeschlagen/Timeout:`, pollResult.error);
+    for (const req of requestByStrategy.values()) {
+      results.push({ ok: false, strategy: req.strategy, error: `Batch-Polling fehlgeschlagen: ${pollResult.error.message}` });
+    }
+    return results;
+  }
+
+  const resultsUrl = pollResult.batch.results_url;
+  if (!resultsUrl) {
+    console.error(`  ❌ Batch ${createResult.batchId}: processing_status="ended", aber kein results_url in der Antwort.`);
+    for (const req of requestByStrategy.values()) {
+      results.push({ ok: false, strategy: req.strategy, error: 'Batch "ended" ohne results_url' });
+    }
+    return results;
+  }
+
+  console.log(`  Batch ${createResult.batchId} abgeschlossen, hole Ergebnisse von ${resultsUrl}...`);
+  const fetchResult = await fetchBatchResults(resultsUrl, {});
+  if (!fetchResult.ok) {
+    console.error(`  ❌ Batch ${createResult.batchId}: Ergebnisabruf fehlgeschlagen:`, fetchResult.error);
+    for (const req of requestByStrategy.values()) {
+      results.push({ ok: false, strategy: req.strategy, error: `Batch-Ergebnisabruf fehlgeschlagen: ${fetchResult.error.message}` });
+    }
+    return results;
+  }
+
+  const seenStrategies = new Set();
+  for (const line of fetchResult.results) {
+    const strategy = (line.custom_id || '').replace(/^public_/, '');
+    const req = requestByStrategy.get(strategy);
+    if (!req) {
+      console.warn(`  ⚠ Batch-Ergebnis mit unbekannter custom_id "${line.custom_id}" — übersprungen.`);
+      continue;
+    }
+    seenStrategies.add(strategy);
+
+    let apiResult;
+    if (line.result?.type === 'succeeded') {
+      const msg = line.result.message;
+      const textBlock = (msg?.content || []).find((b) => b.type === 'text');
+      if (!textBlock || !textBlock.text) {
+        apiResult = { ok: false, error: { status: null, type: 'empty_response', message: 'Keine Text-Content im Batch-Ergebnis' } };
+      } else {
+        apiResult = {
+          ok: true,
+          text: textBlock.text,
+          stop_reason: msg.stop_reason,
+          usage: msg.usage,
+          truncated: msg.stop_reason === 'max_tokens',
+        };
+      }
+    } else {
+      const resultType = line.result?.type || 'unbekannt';
+      apiResult = {
+        ok: false,
+        error: {
+          status: null,
+          type: resultType,
+          message: line.result?.error?.message || `Batch-Result-Typ: ${resultType}`,
+        },
+      };
+    }
+
+    recordBudgetEntry({
+      date: snapshot.date, caller: 'public_digest', strategy,
+      usage: apiResult.usage, truncated: apiResult.truncated === true,
+      apiMode: 'batch', batchId: createResult.batchId, customId: line.custom_id,
+    });
+
+    if (!apiResult.ok) {
+      console.error(`  ❌ ${strategy}: Batch-Ergebnis nicht erfolgreich:`, apiResult.error);
+      results.push({ ok: false, strategy, error: apiResult.error });
+      continue;
+    }
+    if (apiResult.truncated) {
+      // s. Changelog v1.13: keine Batches-API-Entsprechung zum Sync-
+      // Truncation-Retry in dieser Ausbaustufe — abgeschnittene Antwort
+      // gilt als Fehlschlag fuer diese Strategie, Fehlerisolation greift.
+      console.warn(`  ⚠ ${strategy}: Batch-Antwort abgeschnitten (max_tokens) — kein Retry im Batch-Modus, Strategie wird übersprungen.`);
+      results.push({ ok: false, strategy, error: { status: null, type: 'truncated', message: 'Batch-Antwort abgeschnitten (max_tokens)' } });
+      continue;
+    }
+
+    const finalized = await finalizeStrategyResult(req, apiResult, snapshot, promptVersion);
+    if (finalized.ok) {
+      console.log(`  ✅ ${strategy} (Batch): Top-3: ${finalized.top3Syms.join(', ')}`);
+    } else {
+      console.error(`  ❌ ${strategy} (Batch) übersprungen: ${JSON.stringify(finalized.error)}`);
+    }
+    results.push(finalized);
+  }
+
+  // Strategien, fuer die der Batch KEIN Ergebnis lieferte (sollte laut
+  // Anthropic-Doku nicht vorkommen, wird aber nicht stillschweigend
+  // ignoriert — fehlerisoliert wie jeder andere Fall).
+  for (const strategy of requestByStrategy.keys()) {
+    if (!seenStrategies.has(strategy)) {
+      console.error(`  ❌ ${strategy}: kein Ergebnis im Batch gefunden.`);
+      results.push({ ok: false, strategy, error: 'Kein Ergebnis im Batch-Result für diese Strategie gefunden' });
+    }
+  }
+
+  return results;
 }
 
 // ─── Baustein 20: main() — Orchestrierung über alle zehn Strategien ──────
@@ -2354,44 +3074,63 @@ async function main() {
   const promptVersion = readPromptVersion();
   const datePath = archiveDatePath(snapshot.date);
 
+  // NEU (v1.14, 22.09.2026, Candidate-Selection-Integrity): EINMAL pro Lauf
+  // gebaut, an buildStrategyRequest() fuer alle 15 Strategien durchgereicht
+  // — ein einziger, strategieunabhaengiger Symbol->earningsDTE-Lookup statt
+  // 15x denselben masterData.tickers-Scan zu wiederholen.
+  const earningsLookup = buildEarningsLookup(masterData);
+
   // Canonical Snapshot einmal pro Tag archivieren (von allen Strategien referenziert)
   await writeArchiveIfAbsent(`archive/recommendations/${datePath}/snapshot.json`, snapshot);
 
-  const results = [];
-  for (const strategy of EQUITY_STRATEGIES) {
-    console.log(`\n--- Strategie: ${strategy} ---`);
-    const result = await runStrategy(strategy, masterData, snapshot, promptVersion);
-    if (result.ok) {
-      console.log(`  ✅ Top-3: ${result.top3Syms.join(', ')}`);
-    } else {
-      console.error(`  ❌ ${strategy} übersprungen: ${JSON.stringify(result.error)}`);
+  // ── SYNC vs. BATCH (Backlog #27, v1.13) ──────────────────────────────────
+  // SYNCHRONER PFAD BLEIBT UNVERAENDERT ALS REFERENZ (Axel-Entscheidung,
+  // Protokoll 21.09.2026) — USE_BATCH_API ist ein reiner Opt-in-Schalter,
+  // Default bleibt der bisherige, bewaehrte Ablauf. Stufe 3 (A/B-Vergleich)
+  // folgt als eigener, spaeterer Schritt.
+  const useBatchApi = process.env.USE_BATCH_API === 'true';
+  let results = [];
+
+  if (useBatchApi) {
+    console.log('\nUSE_BATCH_API=true — Erstversuch für alle 15 Strategien über EINEN Anthropic Message Batch.');
+    results = await runAllStrategiesBatch(masterData, snapshot, promptVersion, earningsLookup);
+    console.log(`\n${results.filter((r) => r.ok).length}/${EQUITY_STRATEGIES.length + OPTIONS_STRATEGIES.length} Strategien insgesamt erfolgreich (Batch-Modus).`);
+  } else {
+    for (const strategy of EQUITY_STRATEGIES) {
+      console.log(`\n--- Strategie: ${strategy} ---`);
+      const result = await runStrategy(strategy, masterData, snapshot, promptVersion, earningsLookup);
+      if (result.ok) {
+        console.log(`  ✅ Top-3: ${result.top3Syms.join(', ')}`);
+      } else {
+        console.error(`  ❌ ${strategy} übersprungen: ${JSON.stringify(result.error)}`);
+      }
+      results.push(result);
     }
-    results.push(result);
-  }
 
-  console.log(`\n${results.filter((r) => r.ok).length}/${EQUITY_STRATEGIES.length} Equity-/KO-Strategien erfolgreich.`);
+    console.log(`\n${results.filter((r) => r.ok).length}/${EQUITY_STRATEGIES.length} Equity-/KO-Strategien erfolgreich.`);
 
-  // NEU (16.09.2026, Thema 3): zweite Schleife für die fünf Options-
-  // Strategien — bewusst dieselbe for-Schleife-Struktur wie oben (kein
-  // Promise.all/-allSettled), damit ein Fehler in EINER Options-Strategie
-  // (z.B. Anthropic-Timeout bei 'collar') weder die übrigen vier Options-
-  // Strategien noch die bereits gelaufenen zehn Equity-/KO-Strategien
-  // abbricht — runStrategy()s eigenes try/catch fängt das pro Strategie ab,
-  // hier kommt nur noch ein { ok:false, ... } zurück statt einer Exception.
-  // results ist dasselbe Array wie oben — 15 Einträge insgesamt, keine
-  // getrennte zweite Pipeline für Archiv-/Digest-/KV-Schreibvorgänge.
-  for (const strategy of OPTIONS_STRATEGIES) {
-    console.log(`\n--- Options-Strategie: ${strategy} ---`);
-    const result = await runStrategy(strategy, masterData, snapshot, promptVersion);
-    if (result.ok) {
-      console.log(`  ✅ Top-3: ${result.top3Syms.join(', ')}`);
-    } else {
-      console.error(`  ❌ ${strategy} übersprungen: ${JSON.stringify(result.error)}`);
+    // NEU (16.09.2026, Thema 3): zweite Schleife für die fünf Options-
+    // Strategien — bewusst dieselbe for-Schleife-Struktur wie oben (kein
+    // Promise.all/-allSettled), damit ein Fehler in EINER Options-Strategie
+    // (z.B. Anthropic-Timeout bei 'collar') weder die übrigen vier Options-
+    // Strategien noch die bereits gelaufenen zehn Equity-/KO-Strategien
+    // abbricht — runStrategy()s eigenes try/catch fängt das pro Strategie ab,
+    // hier kommt nur noch ein { ok:false, ... } zurück statt einer Exception.
+    // results ist dasselbe Array wie oben — 15 Einträge insgesamt, keine
+    // getrennte zweite Pipeline für Archiv-/Digest-/KV-Schreibvorgänge.
+    for (const strategy of OPTIONS_STRATEGIES) {
+      console.log(`\n--- Options-Strategie: ${strategy} ---`);
+      const result = await runStrategy(strategy, masterData, snapshot, promptVersion, earningsLookup);
+      if (result.ok) {
+        console.log(`  ✅ Top-3: ${result.top3Syms.join(', ')}`);
+      } else {
+        console.error(`  ❌ ${strategy} übersprungen: ${JSON.stringify(result.error)}`);
+      }
+      results.push(result);
     }
-    results.push(result);
-  }
 
-  console.log(`\n${results.filter((r) => r.ok).length}/${EQUITY_STRATEGIES.length + OPTIONS_STRATEGIES.length} Strategien insgesamt erfolgreich.`);
+    console.log(`\n${results.filter((r) => r.ok).length}/${EQUITY_STRATEGIES.length + OPTIONS_STRATEGIES.length} Strategien insgesamt erfolgreich.`);
+  }
 
   const successful = results.filter((r) => r.ok);
 
@@ -2527,4 +3266,21 @@ module.exports = {
   runStrategy,
   parsePythonStyleJson,
   main,
+  // NEU (v1.13, Backlog #27) — Batch-API-Bausteine, einzeln exportiert für
+  // unabhängige Testbarkeit (analog zu den Options-Pendants aus v1.4/16.09.).
+  buildStrategyRequest,
+  finalizeStrategyResult,
+  createMessageBatch,
+  pollBatchUntilEnded,
+  fetchBatchResults,
+  parseBatchResultsJsonl,
+  runAllStrategiesBatch,
+  ANTHROPIC_BATCHES_URL,
+  // NEU (v1.14, Candidate-Selection-Integrity) — einzeln exportiert für
+  // unabhängige Testbarkeit, analog zu den übrigen Bausteinen.
+  ELIGIBILITY_CONFIG,
+  buildEarningsLookup,
+  applyEligibilityGate,
+  leanCandidateEntry,
+  buildCandidatePoolArchive,
 };
