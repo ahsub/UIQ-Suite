@@ -117,7 +117,25 @@ Die fünf Module als Pipeline über einer gemeinsamen Datenbasis — Farbe/Rahme
 6. **Datensouveränität.** Browser-first; Depot- und Steuerdaten verlassen den Rechner des Nutzers nicht. Kein Suite-Server hält Nutzerdaten.
 7. **Belegkette.** Jeder ausgewiesene Wert ist rückführbar auf Datenzeile, Modul und Rechts-/Datenquelle.
 8. **Governance-Muster.** Jedes Modul führt `docs/STRATEGIE.md` + `docs/ROADMAP.md` (versioniert, Fortschreibung Claude), Entscheidungen laufen durch den Vier-Fragen-Filter (Belegkette / 80-20 / ES6-Modularität / Compliance). Deploy nach Zwei-Vorgänge-Prinzip: GitHub = Quellcode, Cloudflare-Pages-Zip = Publikation.
-9. **Debug-Protokoll (Laufzeit-Bugs).** Bei jedem Laufzeit-Bug gilt zwingend: **IMMER zuerst Konsolen-Check, dann Code anfassen. Kein Fix ohne bewiesene Root Cause.** Weder Claude noch Axel tippen Code-Änderungen ins Blaue — erst das Symptom im Browser-/Aggregator-Log sichern, dann gezielt fixen. Herleitung: Strategie-Ampel-Farb-Diskrepanz (v354–v364, 4 Fehlversuche) — die korrekte Root-Cause (`ko:regimeChanged` nicht dispatched nach `calcStrategyGates()`) war erst nach explizitem Console-Diagnostic sichtbar.
+9. **Debug-Protokoll ("Never guess, always correctly diagnose").** Bei jedem
+   unerwarteten Verhalten — Laufzeit-Bug, Validierungs-/Compliance-Fehlschlag,
+   KI-Output-Abweichung — gilt zwingend: **IMMER zuerst die tatsächliche
+   Ursache sichtbar machen (Log, Diagnostic, Rohdaten-Vergleich), dann Code
+   anfassen. Kein Fix ohne bewiesene Root Cause.** Weder Claude noch Axel
+   tippen Code-Änderungen ins Blaue — ein fachlich begründeter, aber
+   unbelegter Fix ist eine Hypothese, keine Lösung, und wird auch so benannt.
+   Schlägt ein begründeter Fix beim Live-Test fehl, ist die nächste Aktion
+   **Instrumentierung**, nicht ein zweiter Blindschuss. Herleitungen: (1)
+   Strategie-Ampel-Farb-Diskrepanz (v354–v364, 4 Fehlversuche) — die korrekte
+   Root-Cause (`ko:regimeChanged` nicht dispatched nach `calcStrategyGates()`)
+   war erst nach explizitem Console-Diagnostic sichtbar. (2) `ko-prompts.js`
+   top3-ticker-konsistenz-Validierung (22.09.2026, drei Fehlversuche in Folge)
+   — v2.54.1 (Fettdruck-Anweisung für Ticker) war fachlich begründet, schlug
+   aber live fehl; erst reines Diagnose-Logging
+   (`generate_public_recommendations.js` v1.17, keine Verhaltensänderung)
+   deckte die tatsächliche Ursache auf — fett geschriebene Markdown-
+   Überschriften brachen die Ticker-Extraktions-Regex (v2.54.2) — danach
+   griff der gezielte Fix nachweislich.
 10. **Sync- und Versionierungs-Pflicht (Mehrfach-Session-Schutz).** Vor jeder Code-Änderung an einer bereits versionierten Datei: **zuerst `git fetch`/`git log origin/main` gegen den lokalen Stand prüfen**, nie blind auf einem möglicherweise veralteten lokalen/Kontext-Stand weiterarbeiten. Jede geänderte Datei bekommt zwingend im selben Schritt: (a) einen neuen Versions-Header/Meta-Tag, (b) einen Changelog-Eintrag nach bestehendem Muster, (c) bei CDN-Hash-gepinnten `ko-modules`-Dateien die sofortige Aktualisierung des Pins in `index.html` — **nicht** als separater, später nachzuholender Schritt. Herleitung: 27./28.08.2026 — gleich zweifach in derselben Sitzung durch versäumten Pin-Sync (`ko-market-state.js`, `ko-prompts.js`) live 401er bzw. reaktivierte Sicherheitslücken ausgelöst; zusätzlich eine Versionsnummern-Kollision (v482 zweifach vergeben), weil frühere Änderungen derselben langen Sitzung außerhalb des sichtbaren Kontexts lagen und nicht gegen `origin/main` geprüft wurden, bevor weitergearbeitet wurde.
 11. **Analyse/Execution-Trennung (ergänzt 29.08.2026, externe Rechtsberatung).** Verbindlich für jedes Modul mit Optionsbezug (UIQ Options Desk, Premium Options): UIQ liefert ausschließlich die linke Spalte, niemals die rechte — die Trennung ist Architektur, nicht Textkosmetik:
 
