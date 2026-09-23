@@ -48,7 +48,15 @@ FMP wurde ausschließlich per Desk-Recherche geprüft (Dokumentation + ein verif
 
 ## 4. Datenqualitäts-Befund (nicht nur Feld-Verfügbarkeit)
 
-Bei MPC steht `revenue_estimate_high` über **sieben aufeinanderfolgende Quartale** (2025-03-31 bis 2026-06-30) exakt bei `40000000000.00` — ein auffällig runder, identisch wiederholter Wert. Das sieht nach einem Platzhalter- oder Stale-Value im Vendor-Datensatz aus, nicht nach echter Analystenschätzung. Kein Blocker, aber ein konkreter Beleg dafür, dass Punkt 9 der Testpflicht ("Stabilität des Schemas") nicht nur abstrakte Vorsicht ist — vor jeder produktiven Nutzung müsste UIQ eine Sanity-Filter-Logik gegen genau solche Wertwiederholungen bauen (analog zu bestehenden Sanity-Filtern, z. B. `iv_layer.py`).
+Über alle sechs live getesteten Ticker (IBKR, MPC, MRK, NVDA, CAT, STNG) hinweg wurden **drei unterschiedliche Anomalie-Muster** gefunden — kein Einzelfall, sondern ein wiederkehrendes Bild. Für die Sanity-Check-Logik (s. Abschnitt 5c/8) bedeutet das: mindestens drei verschiedene Prüfmuster nötig, nicht nur eines.
+
+**Muster 1 — Wiederholter Platzhalterwert (MPC):** `revenue_estimate_high` steht über sieben aufeinanderfolgende Quartale (2025-03-31 bis 2026-06-30) exakt bei `40000000000.00` — auffällig rund, identisch wiederholt. Sieht nach einem Stale-Value im Vendor-Datensatz aus, nicht nach echter Analystenschätzung.
+
+**Muster 2 — Stock-Split-Artefakte (NVDA):** Zwei Stellen zeigen scheinbar dramatische Revisionssprünge, die tatsächlich reine Split-Bereinigungs-Artefakte sind — 2024-07-31 (`eps_estimate_average_90_days_ago = 5.86` vs. aktuell `0.64`, Faktor ~9x, deckt sich mit NVDAs 10:1-Split Juni 2024) und 2021-10-31 (Faktor ~4x, deckt sich mit dem 4:1-Split Juli 2021). Die "Tage-zuvor"-Vergleichswerte scheinen nicht durchgängig split-bereinigt zu sein.
+
+**Muster 3 — Kompletter Nullwert-Ausreißer (NVDA):** Das Quartal 2022-07-31 zeigt `eps_estimate_analyst_count: "0.0000"` und `eps_estimate_average: "0.0000"`, während `eps_estimate_average_7_days_ago` noch einen validen Wert (`1.2500`) zeigt — eine komplette Nullwert-Zeile trotz befüllter Nachbarfelder.
+
+**Konsequenz für die geplante Sanity-Check-Logik** (analog zu bestehenden Sanity-Filtern wie `iv_layer.py`): mindestens drei Prüfregeln nötig — (a) Erkennung wiederholter Werte über mehrere Perioden hinweg, (b) Erkennung von Near-Integer-Multiplikator-Sprüngen (2x, 4x, 10x — typische Split-Verhältnisse) um bekannte Split-Termine, idealerweise abgeglichen gegen die ohnehin im UIQ-Aggregator vorhandenen Split-Daten, (c) Erkennung kompletter Nullwert-Zeilen bei gleichzeitig befüllten Nachbarfeldern. Kein Blocker für Phase 0, aber ein konkreter, belegter Umfang für die Implementierung in Phase 1/2 statt einer vagen "Sanity Checks nötig"-Notiz.
 
 ---
 
@@ -114,7 +122,13 @@ Statt aller 737 Ticker den vollen `EARNINGS_ESTIMATES`-Call zu unterziehen, soll
 - **Momentum/relative Stärke** — würde die zentrale "Expectation Gap"-These direkt unterlaufen: genau ein Kandidat mit noch niedrigem Momentum, aber bereits steigenden Schätzungen, ist der Idealfall der Strategie (§2), kein Ausschlusskriterium. Gehört stattdessen als Auswertungsdimension in Layer 4 (Market/Technical Setup) — dort, wo das Konzept es ohnehin schon vorsieht.
 - **Sektor-/Branchenausschluss** — widerspricht direkt §12 des Konzepts: *"The strategy should not automatically exclude entire sectors."* MPC/VLO/PSX sollen im Datensatz bleiben, nur mit External-Dependency-Flag versehen (Layer 6), nicht vorab herausgefiltert.
 
-**Effekt auf die Rate-Limit-Rechnung (Abschnitt 6):** Earnings-Termine clustern typischerweise in mehrwöchigen Fenstern ("Earnings Season") statt sich gleichmäßig übers Quartal zu verteilen — die tatsächliche Kandidatenzahl an einem gegebenen Tag dürfte deutlich unter 737 liegen, vermutlich niedrige zweistellig bis knapp dreistellig. **Das ist eine Einschätzung, keine verifizierte Zahl** — nächster konkreter Schritt wäre, den `EARNINGS_CALENDAR`-Bulk-Call einmal live gegen das tatsächliche 737-Ticker-Universum laufen zu lassen und die vier weiteren Filter lokal anzuwenden, um eine echte Zahl statt einer Schätzung zu bekommen. Falls sich das bestätigt, sinkt der in Abschnitt 6 berechnete Premium-Bedarf voraussichtlich weiter, ggf. sogar unter die Schwelle, ab der überhaupt ein bezahlter Tarif nötig ist.
+**Effekt auf die Rate-Limit-Rechnung (Abschnitt 6) — jetzt mit echten Zahlen statt Schätzung:** Live gegen das tatsächliche 737-Ticker-Universum getestet (`EARNINGS_CALENDAR`, horizon=3month, abgeglichen mit einem `master_market_data.json`-Snapshot vom 22.09.2026):
+
+- **15 von 737 UIQ-Tickern (2,0%)** fallen zum Testzeitpunkt ins 5-15-Handelstage-Fenster — darunter JNJ (bereits als ATMNA-Kandidat getestet), MU, BAC, JPM, GS, WFC.
+- **416 von 737 UIQ-Tickern** berichten in der Haupt-Earnings-Season (Wochen +3 bis +7 ab Testdatum) — die Clustering-These aus diesem Abschnitt bestätigt sich damit auch marktweit: 93% aller 4.490 Kalender-Events im Gesamtmarkt liegen in genau diesem 5-Wochen-Fenster.
+- **Einschränkung:** Nur 431 von 737 UIQ-Tickern hatten überhaupt einen Treffer im 3-Monats-Kalender. Die übrigen 306 sind größtenteils Symbol-Format-Mismatches (Auslandsnotierungen `.L`/`.DE`, Krypto `-USD`, ETFs) oder liegen außerhalb des 3-Monats-Horizonts (nächster Bericht erst nach dem 17.12.2026) — kein Datenproblem, aber relevant für eine vollständige Jahresabdeckung (dafür wäre `horizon=12month` nötig, nicht getestet).
+
+**Damit ist die Kernaussage dieses Abschnitts empirisch bestätigt, nicht mehr nur plausibel:** Ein einzelner Tages-Vorfilter reduziert das Universum von 737 auf eine niedrige zweistellige Zahl — 15 im aktuellen Testfall. Die Premium-75-Rechnung aus Abschnitt 6 (~20 Minuten für alle 737 Ticker) war damit ohnehin schon ein sehr konservativer oberer Rahmen; mit Vorfilter liegt der tatsächliche tägliche Bedarf um eine Größenordnung niedriger.
 
 ## 6. Kosten — inkl. konkreter Rate-Limit-Rechnung gegen das echte UIQ-Universum (737 Ticker)
 
@@ -162,30 +176,49 @@ POINT-IN-TIME EPS               ✅
 EPS REVISION 7/30/60/90         ✅
 EPS SURPRISE HISTORY            ✅
 REVENUE CURRENT CONSENSUS       ✅
-REVENUE REVISION HISTORY        ⏳ UIQ ARCHIVE (Start sofort, parallel)
+REVENUE REVISION HISTORY        ⏳ UIQ ARCHIVE (Skript fertig, s. unten — Historie beginnt erst mit dem produktiven Betrieb)
 GUIDANCE vs CONSENSUS            ⏸ außerhalb Layer 1
-DATA SANITY                     ⏳ muss implementiert werden
-CROSS-SECTOR VALIDATION          ⏳ 3–5 Ticker
-EARNINGS CALENDAR PRE-FILTER     ⏳ Live-Test (wichtigster nächster technischer Schritt)
+DATA SANITY                     ✅ implementiert, getestet gegen echte Anomalien (3 Muster, s. Abschnitt 4) — bewusst nur Flags, kein Auto-Filter
+CROSS-SECTOR VALIDATION          ✅ 6 Ticker, 6 Kategorien getestet
+EARNINGS CALENDAR PRE-FILTER     ✅ Live-Test bestanden (15/737 im 5-15d-Fenster, als Tagesbeobachtung — kein garantiertes Maximum)
+API-TARIF                       ✅ bestätigt: nur Free-Tier (25/Tag, 5/Min), Skript entsprechend budget-bewusst gebaut
 COST MODEL                       🟢 weitgehend geklärt
 PHASE 1 FEATURE SPECIFICATION    → danach
 ```
+
+**Feinaufschlüsselung Punkt C** (Revenue-Archiv, ab hier präziser als nur "🟡"):
+
+```text
+C  Archiv-Skript (v0.3)                  ✅ fertig, getestet, echtes Tagesbudget-Tracking statt fixem Limit
+C  Nightly-Workflow-Integration          ⏳ bewusst noch NICHT verdrahtet (Empfehlung Reviewer, 23.09.2026)
+C  Täglicher produktiver Betrieb         ⏳ noch nicht gestartet
+C  30-Tage-Revenue-Historie              ⏳ Tag 0 noch nicht erreicht
+C  90-Tage-Revenue-Historie              ⏳ Tag 0 noch nicht erreicht
+```
+
+**Architektur-Entscheidung (Reviewer, 23.09.2026, übernommen):** Das Skript läuft vorerst **separat, nicht in `market-aggregator.yml` verdrahtet** — kein Premium-Kauf, keine verfrühte Integration. Nach einigen Tagen produktivem Stand-alone-Betrieb wird neu entschieden, ob die Archivierung in den Nightly-Workflow gehört. Der Free-Tier-Sicherheitsmechanismus wurde dabei ausdrücklich verschärft: Statt einer fixen Obergrenze (die frühere Fassung hatte `max_tickers_per_run=10` als Konstante) berechnet das Skript jetzt das tatsächlich verbleibende Tagesbudget aus einem persistenten Usage-Log — die Beobachtung "15 Ticker passen heute unters Limit" war ein Tageswert, kein garantiertes Maximum, und wurde entsprechend nicht als feste Zahl in den Code geschrieben.
 
 **Zur Sekundärquellen-Frage:** Alpha Vantage ist nach diesem Bericht die einzige Quelle, die für den zentralen Revisionsmechanismus live verifiziert wurde. FMP bleibt dokumentarisch bestätigt, aber praktisch nicht validiert — für den aktuellen Ein-Personen-Betrieb keine Multi-Vendor-Architektur bauen, solange AV allein trägt. FMP bleibt als Kandidat vermerkt, nicht als gleichwertige zweite Quelle behandelt.
 
 **Empfehlung:** Phase 0 als bestanden werten, aber vor Phase 1 noch einen kleinen, gezielten **Feasibility-Closure-Schritt** einschieben — keine neue große Research-Phase, sondern das Schließen der in Abschnitt 7 benannten Lücken:
 
-**A.** 3-5 weitere Testfälle (Schema-Stabilität an den Rändern, nicht statistische Repräsentativität): 1 Pharma/Large-Cap, 1 Titel mit geringer Analystenzahl, 1 Tech/AI, 1 zyklischer Titel, optional 1 weiterer Activity-driven-Titel wie IBKR
+**A. ✅ Erledigt:** Sechs Ticker live getestet über sechs strukturell verschiedene Kategorien: IBKR (Financial/Activity-driven), MPC (Commodity), MRK (Pharma/Large-Cap), NVDA (Tech/AI, extremstes Revisionsmomentum, 53 Analysten), CAT (Zyklisch/Industrie), STNG (geringere Coverage, 6-10 Analysten). Schema blieb über alle sechs identisch und stabil — auch bei deutlich dünnerer Coverage (STNG) keine strukturellen Ausfälle. Nebenbei drei Datenqualitäts-Anomalie-Muster gefunden (s. Abschnitt 4) — wichtigster Fund: Stock-Split-Artefakte bei NVDA, die einer Sanity-Check-Logik ohne Split-Abgleich als scheinbar dramatische Fehlrevisionen erscheinen würden.
 
-**B. Wichtigster nächster technischer Schritt:** `EARNINGS_CALENDAR`-Bulk-Call einmal live gegen das 737-Ticker-Universum testen + die vier weiteren sicheren Vorfilter (Market Cap, Cashflow, Index-Mitgliedschaft, Liquidität) lokal anwenden — ersetzt die Schätzung aus Abschnitt 5c durch eine echte Zahl und legt die tatsächliche API-Kosten-/Laufzeitarchitektur fest, statt mit der Annahme "737 × Endpoint" zu planen.
+**B. ✅ Erledigt:** `EARNINGS_CALENDAR`-Bulk-Call live gegen das 737-Ticker-Universum getestet (s. Abschnitt 5c) — 15 von 737 Tickern im 5-15-Handelstage-Fenster, 416 von 737 in der Haupt-Season. Die vier weiteren sicheren Vorfilter (Market Cap, Cashflow, Index-Mitgliedschaft, Liquidität) wurden dabei noch nicht angewendet, da sie in `master_market_data.json` bereits vorliegen (die 737 Ticker sind bereits das kuratierte UIQ-Universum, nicht der Rohmarkt) — die zusätzliche Filterung wäre daher hier redundant, könnte aber bei einer Ausweitung des Universums relevant werden.
 
-**C. Sofort, parallel, nicht nach den übrigen Punkten:** Revenue-Archiv starten — zunächst nur Rohdaten, keine abgeleiteten Revisionswerte:
+**C. 🟡 Skript fertig (v0.3), Produktivlauf noch offen:** `earnings_estimates_archive.py` gebaut (Python, analog `iv_layer.py`) — Revenue + EPS als Redundanz (Scope-Entscheidung Axel, 23.09.2026), plus die drei Sanity-Check-Muster aus Abschnitt 4 als Diagnose-Flags (keine automatische Filterung, Namen final: `REPEATED_PLACEHOLDER`/`POSSIBLE_SPLIT_ARTIFACT`/`ZERO_VALUE_ANOMALY`). Getestet gegen die echten Live-Antworten der sechs bereits abgefragten Ticker (IBKR/MPC/MRK/NVDA/CAT/STNG) — alle drei bekannten Anomalien werden erkannt, keine False Positives bei sauberen Tickern. **Ein Nebenfund beim Testen:** der Split-Artefakt-Detektor markiert bei MPC zwei zusätzliche Stellen, die vermutlich keine Splits sind, sondern echte Rohstoff-Volatilität (§14-Muster) — Verfeinerungskandidat für Phase 2/3 (Abgleich gegen echte Split-Kalenderdaten statt reiner Statistik-Heuristik), kein Blocker.
+
+**v0.3-Korrektur (Reviewer, 23.09.2026):** Die erste Fassung hatte eine feste Sicherheits-Obergrenze (`max_tickers_per_run`) als Konstante — das war der am 23.09. *beobachtete* Wert (15 Ticker im 5-15-Tage-Fenster), kein garantiertes Tagesmaximum. In einer starken Earnings-Woche könnten deutlich mehr Kandidaten anfallen. Jetzt: ein persistentes Usage-Log zählt die tatsächlich heute bereits verbrauchten Requests, das für jeden Lauf effektiv verbleibende Tagesbudget wird live daraus berechnet (`daily_cap - bereits verbraucht`), nicht angenommen. Ticker, die wegen Budget-Erschöpfung nicht verarbeitet werden konnten, landen in einer `pending_candidates_<date>.json` statt stillschweigend zu verschwinden — der nächste Lauf entscheidet explizit, ob er sie aufgreift.
+
+Rohdaten-Schema wie vorgeschlagen:
 ```text
 date, ticker, fiscal_period, revenue_estimate_average,
 revenue_estimate_high, revenue_estimate_low, analyst_count,
 source, snapshot_timestamp
 ```
 Plus EPS-Felder als Redundanz. Die abgeleiteten `revenue_revision_{30,60,90}d` entstehen erst in einer späteren Schicht, sobald genug Archiv-Tage vorliegen. Jeder verlorene Tag verlängert die Reifung 1:1 — deshalb nicht auf den Abschluss der übrigen Punkte warten.
+
+**Noch offen, bevor die 90-Tage-Uhr tatsächlich läuft:** Einbindung in den Nightly-Workflow (`market-aggregator.yml`) — **bewusst noch nicht verdrahtet** (Architektur-Entscheidung Reviewer, 23.09.2026, s. Statustabelle oben). Die Tarif-Frage ist geklärt — **aktuell nur AV-Free-Tier aktiv** (Axel, 23.09.2026), kein Premium-Tarif. Skript entsprechend auf v0.3 aktualisiert: tier-bewusste Presets (`--tier free|premium75|premium150`) statt fester Konstanten, Default `free` mit `sleep_seconds=13.0` (statt der für Premium-75 kalibrierten 1.0s, die auf Free-Tier eine Rate-Limit-Sperre ausgelöst hätte). Die Tages-Obergrenze ist **keine feste Zahl mehr**, sondern wird pro Lauf live aus einem Usage-Log berechnet (verbleibendes Budget = 25 minus heute bereits verbrauchter Requests) — die ursprüngliche Annahme "15 Ticker passen unters Limit" war ein Tageswert, kein Versprechen für jeden Tag.
 
 ✅ Rate-Limit-Rechnung — erledigt (s. Abschnitt 6)
 Guidance vs. Consensus bewusst aus dem Layer-1-Scope herausnehmen, solange keine belastbare Quelle gefunden ist.
