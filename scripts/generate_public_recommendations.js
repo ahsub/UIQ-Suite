@@ -18,9 +18,27 @@
  * um den Diff auf den Trading-Day-Skip-Check zu beschränken.]
  * ====================================================================
  *
- * Skript-Version: v1.18
+ * Skript-Version: v1.19
  *
  * CHANGELOG (neueste zuerst):
+ * v1.19 (23.09.2026, Claude + Axel): KO_MODULES_VENDOR_DRIFT_COMMIT finale
+ *      Nachziehung — v1.18 hatte den Wert auf '4c580e6' (ko-prompts.js
+ *      v2.54.1) belassen, mit dem Hinweis, dass v2.54.2 (der eigentliche
+ *      Abschnittsgrenzen-Regex-Fix, s. dortiger Changelog) zu diesem
+ *      Zeitpunkt noch nicht committed war. Jetzt committed
+ *      (ko-modules@880163d) — Wert entsprechend auf '880163d' gezogen.
+ *      Reiner Metadaten-Fix, keine Verhaltensänderung am Skript selbst.
+ *      LIVE-BESTAETIGT (23.09.2026, 03:51 UTC, vor diesem Fix, mit v2.54.2
+ *      bereits scharf): erster erfolgreicher Lauf seit Einfuehrung des
+ *      top3-ticker-konsistenz-Validators (21.09.2026) — 15/15 Strategien
+ *      erfolgreich, alle fuenf Options-Strategien (csp_wheel/atmna/
+ *      weekly_income/cc/collar) bestanden ohne Repair-Versuch. 16 Calls
+ *      statt der bisherigen 21 (keine 5 Repair-Calls mehr noetig), Budget
+ *      $1.99 statt $2.26 — zweiter, unabhaengiger Beleg neben dem direkten
+ *      Compliance-PASS. Der bei diesem Lauf noch aktive Vendor-Drift-
+ *      Fehlalarm (gegen den zu diesem Zeitpunkt veralteten '4c580e6') war
+ *      der erwartete, in v1.18 dokumentierte Nebeneffekt — mit diesem Fix
+ *      behoben.
  * v1.18 (22.09.2026, Claude + Axel, ROOT-CAUSE-FIX FÜR DIAGNOSE-LOGGING):
  *      v1.17s Diagnose-Log ("Abschnitt-3-Grenze gefunden: false" bei
  *      JEDEM Fall, alle fünf Options-Strategien) legte den eigentlichen
@@ -641,7 +659,7 @@ async function fetchIndicatorRegistryVersion() {
 // verglichen — bei Abweichung LAUT warnen statt still zu veralten.
 // Netzwerkfehler beim Vergleich selbst dürfen den Hauptlauf nicht brechen
 // (§4-Grundsatz, wie bei fetchIndicatorRegistryVersion oben).
-const KO_MODULES_VENDOR_DRIFT_COMMIT = '4c580e6';  // Stand 22.09.2026 (ko-prompts.js v2.54.1). ACHTUNG: v2.54.2 (Abschnittsgrenzen-Regex-Fix, selbes Datum) ist zum Zeitpunkt dieser Aenderung noch nicht committed — sobald das geschieht, muss dieser Wert erneut auf den dann neuen Commit-Hash gezogen werden.
+const KO_MODULES_VENDOR_DRIFT_COMMIT = '880163d';  // Stand 23.09.2026 (ko-prompts.js v2.54.2, Abschnittsgrenzen-Regex-Fix — jetzt final, v2.54.2 ist committed UND live verifiziert: Lauf 23.09.2026 03:51 UTC, 15/15 Strategien erfolgreich, alle 5 Options-Strategien bestanden top3-ticker-konsistenz ohne Repair).
 const KO_MODULES_VENDOR_FILES = ['ko-prompts.js', 'ko-markov.js'];
 
 async function checkVendorDrift() {
