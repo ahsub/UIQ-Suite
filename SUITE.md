@@ -1,12 +1,11 @@
 # Investment-Suite — Dachdokument
 
 
-**Version:** 4.26
-**Stand:** 22.09.2026
+**Version:** 4.27
+**Stand:** 24.09.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
 **Fortschreibung:** Claude, versioniert, analog den Modul-Strategiedokumenten.
-| 4.26 | 22.09.2026 | Grundgesetz #9 (Debug-Protokoll) verallgemeinert: Scope von "Laufzeit-Bug" auf jedes unerwartete Verhalten erweitert (Validierungs-/Compliance-Fehlschläge, KI-Output-Abweichungen), Titel auf "Never guess, always correctly diagnose" geschärft. Zweite Herleitung ergänzt: `ko-prompts.js` top3-ticker-konsistenz-Fehlschlag (22.09.2026, drei Fehlversuche) — ein begründeter, aber unverifizierter Fix (v2.54.1) schlug live fehl; reines Diagnose-Logging (`generate_public_recommendations.js` v1.17) deckte die tatsächliche Root Cause auf, danach griff der gezielte Fix (v2.54.2). |---
 
 ## 0. UIQ-Leitprinzip (verbindlich, schlägt alle anderen Abschnitte)
 
@@ -1723,11 +1722,126 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
     *Verwandt mit: №65, №67, №36.*
 
+69. **Pareto-Roadmap „Beweisbarkeit vor Features" (neu 24.09.2026)** *(aus
+    GitHub-Recherche Owner Earnings / Infrastruktur, 16 öffentliche Repos
+    gesichtet, Code jeweils selbst gelesen, nichts ausgeführt)*
+
+    **Leitlinie (Axel, 24.09.2026):** Aktuelle Phase ist „bestehendes System
+    belastbar machen → Datenintegrität → reproduzierbare Evaluation →
+    Compliance-Fähigkeit → Go/No-Go", nicht „mehr Intelligenz hineinbauen".
+    Die Punkte A–D erzeugen praktisch keine laufenden API-Kosten.
+
+    **Verbindliche Reihenfolge:**
+
+    0. **[LÄUFT] Abschnitt-7/8-Templating fertigstellen und testen** (Plan
+       vom 13.09.2026, Restpunkt laut Axel `finalizeStrategyResult()`; Stand
+       in dieser Session nicht im Code verifiziert). Wird vor A abgeschlossen,
+       kein Umschwenken mitten im Umbau.
+
+    A. **Aggregator-Robustheit + Point-in-Time-Regel** (~1 Session)
+       - Drei Statusebenen: **RUN SUCCESS ≠ DATA SUCCESS ≠ DATA QUALITY
+         SUCCESS** — ein erfolgreicher GHA-Lauf mit 0/735 Tickern ist kein
+         erfolgreicher Aggregator-Lauf.
+       - Vor dem KV-Write: Mindestabdeckung relativ zum Universum (Vorschlag
+         ≥95 % gescort, Pflichtfelder ≥98 %), sonst Abbruch ohne Write.
+         Relative statt absoluter Schwellen, damit sie bei Universumsänderung
+         nicht veralten. (Quelle: `j-poc/buffet-scanner`)
+       - Ersatzquelle nur bei gleichem Datenstand (z. B. PCR-VIX-Proxy,
+         CBOE-Feeds); kein älterer Stand unter neuem Datum.
+         (Quelle: `397367315-hub/ai-buffett-quant`)
+       - Fehler-Mail/Heartbeat bei gescheitertem oder unplausiblem Lauf —
+         „keine Meldung" darf nicht „alles in Ordnung" bedeuten.
+         (Quelle: `kdtmac/buffett-engine`)
+       - **Point-in-Time-Regel** in die Fair-Value-Methodology-Spec (nur
+         Doku, Engine bleibt eingefroren): Zeitkette `period_end → filed →
+         available → snapshot → evaluation_date`; `available = filed + 1
+         Handelstag` (konservativ, da EDGAR `companyfacts` keine
+         Einreichungsuhrzeit liefert); Backtests nur mit `available ≤
+         evaluation_date`. Hintergrund: EDGAR liefert je Jahr den zuletzt
+         eingereichten (ggf. restated) Wert → sonst Look-ahead-Bias.
+
+    B. **Faber-Vergleich** (~0,5–1 Session) — empirische Entscheidungsfrage
+       vor Dezember, daher vor C
+       - VIX3M/VIX-Gate (Punkt 34) vs. Faber-10-Monats-SMA (SPY,
+         Monatsschluss, Umsetzung im Folgemonat) vs. Buy-and-Hold.
+       - Zeitraum identisch zu Punkt 34 (18.09.2009–05.08.2026), gleiche
+         Kostenannahmen.
+       - Kennzahlen: Sharpe, Max Drawdown, Umschlag.
+       - **Kein Tuning, Erfolgskriterium vor dem Lauf schriftlich fixieren**
+         (Vorschlag: Gate gilt nur als überlegen, wenn es Faber bei Sharpe
+         UND Drawdown schlägt).
+       - Ergebnis in jedem Fall dokumentieren; ein negatives Ergebnis ist
+         eine Erkenntnis, kein Fehlschlag.
+
+    C. **Automatische Feldprüfung** in `ahsub/uiq-devtools` (~1 Session),
+       bewusst klein
+       - Feldverweise in `ko-prompts.js`/`index.html` per Regex →
+         Referenzliste → Abgleich mit den Ausgabe-Keys von
+         `market_aggregator.py` → PASS / MISSING / AMBIGUOUS.
+       - Als Pre-Commit/GHA-Gate vor weiteren Feldänderungen; macht die
+         7-Stellen-Checkliste (Entscheidung 07.09.2026, Option A) maschinell
+         prüfbar. Noch keine Canonical Metrics Pipeline (bleibt v2.0).
+       - (Quelle: `vikd1000/investment-council`, `validate.py`, MIT)
+
+    D. **JSON-Sidecar + deterministischer Prüfer** für die Public-KI-Ausgabe
+       (~1,5–2 Sessions), vor dem Fachanwalts-Termin (№36)
+       - LLM liefert **nur Behauptungen** `{ticker, section, field, value}`.
+       - **Code** ergänzt `snapshot_value` und `match` (mit
+         Rundungstoleranz) und prüft Text ↔ Sidecar ↔ Snapshot (u. a.
+         Ticker-Scope Abschnitt 3 vs. 4–9, zitierte Zahlen). Das LLM darf
+         `match` nie selbst setzen.
+       - Bei Fehler max. 1 Wiederholung; **kein zweiter LLM als Prüfer**.
+       - Setzt die serverseitige Zweitkontrolle (Entscheidung 06.09.2026)
+         um und ersetzt die fragile Ticker-Extraktion per Regex (vgl.
+         Fettdruck-Bug 22.09.2026, v2.54.2).
+       - (Quelle: `georgeztian/buffett-equity-research-graph`, MIT)
+
+    **Zurückgestellt (bewusst nicht jetzt):**
+    - *Stufe B (bedingt):* Belege pro Kriterium statt roher Zahlen im Prompt
+      (zusammen mit Templating-Folgeschritten); Selbstwiderlegung mit
+      Kippschwelle + beobachtbarem Prüfereignis (zuerst nur EIC §23);
+      Value-Fallen-Flag + sektorabhängige Schwellen + Veto-Deckel (bei
+      nächster Überarbeitung von `value`); zinsabhängige Bewertungsschwelle
+      (Gewinnrendite − 10J-Anleihe) als Kontextfeld.
+    - *Stufe C (Fair-Value-Auftauen bzw. v2.0):* Owner-Earnings-Kern —
+      OE-Spanne gesamter Capex vs. Erhaltungs-Capex ≈ Abschreibungen
+      (`kdtmac/buffett-engine`), SBC-Korrektur Ω = (Cw − Ce) + T + P·ΔS,
+      OE = N + G − Ω (`ChenFindling/tragic-algebra-analyzer`), implizite
+      Rendite als Anker, Realitätsanker-Test (Annahme ÷ letztes Quartal × 4);
+      Quality-Style/Piotroski und Gewinnqualitäts-Warnsignale (nach
+      Bewährung der Master-Prompts, vgl. 07.09.2026); Architektur
+      Daten → Schema → reine Rechenschicht mit Herkunft pro Wert
+      (= Canonical Metrics Pipeline / Option B); automatische
+      Ticker-Universum-Pflege (Survivorship-Bias beachten); Uneinigkeit der
+      Strategie-Scores als Meta-Merkmal (BN-Analyse).
+    - *Nicht übernehmen:* Personas realer Investoren, direktive
+      Kauf-/Verkaufsausgaben und Positionsgrößen, Multi-Agent- oder
+      LLM-Prüfer-Workflows pro Ticker (Kostenkonflikt), einfache
+      DCF-Rechner.
+
+    **Lizenzhinweise:** MIT (Übernahme erlaubt): `investment-council`,
+    `buffett-engine`, `buffett-equity-research-graph`. Ohne Lizenz (nur
+    Konzepte): `tragic-algebra-analyzer`, `buffet-scanner`. GPL-3.0
+    (kein Code in UIQ): `Benjamin-Graham-and-Warren-Buffett-Model-…`.
+
+    **⚠️ Sicherheitswarnung:** `Choppy-superfamilymuscoidea9021/buffett-skills`
+    ist eine Malware-Kopie von `agi-now/buffett-skills` (ZIP mit
+    `Application.bat` → `compiler.exe` + `lua51.dll` + verschleiertem
+    `gc.txt`, LuaJIT-Loader-Muster für Infostealer). Nie herunterladen oder
+    ausführen. Künftige Repo-Sichtungen vorher auf Klone mit Zufallsnamen,
+    ZIP/EXE im Repo und „SmartScreen übergehen"-Anleitungen prüfen.
+
+    **Vollständige Stoffsammlung:** `docs/UEBERGABE-2026-09-24.md`.
+
+    *Verwandt mit: №34, №36, Entscheidungen 06.09./07.09./13.09./18.09.2026.*
+
 
 ## Fortschreibungshistorie
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.27 | 24.09.2026 | №69 (neu): Pareto-Roadmap „Beweisbarkeit vor Features“ aus GitHub-Recherche (16 Repos) — verbindliche Reihenfolge: (0) Abschnitt-7/8-Templating fertigstellen → (A) Aggregator-Robustheit (RUN ≠ DATA ≠ DATA QUALITY SUCCESS, relative Mindestabdeckung vor KV-Write, Same-Date-Fallback, Heartbeat) + Point-in-Time-Regel in Fair-Value-Spec → (B) Faber-10M-SMA-Vergleich zum VIX3M/VIX-Gate ohne Tuning, Kriterium vorab fixiert → (C) automatische Feldprüfung in uiq-devtools → (D) JSON-Sidecar mit deterministischem Prüfer (LLM liefert nur Behauptungen, Code setzt match) vor Fachanwalts-Termin. Stufe B/C und Nicht-Übernahmen dokumentiert; Malware-Warnung zu einem geklonten buffett-skills-Repo. Formalie: versehentlich im Kopfbereich stehende 4.26-Zeile in die Historientabelle verschoben. |
+| 4.26 | 22.09.2026 | Grundgesetz #9 (Debug-Protokoll) verallgemeinert: Scope von "Laufzeit-Bug" auf jedes unerwartete Verhalten erweitert (Validierungs-/Compliance-Fehlschläge, KI-Output-Abweichungen), Titel auf "Never guess, always correctly diagnose" geschärft. Zweite Herleitung ergänzt: `ko-prompts.js` top3-ticker-konsistenz-Fehlschlag (22.09.2026, drei Fehlversuche) — ein begründeter, aber unverifizierter Fix (v2.54.1) schlug live fehl; reines Diagnose-Logging (`generate_public_recommendations.js` v1.17) deckte die tatsächliche Root Cause auf, danach griff der gezielte Fix (v2.54.2). |---
 | 4.25 | 29.08.2026 | №68 (neu): Regulatory/Architecture Review von SUITE.md selbst (fünfter Review-Zyklus, diesmal am Dachdokument statt am Output) — Public Safety Boundary verankert, ohne die technische Architektur anzutasten. §0 um "Interne vs. öffentliche Beschreibung" ergänzt (OB/WIE/WAS bleibt intern, Public-Ersatzformulierung neu); Grundgesetz #4 um Validierungssprache-Vorsicht erweitert; neues Grundgesetz #11 (Analyse/Execution-Trennung, UIQ/Broker-Funktionsmatrix als verbindliche Prüfmatrix); neuer Abschnitt §3.8 "Public Safety Boundary" mit Abstufungs-Beispielen und regulatorischer Selbstbeschreibungs-Regel. Bewusst kein Rewrite des Gesamtdokuments. |
 | 4.24 | 29.08.2026 | №67 (neu): Erstfassung `docs/UIQ-REGULATORY-LANGUAGE-SPEC.md` v1.0 — nach vier externen Review-Zyklen zum CSP(ATM/NA)-Output konsolidiertes, modulübergreifendes Sprach-Regelwerk statt weiterer Einzelfall-Reviews. Zwei neue Fehlerkategorien identifiziert (Begriffs-Integrität, Kausalitäts-Integrität), die fachlicher statt regulatorischer Natur sind und noch nicht in `ko-prompts.js` kodiert sind. Grundlage für Backlog №36 (Rechtsgutachten) — Anwalt bekommt konkret geprüftes Produktverhalten statt abstrakter Beschreibung. Nebenbei kritischer Live-Fund behoben: `ko-modules`-Commit `3fbf685` enthielt versehentlich Diff-Text statt validem JS als `ko-prompts.js`-Inhalt (vermutlich Diff-Datei statt Volltext committed) — Syntaxfehler legte alle KI-Strategie-Buttons lahm; durch Wiederherstellung der letzten bekannt guten v2.8.0-Volltextdatei behoben.
 
