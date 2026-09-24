@@ -47,6 +47,30 @@
    der ersten plausiblen Hypothese sofort einen Fix zu bauen — auch wenn das
    einen Zyklus länger dauert.
 
+7. **Tests für öffentlichen Output prüfen den Inhalt, nicht nur die Struktur.**
+   "Überschrift 7 ist vorhanden" beweist nicht, dass unter Überschrift 7 der
+   richtige Text steht. Präzedenzfall (24.09.2026):
+   `generate_public_recommendations.js` v1.22 bestand Golden-Test,
+   Szenario-Tests und E2E-Test — alle prüften nur, ob die Abschnitts-
+   Überschriften vorhanden waren. Live standen in Abschnitt 7+8 aller 15
+   Strategien die Prompt-Anweisungen an das Modell ("PFLICHT-SATZMUSTER",
+   "Grundgesetz #11", "EIC-exklusiv") statt fertigem Text. Root Cause: derselbe
+   String wurde für zwei Rollen benutzt (Anweisung ans Modell UND öffentlicher
+   Text). Konsequenz: Prüfungen für öffentlichen Text gegen echte historische
+   Outputs kalibrieren — mit positiven Fällen (gültige Texte müssen bestehen)
+   UND negativen Fällen (bekannt fehlerhafte Texte müssen durchfallen), bevor
+   sie live Strategien blockieren dürfen. Und: Prompt-Anweisung ≠ Output — nie
+   denselben String für beide Rollen verwenden.
+
+8. **Pro Nacht nur eine Produktionsänderung.**
+   Wenn zwei Änderungen gemeinsam in denselben Nachtlauf gehen und etwas
+   abweicht, lässt sich die Abweichung keiner der beiden eindeutig zuordnen.
+   Weitere fertige Änderungen warten, bis die vorherige live bestätigt ist —
+   notfalls über einen manuellen Lauf, damit nicht auf den nächsten Nachtlauf
+   gewartet werden muss. Präzedenzfall (24.09.2026): Phase C der
+   TICKER_MASTER-Migration wurde fertig gebaut und getestet, aber bewusst erst
+   nach der Live-Bestätigung von v1.23 zum Commit freigegeben.
+
 **Kurzform, die für den Rest der Session gilt:**
 *Verifiziert vor behauptet. Geprüft vor plausibel. Gezeigt vor versprochen.*
 
@@ -66,7 +90,8 @@
 * **Kopf-Metadaten direkt darunter:** `**Datum:**`, `**Status:**`,
   `**Zweck:**` — jeweils als eigene Zeile, passend zum Header-Stil der
   übrigen `docs/`-Dokumente dieser Session.
-* Dieser PFLICHT-HEADER-Block (inkl. Punkt 6) wird **unverändert** an den
-  Anfang jedes neuen Übergabeprotokolls kopiert, vor den eigentlichen
+* Dieser PFLICHT-HEADER-Block (inkl. der Punkte 6–8) wird **unverändert** an
+  den Anfang jedes neuen Übergabeprotokolls kopiert, vor den eigentlichen
   Session-Inhalt (Stand/Roadmap) — er ist die feste Vorlage, nicht Teil des
-  tagesspezifischen Inhalts.
+  tagesspezifischen Inhalts. Neue Punkte kommen nur hinzu, wenn Axel sie
+  freigibt.
