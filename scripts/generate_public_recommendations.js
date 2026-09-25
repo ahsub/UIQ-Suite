@@ -18,9 +18,36 @@
  * um den Diff auf den Trading-Day-Skip-Check zu beschränken.]
  * ====================================================================
  *
- * Skript-Version: v1.23
+ * Skript-Version: v1.24
  *
  * CHANGELOG (neueste zuerst):
+ * v1.24 (25.09.2026, Claude + Axel, ANTHROPIC_MAX_TOKENS 4096 -> 8192):
+ *      Einzige Aenderung: der Wert der Konstante ANTHROPIC_MAX_TOKENS (plus
+ *      dieser Changelog, Versionszeile und Kommentar an der Konstante).
+ *      Kein Prompt-, Validierungs-, Retry-, Caching- oder Batch-Eingriff.
+ *      Befund (verifiziert, nicht vermutet — Grundgesetz #9):
+ *        Lauf:       25.09.2026 00:20 UTC (GHA-Run 36077094497), Skript v1.23,
+ *                    Digest-/Budget-Datum 2026-09-24
+ *        Quelle:     KV internal/ai_budget/2026-09-24 (17 Calls, 269.819 /
+ *                    51.891 Token) + Aktions-Log
+ *        fading_short: Call 1 und Retry je token_output 4096, truncated:true
+ *                    -> Abschnitt 9 fehlt -> korrekt NICHT veroeffentlicht.
+ *                    Dritter blockierter Lauf in Folge (22.09., 24.09. manuell,
+ *                    25.09.) — deterministisch, der Retry mit identischem
+ *                    Limit kann nicht gelingen und kostet je ~0,115 $.
+ *        meanrev:    Call 1 token_output 4096 truncated:true, Retry 4093 —
+ *                    nur 3 Token unter dem Limit, also ebenfalls an der Grenze.
+ *        Weitere Strategien mit wenig Abstand: dividend 3553, collar 3374.
+ *      Ursache: Seit dem Rollback in v1.23 schreibt das Modell Abschnitt 7+8
+ *      wieder selbst; die laengsten Antworten passen damit nicht mehr in 4096.
+ *      Kosten: max_tokens ist eine Obergrenze, bezahlt werden nur tatsaechlich
+ *      erzeugte Output-Token. Mehrkosten nur, wo eine Antwort wirklich laenger
+ *      als 4096 wird; dafuer entfallen die zwecklosen Truncation-Retries
+ *      (25.09.: fading_short + meanrev zusammen ~0,22 $ pro Nacht).
+ *      Gilt fuer Sync- und Batch-Pfad (beide lesen dieselbe Konstante).
+ *      Absicherung unveraendert: Strukturpruefung Abschnitt 7/8/9 und
+ *      validatePublicSections78Content() (inkl. Laengengrenzen) blockieren
+ *      weiterhin jede fehlerhafte oder zu lange Ausgabe.
  * v1.23 (24.09.2026, Claude + Axel + Reviewer, ROLLBACK ABSCHNITT-7+8-
  *      TEMPLATING + INHALTS-PRUEFUNG):
  *      PRODUKTIONSFEHLER aus v1.22, live gefunden 24.09.2026:
@@ -2459,7 +2486,11 @@ function buildOptionsPromptForStrategy(strategy, snapshot, tickerListStr, top10,
 // dokumentiert: "claude-sonnet-4-6".
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 const ANTHROPIC_API_VERSION = '2023-06-01';
-const ANTHROPIC_MAX_TOKENS = 4096; // ERHOEHT 09.09.2026 nach echtem API-Test:
+const ANTHROPIC_MAX_TOKENS = 8192; // ERHOEHT 25.09.2026 (v1.24) von 4096:
+// fading_short 2x token_output 4096 truncated, meanrev 4096 truncated und im
+// Retry 4093 (Budget-Log 2026-09-24, s. Changelog v1.24). Nur Obergrenze —
+// bezahlt werden die tatsaechlich erzeugten Token.
+// Historie: ERHOEHT 09.09.2026 nach echtem API-Test:
 // 2000 war zu knapp — der Prompt verlangt eine strukturierte 1-9-Antwort
 // (max. 450 Woerter it. Prompt-Vorgabe), echte Antwort wurde bei genau
 // 2000 output_tokens mitten im Satz abgeschnitten (Live-Test mit Axels
