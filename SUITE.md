@@ -1,11 +1,12 @@
 # Investment-Suite — Dachdokument
 
 
-**Version:** 4.28
-**Stand:** 24.09.2026
+**Version:** 4.29
+**Stand:** 26.09.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
 **Fortschreibung:** Claude, versioniert, analog den Modul-Strategiedokumenten.
+
 
 ## 0. UIQ-Leitprinzip (verbindlich, schlägt alle anderen Abschnitte)
 
@@ -1846,11 +1847,66 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
     *Verwandt mit: №34, №36, Entscheidungen 06.09./07.09./13.09./18.09.2026.*
 
+70. — **Event & Surprise Gate · Sprint 1 (Deterministic Shadow Mode)**
+
+**Status:** BACKLOG · eigene Session · kein Eingriff in den produktiven Pfad
+**Ziel:** Kostenfreie, rein deterministische Event-Protokollierung für bereits
+veröffentlichte Kandidaten, um vor jeder KI-/News-Stufe empirisch zu prüfen,
+ob das Gate messbaren Informationswert liefert.
+
+**Architektur**
+- Separater Shadow-Step NACH `generate_public_recommendations.js`
+- Anforderung: Gate-Fehler dürfen den Digest nie beeinflussen. Vorgesehener
+  Mechanismus: GHA `continue-on-error: true` (bzw. gleichwertig) — konkrete
+  Umsetzung bei Implementierung im Workflow zu verifizieren
+- Liest die veröffentlichten Kandidaten aus dem bestehenden Output, verändert nichts
+- Persistenz: append-only JSONL im Repo (Content-Hash), keine DB-Tabellen
+
+**Scope**
+- Alle veröffentlichten Strategien; Ereignisfenster strategiespezifisch:
+  DTE (csp_wheel, atmna, weekly_income, cc, collar) bzw. typische Haltedauer (Equity)
+- Earnings: Quelle = vorhandener Aggregator-Earnings-Kalender
+- Makro: FOMC, CPI aus statischer, versionierter Jahres-Kalenderdatei
+- SEC 8-K (nur homeMarket=US): Erkennung + Item-Nummer-Klassifikation (z.B. 2.02, 5.02, 1.01)
+
+**Status-Werte:** PASS · WARN · UNVERIFIED · NOT_APPLICABLE
+- zusätzlich `would_block` (bool, hypothetisch, ohne Wirkung)
+- Grundsatz RUN ≠ DATA ≠ DATA_QUALITY: fehlende/nicht abrufbare Daten nie als PASS
+
+**Pflichtfelder pro Eintrag**
+gate_version, snapshot_id*, ledger_id*, ticker, strategy, event_type, event_subtype,
+event_status, event_date_status**, event_time, source, source_verified, checked_at,
+reason_code, would_block
+(* vorhandene IDs verwenden — Existenz/Format im Code zu verifizieren)
+(** nur wo die Unterscheidung fachlich existiert: Earnings → `estimated | confirmed`
+zum checked_at-Zeitpunkt; FOMC/CPI/8-K → `null`)
+
+**Bewusst NICHT in Sprint 1**
+LLM-Abfragen, News-API, Websuche, Competitive Intelligence, Wettbewerbergraph,
+wirksame BLOCK-Entscheidung, Änderung des Public Outputs, LLM-confidence
+
+**Bekannte Lücke:** Abend-Run (22:00 UTC) sieht keine US-Premarket-Meldungen —
+dokumentiert, Lösung (strukturierter Pre-Market-Check ohne KI) erst im Freigabemodus
+
+**Erfolgsmessung (forward-only, kein Hindsight)**
+PASS vs. WARN: Forward Return, Forward Drawdown, Gap-/Event-Moves;
+Anzahl Events, UNVERIFIED-Quote, FP/FN nach manueller Review
+
+**Exit-Kriterien**
+Kandidatenübernahme zuverlässig · Earnings/FOMC/CPI/8-K deterministisch erkannt ·
+JSONL reproduzierbar · Digest nachweislich unbeeinflusst · UNVERIFIED/NOT_APPLICABLE
+sauber von PASS getrennt · ≥30 WARN-Fälle oder ≥8 Wochen Shadow-Daten (später Eintretendes)
+
+**Danach:** Entscheidung über Sprint 2 (LLM-Extraktion, News-Discovery).
+Amgen/Novartis (Pelacarsen) als Golden Test Case für die Frage, ob Stufe 2
+indirekte Surprises prinzipiell findet — NICHT für Wirksamkeitsmessung (hindsight-kontaminiert).
 
 ## Fortschreibungshistorie
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.30 | 26.09.2026 | №71 Event & Surprise Gate Sprint 1 als BACKLOG aufgenommen (deterministischer Shadow Mode, keine Produktivwirkung).
+| 4.29 | 26.09.2026 | №70 earnings_invest
 | 4.28 | 24.09.2026 | №69 korrigiert: Schritt 0 (Abschnitt-7/8-Templating) als „Stand ungeklärt, vor Beginn verifizieren“ umformuliert — 4.27 hatte „läuft, Restpunkt finalizeStrategyResult()“ ungeprüft übernommen, während UEBERGABE-2026-09-24.md den v1.22-Incident, den v1.23-Rückbau und Option B als nicht gebaut dokumentiert. Vorrang der Roadmap 25.09. vermerkt. Automatische Ticker-Universum-Pflege aus Stufe C gestrichen (läuft bereits als TICKER_MASTER Phase C). |
 | 4.27 | 24.09.2026 | №69 (neu): Pareto-Roadmap „Beweisbarkeit vor Features“ aus GitHub-Recherche (16 Repos) — verbindliche Reihenfolge: (0) Abschnitt-7/8-Templating fertigstellen → (A) Aggregator-Robustheit (RUN ≠ DATA ≠ DATA QUALITY SUCCESS, relative Mindestabdeckung vor KV-Write, Same-Date-Fallback, Heartbeat) + Point-in-Time-Regel in Fair-Value-Spec → (B) Faber-10M-SMA-Vergleich zum VIX3M/VIX-Gate ohne Tuning, Kriterium vorab fixiert → (C) automatische Feldprüfung in uiq-devtools → (D) JSON-Sidecar mit deterministischem Prüfer (LLM liefert nur Behauptungen, Code setzt match) vor Fachanwalts-Termin. Stufe B/C und Nicht-Übernahmen dokumentiert; Malware-Warnung zu einem geklonten buffett-skills-Repo. Formalie: versehentlich im Kopfbereich stehende 4.26-Zeile in die Historientabelle verschoben. |
 | 4.26 | 22.09.2026 | Grundgesetz #9 (Debug-Protokoll) verallgemeinert: Scope von "Laufzeit-Bug" auf jedes unerwartete Verhalten erweitert (Validierungs-/Compliance-Fehlschläge, KI-Output-Abweichungen), Titel auf "Never guess, always correctly diagnose" geschärft. Zweite Herleitung ergänzt: `ko-prompts.js` top3-ticker-konsistenz-Fehlschlag (22.09.2026, drei Fehlversuche) — ein begründeter, aber unverifizierter Fix (v2.54.1) schlug live fehl; reines Diagnose-Logging (`generate_public_recommendations.js` v1.17) deckte die tatsächliche Root Cause auf, danach griff der gezielte Fix (v2.54.2). |---
