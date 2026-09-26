@@ -210,6 +210,9 @@ Sharpe-artige Kennzahl je Regime/Horizont).
   keines der drei Modelle statistisch robust gegenueber Buy & Hold nach
   Mehrfachtest-Korrektur — aber regime_v2 hat von den dreien die hoechste
   rohe Sharpe Ratio (0,80 vs. 0,76 [v1] vs. 0,62 [5-Faktor]).
+  *(26.09.2026: Die DSR-Aussage dieses Punkts ist ueberholt — Rechenartefakt
+  des DSR-Moduls v1. Die rohen Sharpe Ratios bleiben gueltig. S. Nachtrag
+  26.09.2026 am Ende dieses Dokuments.)*
 
 **Entscheidung:** regime_v2 ersetzt market_regime_str UIQ-weit (Server +
 Client). determine_mse_regime() (Python-Port des 5-Faktor-Modells,
@@ -228,3 +231,57 @@ Doku-Review):** eine frühere Fassung dieses Nachtrags behauptete
 fälschlich, die Skripte lägen bereits committed unter
 `analysis/regime_compare/` — das war zum Zeitpunkt der Erstfassung nicht
 der Fall und ist hiermit richtiggestellt.
+
+## Nachtrag — 26.09.2026: DSR-Aussage vom 23.08. korrigiert, Benchmark-Test ergänzt
+
+**Anlass:** Bei der Nachprüfung des Regime-Gate-Backtests (SUITE.md 4.32/4.33,
+Backlog №34) wurde ein Einheitenfehler in
+`ko-aggregator/analysis/deflated_sharpe_ratio.py` (v1, 18.08.2026) gefunden:
+
+- Der Standardfehler der Sharpe Ratio wurde mit der **annualisierten**
+  Sharpe Ratio, aber der Anzahl **täglicher** Beobachtungen berechnet →
+  um Faktor ~11 zu klein (Beispiel regime_v1: 0,0235 statt ~0,26).
+- Die Streuung der Sharpe Ratios über die Testfamilie war per Default 1,0
+  (faktisch Jahres-Einheiten) → erwartete Max-Sharpe unter H0 bei
+  n_trials = 3: 0,85 statt ~0,08 bei der tatsächlichen Streuung (0,09).
+- Zusammen ergab das DSR ≈ 0 für jedes gegatete Modell und DSR = 1 für
+  Buy & Hold (n_trials = 1). **Die Aussage „keines der drei Modelle
+  statistisch robust gegenüber Buy & Hold nach Mehrfachtest-Korrektur“
+  (Nachtrag 23.08.) beruhte auf diesem Artefakt.** Sie war außerdem mit der
+  DSR grundsätzlich nicht prüfbar: Die DSR testet „Sharpe > 0 nach
+  Mehrfachtest-Korrektur“, nicht „besser als Buy & Hold“.
+
+**Unverändert gültig:** die rohen Sharpe Ratios (regime_v2 0,80, regime_v1
+0,76, 5-Faktor 0,62, Buy & Hold 0,75) sowie alle Ergebnisse zu
+Krisentag-Erkennung, Vorwärtsrenditen je Regime und BULL_FRAGILE-Trennung
+(eigene Methodik, nicht DSR-abhängig). Die Entscheidung „regime_v2 ersetzt
+market_regime_str“ stützte sich auf diese Trennschärfe-Ergebnisse und
+bleibt davon unberührt.
+
+**Neu gerechnet (26.09.2026)** mit `deflated_sharpe_ratio.py` v2.0
+(einheitliche Perioden, Selbsttests) und
+`analysis/regime_compare/dsr_check.py` v2.0 — gleiche Strategie wie am
+23.08. (Long außer an STRESS_UNSTABLE-Tagen, Vortages-Regime, ohne Kosten),
+gleiches Panel (2011-05-02 bis 2026-08-19, 3.843 Handelstage):
+
+| Modell | Sharpe p. a. | Differenz zu Buy & Hold p. a. | Information Ratio | p einseitig (Newey-West) | DSR (n = 3, Nebeninfo) |
+|---|---|---|---|---|---|
+| regime_v1 | 0,76 | −2,2 % | −0,22 | 0,86 | 1,00 |
+| regime_v2 | 0,80 | −1,9 % | −0,19 | 0,82 | 1,00 |
+| regime_5f | 0,62 | −4,6 % | −0,42 | 0,98 | 0,98 |
+
+**Befund:** Maßgeblich ist der Test der täglichen Differenzrendite gegenüber
+Buy & Hold (SUITE.md 4.33). Keines der drei Modelle schlägt Buy & Hold als
+einfaches Long/Flat-Gate; alle Vorzeichen sind negativ, regime_v2 liegt am
+nächsten an Buy & Hold. Die hohen korrigierten DSR-Werte besagen nur, dass
+die Sharpe Ratios nach Mehrfachtest-Korrektur über 0 liegen — das erfüllt
+Buy & Hold ebenso. Das Ergebnis betrifft die Long/Flat-Gate-Verwendung,
+**nicht** die Rolle der Regime als Kontext- und Risikoinformation.
+
+**Reproduzierbarkeit (Ergänzung zum Hinweis oben):** Die Skripte
+`build_panel.py`, `classify.py`, `separation_test.py`, `economic_test.py`
+und `dsr_check.py` liegen inzwischen committed unter
+`ko-aggregator/analysis/regime_compare/`; `dsr_check.py` in v2.0
+(Commit `22c113b`, 26.09.2026). Aufruf: `cd analysis/regime_compare &&
+python3 dsr_check.py`. Selbsttest des DSR-Moduls:
+`cd analysis && python3 deflated_sharpe_ratio.py --selftest`.

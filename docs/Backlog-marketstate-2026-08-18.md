@@ -103,6 +103,37 @@ Nachgebaute Strategie (**vereinfachte Stand-in-Version**, nicht identisch mit Pr
 
 **Status:** Erster Plausibilitätstest abgeschlossen — wartet auf echten Backtest-Output für belastbare Aussage.
 
+**Nachtrag 26.09.2026 — DSR-Werte dieses Testlaufs sind ein Rechenartefakt:**
+`deflated_sharpe_ratio.py` v1 hatte einen Einheitenfehler (annualisierte
+Sharpe Ratio zusammen mit täglicher Beobachtungszahl im Standardfehler;
+Default-Streuung `sr_std_across_trials = 1,0`). Die Tabelle oben (DSR 0,00
+für die Override-Regel, 1,00 für Buy & Hold) ist deshalb **nicht als Befund
+verwendbar**; die Sharpe Ratios (0,76 bzw. 0,75) sind korrekt. Zudem prüft
+die DSR nur „Sharpe > 0“, nicht „besser als Buy & Hold“ — die Folgerung
+„verliert ihre Signifikanz gegenüber der Referenz“ war damit nicht belegbar.
+
+Nachgerechnet am 26.09.2026 (gleiche Regel: Long, wenn GEX am Vortag ≥ 0;
+committete Datei `ko-aggregator/data/raw_data/DIX_GEX_History.csv`,
+2011-05-03 bis 2026-08-14, 3.844 Tage; ohne Kosten):
+
+| | Sharpe p. a. | Differenz zu Buy & Hold p. a. | Information Ratio | p einseitig (Newey-West) |
+|---|---|---|---|---|
+| GEX-Override (vereinfacht) | 0,77 | −2,6 % | −0,24 | 0,88 |
+| Buy & Hold | 0,75 | — | — | — |
+
+Die inhaltliche Einschätzung des ursprünglichen Befunds bleibt richtig
+(kein Mehrwert als alleiniger Long/Cash-Trigger), jetzt mit dem passenden
+Test belegt. Eine korrigierte DSR für diesen Lauf wird nicht ausgewiesen:
+`n_trials = 10` war geschätzt und die Streuung der Familie ist unbekannt —
+v2.0 verlangt beides explizit.
+
+**Korrigiertes Modul und Verwendung:** `deflated_sharpe_ratio.py` v2.0
+(26.09.2026, Selbsttest `--selftest`); DSR nur noch als Nebeninformation,
+maßgeblich ist der Test gegen die Benchmark (SUITE.md 4.33, Backlog №34).
+
+**Status (26.09.2026):** Eintrag 4 umgesetzt und korrigiert; siehe auch
+Nachtrag 26.09.2026 in `docs/REGIME-BACKTEST-VALIDIERUNG.md`.
+
 ---
 
 ## Hinweis zur weiteren Verwendung
