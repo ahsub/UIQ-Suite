@@ -1,7 +1,7 @@
 # Investment-Suite — Dachdokument
 
 
-**Version:** 4.32
+**Version:** 4.33
 **Stand:** 26.09.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
@@ -423,8 +423,9 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
       | **Gate B, mit Lag (korrekt)** | **0,60** | 5,8 % | −24,1 % | 76,8 % | 20,3 |
 
       Kostensensitivität Gate A korrekt: 0 bp → 0,76; 20 bp → 0,66 (Gate B:
-      0,69 bzw. 0,30). DSR beider Gates in allen Varianten 0,00 (nicht
-      signifikant). Ohne Lag reproduziert die Rechnung das dokumentierte
+      0,69 bzw. 0,30). ~~DSR beider Gates in allen Varianten 0,00 (nicht
+      signifikant).~~ *(4.33: Rechenartefakt des DSR-Moduls v1, s. Korrektur 4.33
+      unten.)* Ohne Lag reproduziert die Rechnung das dokumentierte
       Muster (1,76 bzw. 3,26 mit SPY inkl. Dividenden); mit Lag verschwindet
       der Renditevorsprung.
       Verbleibender, schwächerer Befund: etwas geringerer Max-Drawdown
@@ -447,6 +448,85 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
       Kosten und DSR prüfen — verbindet sich mit №69 B (Faber-10M-SMA-Vergleich).
       Referenzen auf „Sharpe 1,66/1,76“ in Doku und Übergabeprotokollen
       gelten als überholt. Bis dahin extern keine Backtest-Kennzahlen nennen.
+      *(4.33: Go-Kriterium 2 ist inzwischen neu definiert, s. unten.)*
+
+    **KORREKTUR 4.33 (26.09.2026) — DSR-Einheitenfehler, Benchmark-Test als
+    Maßstab, Go-Kriterium 2 neu gefasst. Status №34: NICHT BESTANDEN für die
+    geprüften Varianten — erneut zu prüfen mit neuen, vorab fixierten
+    Varianten.**
+
+    - **DSR-Modul fehlerhaft (v1, 18.08.2026):**
+      `ko-aggregator/analysis/deflated_sharpe_ratio.py` setzte die
+      annualisierte Sharpe Ratio zusammen mit der Anzahl täglicher
+      Beobachtungen in die Standardfehler-Formel ein (Standardfehler Faktor
+      ~11 zu klein: 0,023 statt 0,259) und nutzte einen unrealistischen
+      Default `sr_std_across_trials = 1,0` (erwartete Max-Sharpe unter H0
+      1,19 statt ~0,11). Folge: DSR ≈ 0 für jede Gate-Variante, DSR = 1 für
+      Buy & Hold — ein Rechenartefakt. **Betroffen und damit nicht mehr als
+      Befund verwendbar:** „DSR 0,00“ in 4.32 (oben, durchgestrichen) und
+      die DSR-Werte aus `analysis/regime_compare/dsr_check.py` vom 23.08.2026
+      (Aussage „keines der drei Modelle statistisch robust gegenüber Buy &
+      Hold“ in `docs/REGIME-BACKTEST-VALIDIERUNG.md`, Nachtrag 23.08., sowie
+      der DSR-Testlauf in `docs/Backlog-marketstate-2026-08-18.md`,
+      Eintrag 4). Die dort berichteten rohen Sharpe Ratios (0,76/0,80/0,62)
+      waren korrekt.
+    - **Korrigiert:** `deflated_sharpe_ratio.py` v2.0 (einheitliche Perioden,
+      `sr_std_across_trials_ann` Pflichtparameter, Selbsttests mit bekannten
+      Erwartungswerten: E[max] von 5/10 Standardnormalen, Standardfehler
+      gegen Simulation, Falsch-Positiv-Rate unter H0 ≈ 5 %). Korrigierte DSR
+      (Testfamilie n = 5, beobachtete Streuung 0,088): Gate A 0,99,
+      Gate B 0,97. **Das ist kein Vorteilsnachweis** — die DSR prüft nur
+      „Sharpe > 0 nach Mehrfachtest-Korrektur“, was Buy & Hold ebenso erfüllt.
+    - **Maßgeblicher Test ab 4.33: tägliche Differenzrendite gegenüber Buy &
+      Hold** (Newey-West-Standardfehler, 5 Lags, einseitig „Gate besser“),
+      umgesetzt in `analysis/regime_gate_backtest_v2.py` v2.2 und
+      `analysis/regime_compare/dsr_check.py` v2.0. Ergebnisse (Forschungsläufe
+      26.09.2026, S&P-500-Preisindex ohne Dividenden, 2011-05-02 bis
+      2026-08-19; Gates mit 5 bp Kosten, regime_v1/v2/5f wie am 23.08. ohne
+      Kosten):
+
+      | Variante | Differenz p. a. | Information Ratio | t (Newey-West) | p einseitig |
+      |---|---|---|---|---|
+      | Gate A, Lag 1 (idealisiert) | −2,5 % | −0,25 | −1,26 | 0,90 |
+      | Gate A, Lag 2 (konservativ) | −3,0 % | −0,31 | −1,49 | 0,93 |
+      | Gate B, Lag 1 | −6,7 % | −0,48 | −2,18 | 0,99 |
+      | Gate B, Lag 2 | −6,4 % | −0,47 | −2,11 | 0,98 |
+      | regime_v1, Lag 1 | −2,2 % | −0,22 | −1,08 | 0,86 |
+      | regime_v2, Lag 1 | −1,9 % | −0,19 | −0,91 | 0,82 |
+      | regime_5f, Lag 1 | −4,6 % | −0,42 | −2,00 | 0,98 |
+
+      Keine Variante schlägt Buy & Hold; alle Vorzeichen negativ.
+      Deskriptiv: niedrigere Max-Drawdowns (Gate A −26,9 %/−25,1 % vs.
+      −33,9 %) bei niedrigerer Rendite.
+    - **Ausführungsmodell:** Lag 1 = Handel zum Schlusskurs, obwohl das
+      Signal (VIX-Schluss ~16:15 ET) erst danach vorliegt — idealisiert.
+      Lag 2 = konservative Verzögerungs-Sensitivität, kein Beleg für
+      ausführbare Trades. Eine echte Eröffnungskurs-Simulation ist mit den
+      vorhandenen Daten nicht möglich (keine S&P-500-Eröffnungskurse im Repo)
+      — dokumentierte Einschränkung.
+    - **Weitere Prüfungen (automatisch im Skript):** Look-ahead-Perturbationstest
+      (Lag 1/2: 0/25 Verletzungen; fehlerhafte Lag-0-Variante 23/25),
+      Kalenderprüfung (einzige Lücke > 2 Werktage: 31.10.2012, Hurrikan
+      Sandy; 34 verworfene CBOE-Feiertagszeilen), Initialisierung der ersten
+      Position dokumentiert (Einfluss 0 bp bei Lag 1, −34 bp bei Lag 2).
+    - **Go-Kriterium 2 — Neufassung 4.33 (vor jedem weiteren Test fixiert,
+      kein Tuning):** Ein Regime-Gate besteht nur, wenn (1) die tägliche
+      Differenzrendite gegenüber Buy & Hold (gleiche Preisreihe, gleicher
+      Zeitraum) in der Lag-1-Variante mit 5 bp Kosten im einseitigen Test
+      mit Newey-West-Standardfehler bei 5 % signifikant positiv ist **und**
+      (2) die mittlere Differenz bei Lag 2 sowie bei 20 bp Kosten positiv
+      bleibt. DSR, CAGR und Max-Drawdown werden berichtet, sind aber kein
+      Go-Kriterium. Jede neue Variante (z. B. №69 B, Faber-10M-SMA) wird in
+      die Testfamilie aufgenommen, auch wenn sie verworfen wird. *Offen als
+      separate Entscheidung (Axel):* ob eine reine Risikofilter-Eigenschaft
+      (geringerer Drawdown ohne Renditevorteil) als eigenes, getrennt
+      definiertes Kriterium gelten soll.
+    - **Einordnung:** Das Ergebnis gilt für die geprüften einfachen
+      Long/Flat-Gates dieses Klassifikators und diesen Zeitraum. Es ist
+      **keine allgemeine Widerlegung** des Regime-Moduls: Dessen Rolle als
+      Kontext- und Risikoinformation (Strategie-Ampeln, Trennschärfe-Tests
+      in `regime_v2_backtest.py`/`economic_test.py`) ist davon getrennt zu
+      bewerten.
 
     ~~**✅ ERLEDIGT (26.08.2026)**~~ *(überholt, s. oben)* — `refundex/engine/backtest_2007_2026.py` tatsächlich
     ausgeführt (VIX/VIX3M aus CBOE-Rohdaten, `data/raw_data/VIX3M_History.csv`;
@@ -1949,6 +2029,9 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
         Details und Nachrechnung: №34. Konsequenz für №70: Jeder künftige
         Backtest (auch earnings_invest) muss Signal t → Position t+1,
         Wechselkosten und DSR enthalten. Offen bleibt nur (a).
+        *(4.33: DSR nur mit `deflated_sharpe_ratio.py` ≥ v2.0 und nur als
+        Nebeninformation; maßgeblich ist der Test gegen die jeweilige
+        Benchmark, s. №34.)*
 
     **Offen:** erster echter Archivlauf (kein Dry-Run); Einbindung in den
     GHA-Workflow im Code verifizieren; danach Phase 1 (Feature
@@ -2018,6 +2101,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.33 | 26.09.2026 | №34 Korrektur 4.33 (eigener Block, 4.32 bleibt nachvollziehbar stehen): DSR-Modul `deflated_sharpe_ratio.py` v1 hatte einen Einheitenfehler (annualisierte Sharpe mit täglicher Beobachtungszahl, Default-Streuung 1,0) → „DSR 0,00“ (4.32) und die DSR-Werte aus `dsr_check.py` (23.08.) sind Rechenartefakte; korrigiert in v2.0 mit Selbsttests. Maßgeblicher Test jetzt die Differenzrendite gegenüber Buy & Hold (Newey-West, einseitig) — keine geprüfte Variante (Gate A/B, regime_v1/v2/5f; Lag 1/2) schlägt Buy & Hold. Go-Kriterium 2 neu gefasst und vorab fixiert; Status №34: nicht bestanden für die geprüften Varianten, keine allgemeine Widerlegung des Regime-Moduls. Forschungscode: `regime_gate_backtest_v2.py` v2.2, `regime_compare/dsr_check.py` v2.0. Folgepunkt: Nachträge in `docs/REGIME-BACKTEST-VALIDIERUNG.md` und `docs/Backlog-marketstate-2026-08-18.md`. |
 | 4.32 | 26.09.2026 | №34 WIEDER GEÖFFNET — NICHT VALIDIERT: Regime-Gate-Backtest (Go-Kriterium 2, ✅ seit 4.18) hat einen Look-ahead-Fehler (Regime von t auf Rendite von t statt t+1). Reproduktion mit neuer Forschungsfassung `ko-aggregator/analysis/regime_gate_backtest_v2.py` v2.1 (Lag, Look-ahead-Selbsttest, 5 bp Kosten + Sensitivität, Turnover, DSR mit dokumentierter Testfamilie): Gate A Sharpe 0,74 vs. Buy & Hold 0,75, DSR 0 — Go-Kriterium 2 nicht belegt. Herkunft „1,66“ als vermutlich derselbe Fehllauf richtiggestellt. №70(b) beantwortet (keine Glättung, aber Look-ahead; Lag/Kosten/DSR als Pflicht für künftige Backtests). Formalie: doppelte Tabellenkopfzeile in der Historie (zwischen 4.19 und 4.18) entfernt. |
 | 4.31 | 26.09.2026 | №70 earnings_invest nachgetragen — war in 4.29 nur in der Historie vermerkt, fehlte im Backlog-Text. Rekonstruiert aus Phase-0-Session 23.09. und Entscheidung 24.09. (noch nicht bauen; PIT-Prüfung Alpha Vantage und Sharpe-Glättungsprüfung DCE vorgeschaltet). Event-Gate-Eintrag von „70." auf №71 korrigiert (entspricht 4.30) und listenkonform eingerückt. |
 | 4.30 | 26.09.2026 | №71 Event & Surprise Gate Sprint 1 als BACKLOG aufgenommen (deterministischer Shadow Mode, keine Produktivwirkung). |
