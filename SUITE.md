@@ -1,7 +1,7 @@
 # Investment-Suite — Dachdokument
 
 
-**Version:** 4.31
+**Version:** 4.32
 **Stand:** 26.09.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
@@ -388,7 +388,67 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 34. **Backtest-Skript 2007–2026** *(SWOT W7/O2/Go-Kriterium 2, 07.08.2026)* — Historischer Regime-Backtest auf VIX3M-Historie (Yahoo: ^VIX3M ab 2007). Metrik: hätte die Regime-Gate-Logik eine naive Baseline (200T-Momentum × Volatilität) über rollende 12M-Fenster geschlagen? Ersetzt den unterpowerten prospektiven Validierungsrahmen (Ebene 1 braucht n=20 je Kategorie — historisch sofort verfügbar). Output: Equity-Kurve je Regime, Trefferquote, Max-Drawdown. **Go-Kriterium 2 für Kommerzialisierung.**
 
-    **✅ ERLEDIGT (26.08.2026)** — `refundex/engine/backtest_2007_2026.py` tatsächlich
+    **⚠️ WIEDER GEÖFFNET — NICHT VALIDIERT (26.09.2026).** Der Nachweis vom
+    26.08.2026 ist ungültig (Look-ahead-Fehler); Go-Kriterium 2 ist nach
+    heutigem Stand nicht belegt. Die Regime-Engine und ihre mögliche
+    Risikofilter-Funktion bleiben davon getrennt Gegenstand der Forschung.
+
+    - **Fehler:** `refundex/engine/backtest_2007_2026.py` berechnet
+      `strat_A_ret = spy_ret * in_market_A` ohne zeitliche Verschiebung. Das
+      Regime wird aus den VIX/VIX3M-Schlusskursen von Tag t bestimmt und auf
+      die Rendite desselben Tages t angewendet. Da der VIX an Verlusttagen
+      steigt, „kennt“ das Gate den Verlust, den es vermeidet (mittlere
+      Tagesrendite an STRESS-Tagen: −0,71 % am selben Tag, +0,17 % am
+      Folgetag). Korrekt: Regime von t → Position für t+1 (`shift(1)`), wie
+      bereits in `ko-aggregator/analysis/regime_compare/dsr_check.py`
+      (23.08.2026) umgesetzt — dessen Ergebnis („kein Modell statistisch
+      robust gegenüber Buy & Hold“) wurde vor dem ✅ am 26.08. nicht
+      gegen den neuen Lauf abgeglichen.
+    - **Reproduktion (26.09.2026, Forschungsfassung, nicht extern geprüft)** mit
+      `ko-aggregator/analysis/regime_gate_backtest_v2.py` v2.1: identische
+      Klassifikation; CBOE-VIX/VIX3M; S&P-500-Preisindex ohne Dividenden aus
+      `DIX_GEX_History.csv`; 2011-05-02 bis 2026-08-19 (3.848 Handelstage;
+      34 verworfene Tage = US-Feiertage mit CBOE-Zeilen, kein Forward-Fill);
+      Signal Schluss t → Position für Rendite t+1; 5 bp je Positionswechsel;
+      DSR mit dokumentierter Testfamilie (Gate A, Gate B, regime_v1/v2/5f →
+      n_trials = 5). Eingebauter Perturbationstest bestätigt: korrekte
+      Variante 0/25 Look-ahead-Verletzungen, fehlerhafte Variante 23/25.
+
+      | Variante | Sharpe | CAGR | Max DD | investiert | Wechsel/Jahr |
+      |---|---|---|---|---|---|
+      | Buy & Hold | 0,75 | 12,0 % | −33,9 % | 100 % | 0 |
+      | Gate A, ohne Lag (Fehler) | 1,57 | 22,6 % | −24,3 % | 95,0 % | 7,3 |
+      | **Gate A, mit Lag (korrekt)** | **0,74** | 9,8 % | −26,9 % | 95,0 % | 7,3 |
+      | Gate B, ohne Lag (Fehler) | 2,92 | 32,5 % | −8,7 % | 76,8 % | 20,3 |
+      | **Gate B, mit Lag (korrekt)** | **0,60** | 5,8 % | −24,1 % | 76,8 % | 20,3 |
+
+      Kostensensitivität Gate A korrekt: 0 bp → 0,76; 20 bp → 0,66 (Gate B:
+      0,69 bzw. 0,30). DSR beider Gates in allen Varianten 0,00 (nicht
+      signifikant). Ohne Lag reproduziert die Rechnung das dokumentierte
+      Muster (1,76 bzw. 3,26 mit SPY inkl. Dividenden); mit Lag verschwindet
+      der Renditevorsprung.
+      Verbleibender, schwächerer Befund: etwas geringerer Max-Drawdown
+      (−26,9 % vs. −33,9 %) bei niedrigerer Rendite — Risikofilter-Eigenschaft
+      ja, Renditevorteil eines Long/Flat-Gates nein.
+    - **Nicht betroffen:** die Trennschärfe-Tests `analysis/regime_v2_backtest.py`
+      und `analysis/regime_compare/economic_test.py` (Vorwärtsrenditen ab t,
+      zeitlich korrekt).
+    - **Herkunft „1,66“ (Korrektur der Korrektur):** Sehr wahrscheinlich
+      derselbe fehlerhafte Skriptlauf vom 07.08.2026 (Start 2007 via yfinance):
+      SWOT 07.08. beschreibt 1,66 als „Regime-Gates schlagen naive Baseline“
+      mit MaxDD −23 % (= Gate-A-Wert dieses Skripts), Skript-Header datiert
+      07.08.2026. Einen eigenständigen „DCE-Score-Ranking-Backtest“ gibt es in
+      keinem geprüften Repo (ko-aggregator, UIQ-Suite, refundex). Die
+      Zuordnung „1,66 = DCE-Backtest“ vom 10.08. war damit vermutlich selbst
+      eine Fehlzuordnung (Indizienschluss, nicht durch Neulauf des
+      07.08.-Stands verifiziert).
+    - **Offen / nächster Schritt:** Go-Kriterium 2 neu definieren und vorab
+      fixieren (Kriterium vor dem Test, kein Tuning), dann mit Lag,
+      Kosten und DSR prüfen — verbindet sich mit №69 B (Faber-10M-SMA-Vergleich).
+      Referenzen auf „Sharpe 1,66/1,76“ in Doku und Übergabeprotokollen
+      gelten als überholt. Bis dahin extern keine Backtest-Kennzahlen nennen.
+
+    ~~**✅ ERLEDIGT (26.08.2026)**~~ *(überholt, s. oben)* — `refundex/engine/backtest_2007_2026.py` tatsächlich
     ausgeführt (VIX/VIX3M aus CBOE-Rohdaten, `data/raw_data/VIX3M_History.csv`;
     SPY via yfinance). Ergebnis:
 
@@ -400,7 +460,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
     Gate-A schlägt die Baseline im Sharpe (1,76 vs. 0,88); in den Krisenfenstern
     greift die Sperre sichtbar (Eurokrise: SPY -4,4% vs. Gate-A +20,7%; COVID:
-    -9,2% vs. +3,2%). **Go-Kriterium 2 damit erfüllt.**
+    -9,2% vs. +3,2%). ~~**Go-Kriterium 2 damit erfüllt.**~~ *(überholt 26.09.2026: Look-ahead-Fehler, s. oben)*
 
     **Zwei Einschränkungen, bewusst nicht geglättet:**
     - **Zeitraum real 18.09.2009–05.08.2026, nicht 2007–2026.** Die "ab 2007"-
@@ -1880,6 +1940,15 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
         №69 A).
     (b) **Backtest-Validität:** Ist der DCE-Backtest-Sharpe durch geglättete
         Renditen inflationiert?
+        **→ Beantwortet 26.09.2026:** Geglättet sind die Renditen nicht
+        (echte Tagesrenditen Schluss zu Schluss). Der Sharpe ist aber durch
+        die zeitgleiche Verwendung des Regimes (**Look-ahead-Fehler**)
+        inflationiert. Ein separater DCE-Score-Ranking-Backtest ist bisher
+        nicht nachgewiesen; die Zahl „1,66“ stammt wahrscheinlich aus
+        demselben Regime-Gate-Skript (nicht abschließend verifiziert).
+        Details und Nachrechnung: №34. Konsequenz für №70: Jeder künftige
+        Backtest (auch earnings_invest) muss Signal t → Position t+1,
+        Wechselkosten und DSR enthalten. Offen bleibt nur (a).
 
     **Offen:** erster echter Archivlauf (kein Dry-Run); Einbindung in den
     GHA-Workflow im Code verifizieren; danach Phase 1 (Feature
@@ -1949,6 +2018,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.32 | 26.09.2026 | №34 WIEDER GEÖFFNET — NICHT VALIDIERT: Regime-Gate-Backtest (Go-Kriterium 2, ✅ seit 4.18) hat einen Look-ahead-Fehler (Regime von t auf Rendite von t statt t+1). Reproduktion mit neuer Forschungsfassung `ko-aggregator/analysis/regime_gate_backtest_v2.py` v2.1 (Lag, Look-ahead-Selbsttest, 5 bp Kosten + Sensitivität, Turnover, DSR mit dokumentierter Testfamilie): Gate A Sharpe 0,74 vs. Buy & Hold 0,75, DSR 0 — Go-Kriterium 2 nicht belegt. Herkunft „1,66“ als vermutlich derselbe Fehllauf richtiggestellt. №70(b) beantwortet (keine Glättung, aber Look-ahead; Lag/Kosten/DSR als Pflicht für künftige Backtests). Formalie: doppelte Tabellenkopfzeile in der Historie (zwischen 4.19 und 4.18) entfernt. |
 | 4.31 | 26.09.2026 | №70 earnings_invest nachgetragen — war in 4.29 nur in der Historie vermerkt, fehlte im Backlog-Text. Rekonstruiert aus Phase-0-Session 23.09. und Entscheidung 24.09. (noch nicht bauen; PIT-Prüfung Alpha Vantage und Sharpe-Glättungsprüfung DCE vorgeschaltet). Event-Gate-Eintrag von „70." auf №71 korrigiert (entspricht 4.30) und listenkonform eingerückt. |
 | 4.30 | 26.09.2026 | №71 Event & Surprise Gate Sprint 1 als BACKLOG aufgenommen (deterministischer Shadow Mode, keine Produktivwirkung). |
 | 4.29 | 26.09.2026 | №70 earnings_invest |
@@ -1962,7 +2032,6 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 | 4.21 | 28.08.2026 | Neues Suite-Grundgesetz №10 (Sync- und Versionierungs-Pflicht) ergänzt — Reaktion auf zwei Vorfälle derselben Sitzung: (a) `ko-market-state.js`- und `ko-prompts.js`-CDN-Pins wurden nicht im selben Schritt wie die zugrundeliegende Modul-Änderung aktualisiert, was live zu 401-Fehlern bzw. kurzzeitig reaktivierten Sicherheitslücken führte; (b) Versionsnummern-Kollision (v482 zweifach vergeben), weil vor einer Änderung nicht gegen `origin/main` synchronisiert wurde. Regel: `git fetch`/`log`-Check vor jeder Änderung an bereits versionierten Dateien verpflichtend; jede geänderte Datei bekommt im selben Schritt Versions-Header, Changelog-Eintrag und (bei CDN-gepinnten Dateien) den aktualisierten Hash-Pin — nicht als Nacharbeit. |
 | 4.20 | 27.08.2026 | №60 auf ✅ ERLEDIGT gesetzt (Code + `OWNER_TOKEN`-Secret + funktionale Verifikation). №61 auf ✅ ERLEDIGT gesetzt — dabei schwerwiegenderen Zusatzfund entdeckt: drei `/public/*`-Endpunkte im `ko-sync`-Worker waren komplett unauthentifiziert (nicht nur Beta-intern, sondern für jeden im Internet); behoben über `ko-sync-worker.js` v2.1 + `index.html` v480/v481 (6 Aufrufstellen) + `ko-modules/ko-market-state.js` v2.5 (7. Aufrufstelle, per Live-401-Fehler entdeckt, inkl. CDN-Hash-Pin-Update) + nachträglich gesetzte `STATIC_TOKEN`/`OWNER_TOKEN`-Secrets beim bis dahin komplett ungesicherten `ko-sync`-Worker; vollständig verifiziert (keine 401er mehr, History/Ticker laden normal). №62: Umbenennungsliste mit Axel abgestimmt, Umsetzung zurückgestellt bis Klärung der Grundsatzfrage. **№36 (Rechtsgutachten) um 5 konkrete Fragen ergänzt**, ausgelöst durch Axels Vorschlag einer "Bring-your-own-AI"-Konstruktion — Claude schätzt dies als eher risikoverschärfend ein, daher explizite Anwaltsfrage statt eigenmächtiger Umsetzung. **№63 neu angelegt** (Beobachtungsposten, kein akuter Punkt): `ko-auth` fehlt noch, Fallback bei Nichterreichbarkeit ist aktuell folgenlos (totes Tier-System-Gerüst), aber sobald verdrahtet muss "Fail-Open auf admin" bewusst überdacht werden. |
 | 4.19 | 27.08.2026 | Legal-Briefing-Audit (Anwalts-Vorabeinschätzung: KI-Texte zu nah an Handlungsempfehlungen) — Backlog №60–62 ergänzt: №60 (vorgezogen, zeitnah statt V2) server-seitige `expert_mode`-Prüfung im `ko-ai.js`-Worker statt Client-Flag-Vertrauen, ausdrücklich am Worker statt am fragilen Monolithen ansetzend; №61 Aggregator-KI-Enrichment (Master Shortlist/Options Desk) ohne Public/Expert-Trennung im Code — Serving-Layer-Filter für Public-Antworten vorgeschlagen; №62 UI-Terminologie "Empfehlung"-Labels — reine Umbenennung, niedrigster Aufwand. Korrektur zu №55 (10.08.2026): die dortige Entscheidung, den EIC-Umschalter nicht nachzurüsten, war rein aufwandsgetrieben und hatte die Vertraulichkeitsdimension (Beta-Tester könnten sich selbst freischalten und Axels reale Portfoliodaten einsehen) nicht berücksichtigt — von Axel als fehlerhaft bestätigt. Bleibt für die UX-/Anzeigemodus-Frage gültig, gilt aber nicht für №60. |
-| Version | Datum | Änderung |
 | 4.18 | 26.08.2026 | Backlog №34 (Go-Kriterium 2) auf ✅ ERLEDIGT gesetzt: Regime-Gate-Backtest tatsächlich ausgeführt (CBOE VIX/VIX3M-Rohdaten + yfinance SPY), Sharpe Gate-A 1,76 vs. Baseline 0,88. Effektiver Zeitraum korrigiert auf 18.09.2009–05.08.2026 (VIX3M-Erstdatum bei CBOE, nicht 2007 wie im Original-Eintrag unverifiziert angenommen) — Finanzkrise 2008/09 dadurch nicht abgedeckt, als Einschränkung dokumentiert statt geglättet. Klarstellung: neuer Sharpe-1,76-Wert ist unabhängig vom älteren, bereits am 23.08. korrigierten Fehlzuordnungs-Wert "1,66" (DCE-Score-Backtest, keine Regime-Dimension). |
 | 4.17 | 26.08.2026 | Backlog №57: `renderHomeLanding()`-Altcode-Hinweis (veraltete DOM-Lese-Logik, durch `_refreshHomeStatusTiles()` abgelöst, GEX-Edge-Case, kein akuter Patch). №58: `kvToScannerState`/`loadScannerFromKV`-Fallback-Sync-Hinweis (bewusst duplizierte Kopien, aktuell synchron, Beobachtungsposten). Beide aus erster Anwendung des Backlog-Punkt-19-Analyse-Skripts (neues statisches Analyse-Tool für Funktionsaufrufe/DOM-IDs/Duplikate, kein Code-Fix an UIQ selbst). |
 | 4.16 | 24.08.2026 | Backlog-Bereinigung nach Ende-zu-Ende-Verifikation (Claude): №32 GEX-Override-Testluecke gefunden+geschlossen (6 neue Tests, 31/31 gruen); №33 verifiziert bereits erledigt (07.08.), zusaetzlich bestaetigt: alte `vix_term['ratio']` hat null Live-Konsumenten mehr; №35 Frontend-Signal-Luecke gefunden+geschlossen (`degraded_status`-KV-Key + `checkDataFreshness()`-Erweiterung, Server+Client committed); №13b verifiziert erledigt, anders als beschrieben (Leaderboard statt Ampel-Gate, konsistent mit 17.07-Entscheidung); №13c/f verifiziert vollstaendig eingehaengt seit 25.07. (DeepDive-Renderer + KI-Prompt); №13e verifiziert vollstaendig erledigt (alle 10 Sektor-ETFs), Staleness-Nachfolgepunkt №56 ergaenzt (Erinnerungsfunktion + Quellenreferenz-Tabelle, 3/10 UCITS-Proxy-Ticker verifiziert). |
