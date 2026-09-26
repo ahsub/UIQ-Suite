@@ -1,7 +1,7 @@
 # Investment-Suite — Dachdokument
 
 
-**Version:** 4.34
+**Version:** 4.35
 **Stand:** 26.09.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
@@ -11,7 +11,7 @@
 > Eingefroren: jede verhaltensändernde Code-Änderung an UIQ (Aggregator-Scoring, `ko-prompts.js`, `index.html`, Worker, Digest-Generierung) sowie der Baubeginn von №69 und №71.
 > Erlaubt: rein lesende Audit-/Diagnose-Skripte ohne Wirkung auf Produktivpfade (Grundgesetz #9), Dokumentation, Recherche; kritische Produktionsbugs nur als dokumentierte Ausnahme.
 > Unberührt: die täglichen Aggregator-Läufe und der Digest laufen weiter (Track-Record-Kontinuität).
-> Aufhebung: durch Axel, sobald №72 A1 klassifiziert und die ARM-Fixture eingefroren ist.
+> Aufhebung: durch Axel, sobald das Abnahmekriterium von №72 A1 erfüllt ist (Invarianten-Prüfer mit erster Regel `SEPA_TEMPLATE_52W` läuft, ARM-Ursache klassifiziert, Fixture eingefroren).
 
 
 ## 0. UIQ-Leitprinzip (verbindlich, schlägt alle anderen Abschnitte)
@@ -2143,18 +2143,63 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
     **Verbindliche Reihenfolge**
 
-    **A1 · ARM-SEPA-52W-Audit (Freeze-Kriterium).** Reproduzierbares,
-    rein lesendes Audit-Skript (kein Eingriff in Aggregator/Digest).
-    Ausgabe je Ticker nebeneinander: `price`, `high_52w` (+ Quelle,
-    Intraday/Close, Split-Adjustierung, Zeitstempel), `dist_52w_high`,
-    `sepa_score_raw`, `sepa_score_normalized`, `trend_template_52w_pass`,
-    `trend_template_all_pass`, `failed_criteria[]`.
-    Ergebnis = genau eine Klassifikation: **Datenfehler** · **fehlendes
-    Kriterium** · **missverständliche Score-Bezeichnung**. Danach
-    ARM-Snapshot als **Regressions-Fixture** einfrieren. Fix-Regel für den
-    Fall „Kriterium fehlt“: Verstoß gegen hartes Template-Kriterium ⇒
-    Status `TEMPLATE_FAIL`, ein hoher Teilscore erscheint nie als
-    vollständiges SEPA-Setup.
+    **A1 · Deterministischer Snapshot-Invarianten-Prüfer.**
+    *Ziel:* generischer, read-only Prüfer zur systematischen Erkennung von
+    Daten-, Scoring- und Semantikwidersprüchen in UIQ-Snapshots — unabhängig
+    von KI-Briefings und API-Aufrufen. Jeder manuell gefundene Befund wird als
+    Regel formuliert und läuft danach über das gesamte Universum
+    (Anekdote → systemweite Suche).
+    *Ort:* `ahsub/uiq-devtools`, aufbauend auf dem bestehenden Feld-Audit.
+
+    *Scope:*
+    1. Generisches **Regelregister** mit stabilen IDs, Bedingung, erwarteter
+       Invariante, Schweregrad, betroffenen Feldern und **Referenz auf eine
+       dokumentierte fachliche Definition** (Quelle im Code bzw. Konzeptdokument).
+       Keine Regel ohne Definitionsreferenz — sonst automatisiert der Prüfer
+       eine falsche oder veraltete Annahme als Fehler.
+    2. **Erste Regel `SEPA_TEMPLATE_52W`:** SEPA-Maximalscore nur bei
+       Erfüllung sämtlicher verpflichtenden Template-Kriterien. Grenzwert und
+       Berechnungsdefinition werden aus der tatsächlichen UIQ-Implementierung
+       abgeleitet (nicht aus Literaturwerten angenommen). Diagnose-Ausgabe je
+       Ticker: `price`, `high_52w` (+ Quelle, Intraday/Close,
+       Split-Adjustierung, Zeitstempel), `dist_52w_high`, `sepa_score_raw`,
+       `sepa_score_normalized`, `trend_template_52w_pass`,
+       `trend_template_all_pass`, `failed_criteria[]`.
+    3. Prüfung sämtlicher verfügbaren Ticker und Strategien pro
+       Aggregator-Snapshot.
+    4. Weitere Regelklassen: Score-Sättigung (Anteil am Maximum, Gleichstände,
+       Streuung), Feldwidersprüche, Instrumentuniversum (z. B. ETF in
+       Einzelaktien-Strategie), Metrikkonsistenz (HVP/IVP unter einem Label),
+       Missingness (fehlend ≠ neutral), robuste Ausreißer (Median/MAD) und
+       Label-Semantik (verbale Stufe ↔ Zahlenschwelle).
+    5. Ergebnis als maschinenlesbarer **Auditbericht**: Regel-ID, betroffene
+       Instrumente, Schweregrad, relevante Feldwerte.
+
+    *Technische Anforderungen:*
+    - Read-only: keine Änderung an Aggregator, Snapshot, Scores oder Outputs.
+    - Keine KI-Aufrufe, keine zusätzlichen API-Kosten.
+    - Reproduzierbar bei identischem Snapshot und Regelwerk.
+    - Schweregrade `ERROR` · `WARNING` · `INFO`; keine Fehlerklassifikation
+      ohne fachliche Invariante.
+    - Regeln versioniert und mit positiven und negativen Testfällen abgesichert;
+      ARM-Snapshot 26.09.2026 als erster Regressions-Fixture.
+
+    *Abgrenzung:* A1 prüft die interne Konsistenz des Snapshots. Der
+    JSON-Sidecar aus №69 prüft nachgelagert die Übereinstimmung zwischen
+    validiertem Snapshot und KI-Aussagen.
+
+    *Abnahmekriterium:* ARM wird durch `SEPA_TEMPLATE_52W` reproduzierbar
+    erkannt, sofern der tatsächliche SEPA-Score die 52W-Bedingung verletzt,
+    und der Prüfer weist alle weiteren entsprechenden Verstöße im geprüften
+    Universum aus. Die Ursache ist genau einer Klasse zugeordnet:
+    **Datenfehler** · **fehlendes Kriterium** · **missverständliche
+    Score-Bezeichnung**. Fix-Regel für „Kriterium fehlt“ (Umsetzung erst nach
+    Freeze-Aufhebung): Verstoß gegen hartes Template-Kriterium ⇒ Status
+    `TEMPLATE_FAIL`, ein hoher Teilscore erscheint nie als vollständiges
+    SEPA-Setup.
+
+    Der Codefreeze bleibt gewahrt; Änderungen erfolgen ausschließlich in
+    `uiq-devtools`.
 
     **A2 · Event-Status-Felder (billig, Risiko aktuell real).** Erweitert
     №71, kein eigener Gate-Bau: Earnings-Feld mit `event_date`,
@@ -2187,9 +2232,12 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     gemäß UIQ-REGULATORY-LANGUAGE-SPEC (qualitativ, keine Einzeltitel-Auswahl
     im Stil „ich würde X wählen“).
 
-    **Freeze-Aufhebung:** nach Abschluss von A1 (Klassifikation dokumentiert,
-    Fixture eingefroren) durch Axel. Danach gilt wieder №69 mit A2–A5 als
-    vorgezogenem Block.
+    **Freeze-Aufhebung:** durch Axel, sobald das A1-Abnahmekriterium erfüllt
+    ist (Regelregister + `SEPA_TEMPLATE_52W` laufen, Ursache klassifiziert,
+    ARM-Fixture eingefroren). Die übrigen Regelklassen aus A1 Punkt 4 sind
+    **kein** Freeze-Kriterium — sie wachsen danach laufend im Devtool weiter.
+    Nach der Aufhebung zuerst der A1-Fix, dann A2–A5 als vorgezogener Block
+    vor №69/№71.
 
     *Verwandt mit: №71 (Event-Gate), №69 A (RUN ≠ DATA ≠ DATA QUALITY),
     Grundgesetz #9 (Debug-Protokoll), №67 (Regulatory Language Spec).*
@@ -2198,6 +2246,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.35 | 26.09.2026 | №72 A1 neu gefasst (Vorschlag Axel): statt Einmal-Skript für ARM ein generischer, read-only **Snapshot-Invarianten-Prüfer** in `uiq-devtools` — Regelregister mit Definitionsreferenz je Regel, erste Regel `SEPA_TEMPLATE_52W`, Prüfung aller Ticker × Strategien, Regelklassen Sättigung/Feldwidersprüche/Universum/Metrikkonsistenz/Missingness/Ausreißer/Label-Semantik, maschinenlesbarer Auditbericht, ERROR/WARNING/INFO, versionierte Regeln mit Positiv-/Negativtests. Freeze-Aufhebung präzisiert: nur Abnahmekriterium (erste Regel + Klassifikation + Fixture), weitere Regelklassen kein Freeze-Kriterium. |
 | 4.34 | 26.09.2026 | №72 (neu): Scoring-/Daten-Integritäts-Audit aus dem Momentum-Briefing 26.09. (ARM SEPA 100 trotz −30,29 % zum 52W-Hoch; QTEC ETF-Volumen 19,11x; ASML Earnings-Feld leer bei Termin 14.10. laut Aggregatoren; HVP/IVP-Vermischung; Markov-50-%-Schwelle; Composite-Deckelung). Reihenfolge A1 ARM-Audit → A2 Event-Status (erweitert №71 um UNKNOWN/CONFLICT, Quellenfeld) → A3 ETF-Universum + Median-Volumenbasis → A4 Metrik-Hygiene → A5 Entry-Readiness. Neuer Architekturgrundsatz: Briefing-Layer darf Unsicherheit aus dem Scoring-Layer nicht wegformulieren. **Codefreeze** UIQ bis Abschluss A1 (Kopf-Banner); №69/№71 bis dahin pausiert, Aggregator/Digest laufen weiter. |
 | 4.33 | 26.09.2026 | №34 Korrektur 4.33 (eigener Block, 4.32 bleibt nachvollziehbar stehen): DSR-Modul `deflated_sharpe_ratio.py` v1 hatte einen Einheitenfehler (annualisierte Sharpe mit täglicher Beobachtungszahl, Default-Streuung 1,0) → „DSR 0,00“ (4.32) und die DSR-Werte aus `dsr_check.py` (23.08.) sind Rechenartefakte; korrigiert in v2.0 mit Selbsttests. Maßgeblicher Test jetzt die Differenzrendite gegenüber Buy & Hold (Newey-West, einseitig) — keine geprüfte Variante (Gate A/B, regime_v1/v2/5f; Lag 1/2) schlägt Buy & Hold. Go-Kriterium 2 neu gefasst und vorab fixiert; Status №34: nicht bestanden für die geprüften Varianten, keine allgemeine Widerlegung des Regime-Moduls. Forschungscode: `regime_gate_backtest_v2.py` v2.2, `regime_compare/dsr_check.py` v2.0. Folgepunkt: Nachträge in `docs/REGIME-BACKTEST-VALIDIERUNG.md` und `docs/Backlog-marketstate-2026-08-18.md`. |
 | 4.32 | 26.09.2026 | №34 WIEDER GEÖFFNET — NICHT VALIDIERT: Regime-Gate-Backtest (Go-Kriterium 2, ✅ seit 4.18) hat einen Look-ahead-Fehler (Regime von t auf Rendite von t statt t+1). Reproduktion mit neuer Forschungsfassung `ko-aggregator/analysis/regime_gate_backtest_v2.py` v2.1 (Lag, Look-ahead-Selbsttest, 5 bp Kosten + Sensitivität, Turnover, DSR mit dokumentierter Testfamilie): Gate A Sharpe 0,74 vs. Buy & Hold 0,75, DSR 0 — Go-Kriterium 2 nicht belegt. Herkunft „1,66“ als vermutlich derselbe Fehllauf richtiggestellt. №70(b) beantwortet (keine Glättung, aber Look-ahead; Lag/Kosten/DSR als Pflicht für künftige Backtests). Formalie: doppelte Tabellenkopfzeile in der Historie (zwischen 4.19 und 4.18) entfernt. |
