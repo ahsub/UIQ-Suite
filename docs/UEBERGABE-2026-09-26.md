@@ -257,14 +257,14 @@
    Digest-Generierung. Erlaubt: read-only Prüfer in `uiq-devtools`, Doku,
    Recherche. Aggregator und Digest laufen weiter.
 
-**⚠ Offene Entscheidung (Axel) — Konflikt mit der Roadmap unten, Punkt 4:**
+**✅ Entschieden (Axel, 26.09. 21:51; SUITE.md 4.37) — ursprünglich offener Konflikt mit der Roadmap unten:**
 Die dort geplanten Produktionsänderungen nach dem 28.09. (FIN-Entkopplung,
 STRATEGIEPRINZIP-Fix, B2, Runner-Pin, Watchdog/cron-trigger, B1) fallen
 wörtlich unter Freeze 2. Empfehlung Claude: Scoring-, Prompt- und
 Output-Pfad bleiben bis A1 gesperrt (STRATEGIEPRINZIP-Fix, B2, B1, B2b);
 reine Infrastruktur ohne Bezug zur Scoring-Frage (FIN-Entkopplung,
 Runner-Pin vor 19.10., Watchdog/cron-trigger) wird vom Freeze ausgenommen.
-Bei Zustimmung SUITE.md-Banner entsprechend präzisieren.
+Empfehlung so übernommen; SUITE.md-Banner in 4.37 präzisiert.
 
 ---
 
@@ -370,7 +370,7 @@ Bei Zustimmung SUITE.md-Banner entsprechend präzisieren.
    `ko-prompts.js` verifizieren, (c) Gerüst Regelregister + erste Regel
    `SEPA_TEMPLATE_52W` + Sättigungsregel in `uiq-devtools`, ARM-Fixture.
    Nach Abnahme: Freeze 2 aufheben (Axel), zuerst A1-Fix, dann A2–A5.
-5. **Danach, eine Produktionsänderung pro Nacht (Freeze-Konflikt s. F):** zuerst FIN-Entkopplung
+5. **Danach, eine Produktionsänderung pro Nacht (s. F: Infrastruktur-Punkte freigegeben, STRATEGIEPRINZIP-Fix/B1/B2/B2b erst nach A1):** zuerst FIN-Entkopplung
    (Voraussetzung für die Zeitsteuerung), dann STRATEGIEPRINZIP-Fix, B2
    (Score-Feld), Runner-Pin (vor 19.10.), Watchdog/cron-trigger, B1;
    Public-Bereinigung nach Gesprächsergebnis einplanen. B2b erst nach

@@ -1,14 +1,15 @@
 # Investment-Suite — Dachdokument
 
 
-**Version:** 4.36
+**Version:** 4.37
 **Stand:** 26.09.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
 **Fortschreibung:** Claude, versioniert, analog den Modul-Strategiedokumenten.
 
 > **⛔ AKTIVER CODEFREEZE UIQ (seit 26.09.2026, Axel-Entscheidung) — bis Abschluss Audit №72 A1.**
-> Eingefroren: jede verhaltensändernde Code-Änderung an UIQ (Aggregator-Scoring, `ko-prompts.js`, `index.html`, Worker, Digest-Generierung) sowie der Baubeginn von №69 und №71.
+> Eingefroren: jede verhaltensändernde Änderung am **Scoring-, Prompt- und Output-Pfad** (Strategie-Scores im Aggregator, `ko-prompts.js`, Public-Ausgaben in `index.html`, KI-Worker, Digest-Generierung) — u. a. STRATEGIEPRINZIP-Fix, B1, B2, B2b aus `UEBERGABE-2026-09-26.md` — sowie der Baubeginn von №69 und №71.
+> Ausgenommen (Axel, 26.09.2026): reine Infrastruktur ohne Bezug zur Scoring-Frage — FIN-Shard/Merge-Entkopplung, Runner-Pin `ubuntu-24.04` (Frist vor 19.10.2026), Watchdog-/cron-trigger-Zeitsteuerung. Dafür gelten weiter „eine Produktionsänderung pro Nacht“ und der separate Freeze bis nach dem Telefonat am 28.09.
 > Erlaubt: rein lesende Audit-/Diagnose-Skripte ohne Wirkung auf Produktivpfade (Grundgesetz #9), Dokumentation, Recherche; kritische Produktionsbugs nur als dokumentierte Ausnahme.
 > Unberührt: die täglichen Aggregator-Läufe und der Digest laufen weiter (Track-Record-Kontinuität).
 > Aufhebung: durch Axel, sobald das Abnahmekriterium von №72 A1 erfüllt ist (Invarianten-Prüfer mit erster Regel `SEPA_TEMPLATE_52W` läuft, ARM-Ursache klassifiziert, Fixture eingefroren).
@@ -2313,6 +2314,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.37 | 26.09.2026 | Codefreeze-Banner präzisiert (Axel-Entscheidung): gesperrt bleibt der Scoring-, Prompt- und Output-Pfad (u. a. STRATEGIEPRINZIP-Fix, B1, B2, B2b); ausgenommen ist reine Infrastruktur ohne Scoring-Bezug (FIN-Entkopplung, Runner-Pin vor 19.10., Watchdog/cron-trigger), weiterhin eine Produktionsänderung pro Nacht und Freeze bis nach dem Telefonat 28.09. |
 | 4.36 | 26.09.2026 | №72 A1 Zwischenstand (Code-Lesung `score_long_minervini()`): 52W-Nähe nur Bonus-, kein Pflichtkriterium; Sigmoid sättigt ab raw ≥ 139 auf 100 (max. raw ≈ 178) → SEPA 100 ohne 52W-Bonus möglich; `pctFromHigh52` sauber aus Schlusskursen; vorläufige Klassifikation „fehlendes Kriterium + missverständliche Bezeichnung“, Bestätigung nach Snapshot-Abgleich und Label-Mapping-Prüfung. Zusatzfund: unerreichbarer Liquiditäts-Malus-Zweig (<250k). Sättigungsregel für alle Scores ergänzt. №73 (neu): Repo-Sichtbarkeit/Schutz proprietärer Prompts — jsDelivr-Abhängigkeit, clientseitige Prompt-Sichtbarkeit, GHA-Minuten, Secrets-Historie. |
 | 4.35 | 26.09.2026 | №72 A1 neu gefasst (Vorschlag Axel): statt Einmal-Skript für ARM ein generischer, read-only **Snapshot-Invarianten-Prüfer** in `uiq-devtools` — Regelregister mit Definitionsreferenz je Regel, erste Regel `SEPA_TEMPLATE_52W`, Prüfung aller Ticker × Strategien, Regelklassen Sättigung/Feldwidersprüche/Universum/Metrikkonsistenz/Missingness/Ausreißer/Label-Semantik, maschinenlesbarer Auditbericht, ERROR/WARNING/INFO, versionierte Regeln mit Positiv-/Negativtests. Freeze-Aufhebung präzisiert: nur Abnahmekriterium (erste Regel + Klassifikation + Fixture), weitere Regelklassen kein Freeze-Kriterium. |
 | 4.34 | 26.09.2026 | №72 (neu): Scoring-/Daten-Integritäts-Audit aus dem Momentum-Briefing 26.09. (ARM SEPA 100 trotz −30,29 % zum 52W-Hoch; QTEC ETF-Volumen 19,11x; ASML Earnings-Feld leer bei Termin 14.10. laut Aggregatoren; HVP/IVP-Vermischung; Markov-50-%-Schwelle; Composite-Deckelung). Reihenfolge A1 ARM-Audit → A2 Event-Status (erweitert №71 um UNKNOWN/CONFLICT, Quellenfeld) → A3 ETF-Universum + Median-Volumenbasis → A4 Metrik-Hygiene → A5 Entry-Readiness. Neuer Architekturgrundsatz: Briefing-Layer darf Unsicherheit aus dem Scoring-Layer nicht wegformulieren. **Codefreeze** UIQ bis Abschluss A1 (Kopf-Banner); №69/№71 bis dahin pausiert, Aggregator/Digest laufen weiter. |
