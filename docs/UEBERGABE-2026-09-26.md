@@ -1,7 +1,7 @@
 # UIQ — Übergabeprotokoll 26.09.2026 → 28.09.2026
 
 **Datum:** 26.09.2026
-**Status:** Session-Ende. v1.25 (Regime-Feldpfad-Fix) committet, noch NICHT live bestätigt. Forschungspaket Backtest/DSR committet. Code und Public-Ausgaben bis nach dem Telefonat am 28.09. bewusst eingefroren.
+**Status:** Session-Ende. v1.25 (Regime-Feldpfad-Fix) committet, noch NICHT live bestätigt. Forschungspaket Backtest/DSR committet. Code und Public-Ausgaben bis nach dem Telefonat am 28.09. bewusst eingefroren. **Nachtrag Abendsession (21:00–21:50):** zusätzlicher Codefreeze bis Abnahme №72 A1 (SUITE.md 4.34–4.36), siehe Abschnitt F.
 **Zweck:** Kontext-Übergabe für den nächsten Chat
 
 ---
@@ -123,6 +123,9 @@
   behoben (`8860ea0`, `22c113b`). Nach jedem Upload Pfad im Commit prüfen.
 * **Private Repos (`uiq-legal`) kann Claude nicht einsehen** — Commits dort
   nicht verifizierbar; Integrität über SHA-256 der Quelldateien prüfen.
+* **Claude-GitHub-App für `UIQ-Suite` seit 26.09. abends freigegeben:** Claude
+  kann dort direkt committen und pushen (erstmals `479a3f3`, `179ca5d`, `615bcd0`).
+  Andere Repos weiterhin nur lesend, sofern nicht einzeln angehängt.
 * **Öffentliche Repos:** Claude liest per `git clone`/`git fetch` (anonym);
   die GitHub-REST-API ist in der Sandbox nicht freigegeben. Byte-Vergleich
   nach Commit per `git show origin/main:<pfad> | cmp - <datei>`.
@@ -205,6 +208,63 @@
 * 4.31 (№70 nachgetragen), 4.32 (№34 wieder geöffnet), 4.33 (DSR-Korrektur,
   Go-Kriterium 2 neu). Kosmetik aus 4.31 (doppelte Tabellenkopfzeile) in 4.32
   behoben.
+
+
+### F. Nachtrag Abendsession 26.09. — №72 Scoring-/Daten-Integritäts-Audit + Codefreeze
+
+* **Anlass:** Review des Scanner-Tab-Briefings Momentum (Lauf 26.09. 21:00,
+  10 Titel) inkl. externer Zweitmeinung. Befunde: ARM SEPA 100 bei −30,29 % zum
+  52W-Hoch; QTEC (ETF) mit 19,11x Ausbruchsvolumen bei negativem OBV; ASML ohne
+  Earnings-Feld (Termin laut Aggregatoren 14.10.2026 vor Börsenöffnung, Status
+  dort uneinheitlich „confirmed“/„expected“, ASML-IR nicht geprüft); HVP/IVP
+  unter einem Label verglichen; Markov-Stickiness 50 % als „mittel“ gelabelt;
+  Composite-Deckelung bei 100.
+* **SUITE.md 4.34 (`479a3f3`):** №72 neu mit Reihenfolge A1 → A5, neuer
+  Architekturgrundsatz (Briefing-Layer darf Unsicherheit aus dem Scoring-Layer
+  nicht wegformulieren), **Codefreeze-Banner** im Dokumentkopf.
+* **SUITE.md 4.35 (`179ca5d`):** A1 neu gefasst (Vorschlag Axel) als generischer,
+  read-only **Snapshot-Invarianten-Prüfer** in `uiq-devtools`: Regelregister mit
+  Definitionsreferenz je Regel, erste Regel `SEPA_TEMPLATE_52W`, alle Ticker ×
+  Strategien, Regelklassen Sättigung/Feldwidersprüche/Universum/
+  Metrikkonsistenz/Missingness/Ausreißer/Label-Semantik, maschinenlesbarer
+  Bericht, ERROR/WARNING/INFO, versionierte Regeln mit Positiv-/Negativtests.
+* **SUITE.md 4.36 (`615bcd0`) — A1-Zwischenstand aus Code-Lesung
+  `score_long_minervini()` (`ko-aggregator/market_aggregator.py`), noch ohne
+  Snapshot-Abgleich:**
+  - 52W-Nähe ist nur **Bonus** (≥ −5 % +20, ≥ −10 % +12, ≥ −15 % +6, sonst 0,
+    kein Malus); Pflicht (Return 0) nur Gate 1 (Stage-2-Kette).
+  - **Sigmoid sättigt:** Rohpunkte bis ca. 178, gerundet 100 bereits ab
+    raw ≥ 139 → ARM-ähnliches Profil ohne 52W-Bonus (raw ≈ 158) = 100.
+  - `pctFromHigh52` sauber aus Schlusskursen der letzten 252 Tage.
+  - **Vorläufig:** „fehlendes Kriterium + missverständliche Bezeichnung“.
+  - **Zusatz-Bug (nicht gefixt):** Liquiditäts-Malus `< 250_000` (−35) ist
+    unerreichbar, weil `< 500_000` (−20) vorher greift.
+  - **Verwandt mit B2b (oben):** CSP-Score sättigt ebenfalls bei 100
+    (48 Titel am 25.09.) — dieselbe Fehlerklasse; die Sättigungsregel des
+    Prüfers gilt deshalb für **alle** Scores.
+* **№73 neu:** Repo-Sichtbarkeit/Schutz proprietärer Prompts. Kernpunkte:
+  Privatisieren schützt keine clientseitig geladenen Prompts (nur
+  serverseitiger Prompt-Aufbau schützt); `ko-modules` hängt an jsDelivr (nur
+  öffentliche Repos); GHA-Minuten bei privaten Repos begrenzt; früher
+  öffentliche Secrets gelten als kompromittiert. Überschneidet sich mit
+  „Öffentliches Repo `ko-aggregator`“ unter „Diagnostiziert“ Punkt 1.
+
+**Zwei Freezes gelten jetzt überlagert:**
+1. bis nach dem Telefonat 28.09. (Abschnitt B) — keine Änderungen an Code,
+   Public-UI, Public-Ausgaben;
+2. bis Abnahme №72 A1 (SUITE.md-Kopf) — keine verhaltensändernden Änderungen
+   an Aggregator-Scoring, `ko-prompts.js`, `index.html`, Workern,
+   Digest-Generierung. Erlaubt: read-only Prüfer in `uiq-devtools`, Doku,
+   Recherche. Aggregator und Digest laufen weiter.
+
+**⚠ Offene Entscheidung (Axel) — Konflikt mit der Roadmap unten, Punkt 4:**
+Die dort geplanten Produktionsänderungen nach dem 28.09. (FIN-Entkopplung,
+STRATEGIEPRINZIP-Fix, B2, Runner-Pin, Watchdog/cron-trigger, B1) fallen
+wörtlich unter Freeze 2. Empfehlung Claude: Scoring-, Prompt- und
+Output-Pfad bleiben bis A1 gesperrt (STRATEGIEPRINZIP-Fix, B2, B1, B2b);
+reine Infrastruktur ohne Bezug zur Scoring-Frage (FIN-Entkopplung,
+Runner-Pin vor 19.10., Watchdog/cron-trigger) wird vom Freeze ausgenommen.
+Bei Zustimmung SUITE.md-Banner entsprechend präzisieren.
 
 ---
 
@@ -303,7 +363,14 @@
    Verweis.
 3. **Di 29.09. früh:** Lauf vom Montagabend prüfen → `mse_regime` im Digest
    belegt, Decision-Snapshots mit `regime` → v1.25 vollständig bestätigt.
-4. **Danach, eine Produktionsänderung pro Nacht:** zuerst FIN-Entkopplung
+4. **Ab So 27.09. parallel (read-only, freeze-konform):** №72 A1 fortsetzen —
+   (a) ARM-Rohwerte aus dem Snapshot gegen die Code-Lesung abgleichen
+   (`master_market_data` liegt im KV; Export/JSON-Artefakt von Axel nötig),
+   (b) Label-Mapping „SEPA-Score“ → `sMinervini` in `axel-scanner`/
+   `ko-prompts.js` verifizieren, (c) Gerüst Regelregister + erste Regel
+   `SEPA_TEMPLATE_52W` + Sättigungsregel in `uiq-devtools`, ARM-Fixture.
+   Nach Abnahme: Freeze 2 aufheben (Axel), zuerst A1-Fix, dann A2–A5.
+5. **Danach, eine Produktionsänderung pro Nacht (Freeze-Konflikt s. F):** zuerst FIN-Entkopplung
    (Voraussetzung für die Zeitsteuerung), dann STRATEGIEPRINZIP-Fix, B2
    (Score-Feld), Runner-Pin (vor 19.10.), Watchdog/cron-trigger, B1;
    Public-Bereinigung nach Gesprächsergebnis einplanen. B2b erst nach
