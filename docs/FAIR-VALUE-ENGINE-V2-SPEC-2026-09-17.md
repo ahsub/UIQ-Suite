@@ -5,6 +5,12 @@ Produktionscode.** Ersetzt die erste Fassung vom selben Tag — Reviewer-
 Feedback hat die Reihenfolge sauberer gemacht (Research vor Formel-Bau),
 nicht nur Details ergänzt.
 
+**Fortschreibung v2.1 (26.09.2026, Claude + Axel):** neuer verbindlicher
+Abschnitt „Point-in-Time-Regel“ (Umsetzung SUITE.md №69 A). Anlass: der am
+26.09. gefundene Look-ahead-Fehler im Regime-Gate-Backtest (SUITE.md №34) —
+dieselbe Fehlerklasse darf in der Fair-Value-Forschung nicht auftreten. Die
+übrigen Abschnitte sind unverändert.
+
 ## Revidierte Reihenfolge (wichtigste Änderung gegenüber v1)
 
 ```
@@ -172,6 +178,90 @@ validiert.
 der Phase-0-Tabelle oben enthalten) — Referenzfrage: liefert UIQs eigene
 Fundamentalbewertung zusätzliche Information gegenüber dem bereits
 vorhandenen Analysten-Konsens, oder wiederholt sie ihn nur?
+
+## Point-in-Time-Regel (verbindlich, v2.1 — 26.09.2026)
+
+Jede Auswertung in den Phasen A–F und jede spätere Validierung darf nur
+Informationen verwenden, die **zum Entscheidungszeitpunkt tatsächlich
+vorlagen**. Die Regel gilt für Fair Value und sinngemäß für jede andere
+UIQ-Forschung mit Fundamental- oder Schätzdaten (u. a. №70 earnings_invest).
+
+**PIT-1 — Nur archivierte Werte, nie nachträglich abgerufene.**
+Zulässige Quellen für historische Zeitpunkte sind ausschließlich die
+zum jeweiligen Zeitpunkt geschriebenen Archive:
+- `ko-aggregator/data/snapshots/*.json.gz` (täglich, u. a. `fairValueV2`,
+  Leaderboards mit Fundamentalfeldern),
+- `ko-aggregator/data/fundamentals/<YYYY-Www>.json.gz` (FIN-Archiv,
+  wöchentlich, `fin_layer.py`),
+- das Earnings-Estimates-Archiv (`earnings_estimates_archive.py`) und das
+  IV-Archiv.
+**Verboten** ist, Werte für vergangene Tage nachträglich per API zu holen
+(yfinance `.info`, Alpha Vantage, FMP o. ä.): Diese liefern den **heutigen**
+Stand inkl. nachträglicher Korrekturen (Restatements, revidierte
+Schätzungen, geänderte Aktienzahlen). Kurshistorie ist davon ausgenommen,
+Renditen dürfen aus konsistent adjustierter Historie berechnet werden
+(so bereits `tr_layer._eval_horizon()`).
+
+**PIT-2 — Maßgeblich ist der Erfassungszeitpunkt, nicht das Berichtsdatum.**
+Ein Fundamentalwert gilt ab seinem Erfassungszeitstempel (`collected` im
+FIN-Shard, `valuation_timestamp` in `fairValueV2`, Erzeugungszeit des
+Snapshots) als bekannt — nicht ab dem Quartalsende oder Filing-Datum, auf
+das er sich bezieht. Ein FIN-Wert kann dadurch bis zu ~7 Tage alt sein; das
+ist bewusst konservativ und PIT-korrekt, wird aber in jeder Auswertung als
+Datenalter ausgewiesen.
+
+**PIT-3 — Signal bei Schluss t, Rendite ab Schluss t.**
+Bewertungsgrößen mit dem Kurs von Tag t (z. B. FCF-Yield) werden nur mit
+Forward-Renditen verknüpft, die **nach** Schluss t beginnen
+(`close[t+H] / close[t] − 1`, wie `r7/r30/r90` im Track Record). Eine
+Verknüpfung mit der Rendite, die den Tag t selbst enthält, ist ein
+Look-ahead-Fehler (Muster aus SUITE.md №34). Handel zum Schluss t ist
+eine idealisierte Annahme und wird als solche benannt.
+
+**PIT-4 — Verknüpfungsschlüssel ist der Handelstag, nicht der Dateiname.**
+Snapshot-Dateien tragen das UTC-Datum des Laufs (z. B.
+`2026-09-26_00.json.gz` = Handelstag 25.09.). Verknüpft wird über
+`meta.last_trading_day` bzw. `tday`, nie über das Dateidatum. (Eine
+Verknüpfung über das Dateidatum wäre um einen Tag verschoben — hier
+zufällig in die konservative Richtung, bei anderen Quellen nicht
+zwingend.)
+
+**PIT-5 — Universum zum damaligen Zeitpunkt.**
+Auswertungen laufen auf dem Universum, das zum jeweiligen Zeitpunkt
+archiviert wurde (FIN-Archiv: `iwvConstituents`, `universeMeta`; Snapshots:
+`tickers`). Die heutige Tickerliste rückwirkend zu verwenden erzeugt
+Survivorship-Bias und ist unzulässig.
+
+**PIT-6 — Archive sind unveränderlich.**
+Geschriebene Snapshots, Wochen-Merges und Shards werden nie überschrieben
+oder rückwirkend korrigiert. Korrekturen erfolgen als neue, datierte
+Version mit Verweis; die Git-Historie ist Teil des Nachweises. Ein
+Bewertungsmodell-Wechsel (z. B. `fair_value_model_version`) gilt ab
+Stichtag (harter Schnitt, wie beim Track Record), ohne Neuberechnung der
+Vergangenheit im Archiv — Neuberechnungen sind nur als getrennt
+gekennzeichnete Forschungsläufe zulässig.
+
+**PIT-7 — Prüfpflicht in jedem Backtest-Skript.**
+Jedes Auswertungsskript dokumentiert im Kopf: Quellen mit Zeitstempel-
+Feld, Signal- und Renditezeitpunkt, Umgang mit fehlenden Daten (kein
+Forward-Fill ohne Begründung), Testfamilie (für DSR). Zusätzlich enthält
+es einen automatischen Look-ahead-Selbsttest nach dem Muster von
+`ko-aggregator/analysis/regime_gate_backtest_v2.py`
+(`lookahead_selftest()`: Daten ab Tag k verändern → Positionen bzw.
+Signale bis Tag k dürfen sich nicht ändern; bei Verletzung Abbruch).
+
+**Bekanntes Risiko für PIT-1 (Beobachtung 26.09.2026, noch nicht
+behoben):** Der Wochen-Merge des FIN-Archivs (`fin_layer.run()`) hängt am
+UTC-Wochentag der Laufzeit (`isoweekday() == 6`). Seit der Umstellung auf
+einen einzigen Lauf Mo–Fr 22:00 UTC (11.09.2026) gibt es keinen
+planmäßigen Samstagslauf mehr; die Merges W38 (19.09., 00:07 UTC) und W39
+(26.09., 00:32 UTC) entstanden nur, weil der Freitagslauf verspätet nach
+Mitternacht startete. Startet ein Freitagslauf pünktlich, entfällt der
+Merge dieser Woche, das Archiv bekäme eine Lücke (vgl. fehlende Woche
+W32). Wer den Startverzug behebt, muss den Merge-Auslöser vorher
+entkoppeln (z. B. Merge in `tr-backup-saturday.yml` oder an den Handelstag
+statt an die Wanduhr koppeln). → Übergabe an die Diagnose des
+Startverzugs (Lauf 36204811096).
 
 ## Was unverändert aus v1 gilt
 
