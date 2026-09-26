@@ -1,11 +1,17 @@
 # Investment-Suite — Dachdokument
 
 
-**Version:** 4.33
+**Version:** 4.34
 **Stand:** 26.09.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
 **Fortschreibung:** Claude, versioniert, analog den Modul-Strategiedokumenten.
+
+> **⛔ AKTIVER CODEFREEZE UIQ (seit 26.09.2026, Axel-Entscheidung) — bis Abschluss Audit №72 A1.**
+> Eingefroren: jede verhaltensändernde Code-Änderung an UIQ (Aggregator-Scoring, `ko-prompts.js`, `index.html`, Worker, Digest-Generierung) sowie der Baubeginn von №69 und №71.
+> Erlaubt: rein lesende Audit-/Diagnose-Skripte ohne Wirkung auf Produktivpfade (Grundgesetz #9), Dokumentation, Recherche; kritische Produktionsbugs nur als dokumentierte Ausnahme.
+> Unberührt: die täglichen Aggregator-Läufe und der Digest laufen weiter (Track-Record-Kontinuität).
+> Aufhebung: durch Axel, sobald №72 A1 klassifiziert und die ARM-Fixture eingefroren ist.
 
 
 ## 0. UIQ-Leitprinzip (verbindlich, schlägt alle anderen Abschnitte)
@@ -2096,11 +2102,103 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     (hindsight-kontaminiert).
 
     *Verwandt mit: №70 (Earnings-Datenbasis), №69 A (RUN ≠ DATA ≠ DATA QUALITY).*
+
+72. **Scoring-/Daten-Integritäts-Audit aus Momentum-Briefing 26.09.2026 (neu 26.09.2026)**
+    *(Anlass: Review des Scanner-Tab-Briefings „Momentum“, generiert 26.09.2026
+    21:00, 10 Titel; Zweitmeinung eines externen Reviewers + Gegenreview Claude)*
+
+    **Status:** AKTIV · löst den **Codefreeze** aus (siehe Kopf dieses Dokuments)
+    **Charakter:** Diagnose zuerst (Grundgesetz #9) — alle Befunde unten sind
+    **Hypothesen**, bis Rohdaten und Code sie belegen. Kein Score, keine
+    Schwelle und kein Prompt wird vor Abschluss von A1 verändert.
+
+    **Befunde im Snapshot**
+    - **ARM:** SEPA-Score 100 bei Abstand −30,29 % zum 52-Wochen-Hoch.
+      Minervinis Trend Template verlangt Kurs innerhalb von ca. 25 % unter
+      dem 52W-Hoch → entweder prüft der Score das Kriterium nicht, oder
+      `52W-H` wird anders berechnet als im Score (Intraday vs. Close,
+      Split-Adjustierung, Datenquelle). Auffällig zusätzlich: EMA200-Abstand
+      +32,1 % bei gleichzeitig −30 % zum Hoch.
+    - **QTEC:** ETF im SEPA-Einzelaktien-Universum; Ausbruchsvolumen 19,11x
+      bei negativem OBV (▼0,76) — typisches ETF-Artefakt
+      (Creation/Redemption, Rebalancing, dünne Basis), nicht belegte Akkumulation.
+    - **ASML:** Earnings-Feld leer, obwohl als engste EMA50-Lage im Fokus.
+      Nächster Bericht laut Aggregatoren 14.10.2026 vor Börsenöffnung
+      (Recherche 26.09.2026) — Status dort uneinheitlich
+      (TipRanks „confirmed“, MarketChameleon „expected“); offizielle
+      ASML-IR-Ankündigung noch nicht geprüft.
+    - **HVP/IVP vermischt:** ARM mit HVP, ASML/QTEC mit IVP, trotzdem
+      gemeinsame Aussage „niedrigstes Volatilitätssignal der Gruppe“.
+    - **Markov-Stickiness 50 % = „mittel“:** bei zwei Zuständen Zufallsniveau;
+      Schwellen (50–65 % = mittel) gegen Zustandsanzahl und Basismodell prüfen.
+    - **Composite-Deckelung:** zwei Titel mit 100 bei n = 10 → Score
+      diskriminiert an der Spitze nicht mehr („Top-Kohorte“ als Symptom).
+
+    **Architekturgrundsatz (neu, gilt modulübergreifend):** Ein nachgelagerter
+    Decision-/Briefing-Layer darf Fehler oder Unsicherheit aus dem
+    vorgelagerten Daten-/Scoring-Layer nie durch eine sprachlich überzeugende
+    Synthese verdecken. Solange A1 offen ist, darf ARM nicht uneingeschränkt
+    als vollständiges SEPA-100-Setup erscheinen (betrifft nur künftige Outputs;
+    der laufende Digest wird während des Freeze nicht angefasst).
+
+    **Verbindliche Reihenfolge**
+
+    **A1 · ARM-SEPA-52W-Audit (Freeze-Kriterium).** Reproduzierbares,
+    rein lesendes Audit-Skript (kein Eingriff in Aggregator/Digest).
+    Ausgabe je Ticker nebeneinander: `price`, `high_52w` (+ Quelle,
+    Intraday/Close, Split-Adjustierung, Zeitstempel), `dist_52w_high`,
+    `sepa_score_raw`, `sepa_score_normalized`, `trend_template_52w_pass`,
+    `trend_template_all_pass`, `failed_criteria[]`.
+    Ergebnis = genau eine Klassifikation: **Datenfehler** · **fehlendes
+    Kriterium** · **missverständliche Score-Bezeichnung**. Danach
+    ARM-Snapshot als **Regressions-Fixture** einfrieren. Fix-Regel für den
+    Fall „Kriterium fehlt“: Verstoß gegen hartes Template-Kriterium ⇒
+    Status `TEMPLATE_FAIL`, ein hoher Teilscore erscheint nie als
+    vollständiges SEPA-Setup.
+
+    **A2 · Event-Status-Felder (billig, Risiko aktuell real).** Erweitert
+    №71, kein eigener Gate-Bau: Earnings-Feld mit `event_date`,
+    `event_source` (Unternehmens-IR vs. Aggregator), `event_verified_at`,
+    `event_status` ∈ `CONFIRMED | PROJECTED | UNKNOWN | CONFLICT`.
+    PROJECTED = aus historischem Muster geschätzt (rechnen mit Warnhinweis);
+    UNKNOWN/CONFLICT nie als „kein Risiko“ bzw. PASS. Ein Aggregator, der
+    „confirmed“ meldet, ist keine Bestätigung. Briefing nennt Datenlücken
+    ausdrücklich. (Entspricht №71 `estimated | confirmed`, ergänzt um
+    UNKNOWN/CONFLICT — bei Umsetzung Feldnamen vereinheitlichen.)
+
+    **A3 · ETF-Universum + Volumen-Plausibilität.** Instrumenttyp vor der
+    Strategieauswertung prüfen: Einzelaktien → SEPA inkl. RS/Earnings/VCP;
+    ETFs → separates Momentum-Modell (Trend, relative Performance,
+    Liquidität) oder separates Tag, nie als SEPA-Aktienkandidat.
+    Volumen-Referenzbasis = **Median** 50 Tage (nicht Mittelwert).
+    Audit-Schwellen (vorläufig, nicht kalibriert): < 3x regulär ·
+    3–5x dokumentieren · ≥ 5x `VOLUME_OUTLIER_REVIEW` · fehlende/unplausible
+    Basis → Volumensignal nicht verwertbar. Ausreißer ≠ negatives Signal,
+    darf aber nie ungeprüft als Akkumulation in den Score gehen.
+
+    **A4 · Metrik-Hygiene.** HVP und IVP getrennt ausgeben, keine gemeinsame
+    Rangfolge; Markov-Stickiness-Schwellen gegen Übergangsmatrix und
+    Zustandsanzahl kalibrieren; Composite als Rohscore + normalisiert +
+    Perzentil getrennt ausgeben.
+
+    **A5 · Entry-Readiness (erst nach A1–A4).** Eigener Status neben der
+    Setup-Qualität: Pivot-/EMA50-Zone, Stop-Distanz, Chance-Risiko-Verhältnis.
+    Ein perfekter SEPA-Score gibt keinen Einstieg frei. Public-Formulierung
+    gemäß UIQ-REGULATORY-LANGUAGE-SPEC (qualitativ, keine Einzeltitel-Auswahl
+    im Stil „ich würde X wählen“).
+
+    **Freeze-Aufhebung:** nach Abschluss von A1 (Klassifikation dokumentiert,
+    Fixture eingefroren) durch Axel. Danach gilt wieder №69 mit A2–A5 als
+    vorgezogenem Block.
+
+    *Verwandt mit: №71 (Event-Gate), №69 A (RUN ≠ DATA ≠ DATA QUALITY),
+    Grundgesetz #9 (Debug-Protokoll), №67 (Regulatory Language Spec).*
     
 ## Fortschreibungshistorie
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.34 | 26.09.2026 | №72 (neu): Scoring-/Daten-Integritäts-Audit aus dem Momentum-Briefing 26.09. (ARM SEPA 100 trotz −30,29 % zum 52W-Hoch; QTEC ETF-Volumen 19,11x; ASML Earnings-Feld leer bei Termin 14.10. laut Aggregatoren; HVP/IVP-Vermischung; Markov-50-%-Schwelle; Composite-Deckelung). Reihenfolge A1 ARM-Audit → A2 Event-Status (erweitert №71 um UNKNOWN/CONFLICT, Quellenfeld) → A3 ETF-Universum + Median-Volumenbasis → A4 Metrik-Hygiene → A5 Entry-Readiness. Neuer Architekturgrundsatz: Briefing-Layer darf Unsicherheit aus dem Scoring-Layer nicht wegformulieren. **Codefreeze** UIQ bis Abschluss A1 (Kopf-Banner); №69/№71 bis dahin pausiert, Aggregator/Digest laufen weiter. |
 | 4.33 | 26.09.2026 | №34 Korrektur 4.33 (eigener Block, 4.32 bleibt nachvollziehbar stehen): DSR-Modul `deflated_sharpe_ratio.py` v1 hatte einen Einheitenfehler (annualisierte Sharpe mit täglicher Beobachtungszahl, Default-Streuung 1,0) → „DSR 0,00“ (4.32) und die DSR-Werte aus `dsr_check.py` (23.08.) sind Rechenartefakte; korrigiert in v2.0 mit Selbsttests. Maßgeblicher Test jetzt die Differenzrendite gegenüber Buy & Hold (Newey-West, einseitig) — keine geprüfte Variante (Gate A/B, regime_v1/v2/5f; Lag 1/2) schlägt Buy & Hold. Go-Kriterium 2 neu gefasst und vorab fixiert; Status №34: nicht bestanden für die geprüften Varianten, keine allgemeine Widerlegung des Regime-Moduls. Forschungscode: `regime_gate_backtest_v2.py` v2.2, `regime_compare/dsr_check.py` v2.0. Folgepunkt: Nachträge in `docs/REGIME-BACKTEST-VALIDIERUNG.md` und `docs/Backlog-marketstate-2026-08-18.md`. |
 | 4.32 | 26.09.2026 | №34 WIEDER GEÖFFNET — NICHT VALIDIERT: Regime-Gate-Backtest (Go-Kriterium 2, ✅ seit 4.18) hat einen Look-ahead-Fehler (Regime von t auf Rendite von t statt t+1). Reproduktion mit neuer Forschungsfassung `ko-aggregator/analysis/regime_gate_backtest_v2.py` v2.1 (Lag, Look-ahead-Selbsttest, 5 bp Kosten + Sensitivität, Turnover, DSR mit dokumentierter Testfamilie): Gate A Sharpe 0,74 vs. Buy & Hold 0,75, DSR 0 — Go-Kriterium 2 nicht belegt. Herkunft „1,66“ als vermutlich derselbe Fehllauf richtiggestellt. №70(b) beantwortet (keine Glättung, aber Look-ahead; Lag/Kosten/DSR als Pflicht für künftige Backtests). Formalie: doppelte Tabellenkopfzeile in der Historie (zwischen 4.19 und 4.18) entfernt. |
 | 4.31 | 26.09.2026 | №70 earnings_invest nachgetragen — war in 4.29 nur in der Historie vermerkt, fehlte im Backlog-Text. Rekonstruiert aus Phase-0-Session 23.09. und Entscheidung 24.09. (noch nicht bauen; PIT-Prüfung Alpha Vantage und Sharpe-Glättungsprüfung DCE vorgeschaltet). Event-Gate-Eintrag von „70." auf №71 korrigiert (entspricht 4.30) und listenkonform eingerückt. |
