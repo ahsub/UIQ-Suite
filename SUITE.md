@@ -1847,64 +1847,113 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
     *Verwandt mit: №34, №36, Entscheidungen 06.09./07.09./13.09./18.09.2026.*
 
-70. — **Event & Surprise Gate · Sprint 1 (Deterministic Shadow Mode)**
+70. **earnings_invest — Earnings-Revisions-Strategie (RESEARCH, Phase 0
+    abgeschlossen, Bau zurückgestellt)** *(Konzept Axel; Phase-0-Feasibility
+    23.09.2026; Entscheidung 24.09.2026)*
 
-**Status:** BACKLOG · eigene Session · kein Eingriff in den produktiven Pfad
-**Ziel:** Kostenfreie, rein deterministische Event-Protokollierung für bereits
-veröffentlichte Kandidaten, um vor jeder KI-/News-Stufe empirisch zu prüfen,
-ob das Gate messbaren Informationswert liefert.
+    **Konzept:** `docs/EARNINGS-INVEST-STRATEGY.md` (v0.1, Axels Original,
+    unverändert). Machbarkeitsbericht: `docs/EARNINGS-INVEST-PHASE0-FEASIBILITY.md`.
+    Maßgeblich für Inhalt und Layer-Struktur sind diese beiden Dokumente,
+    dieser Eintrag fasst nur Stand und Entscheidung zusammen.
 
-**Architektur**
-- Separater Shadow-Step NACH `generate_public_recommendations.js`
-- Anforderung: Gate-Fehler dürfen den Digest nie beeinflussen. Vorgesehener
-  Mechanismus: GHA `continue-on-error: true` (bzw. gleichwertig) — konkrete
-  Umsetzung bei Implementierung im Workflow zu verifizieren
-- Liest die veröffentlichten Kandidaten aus dem bestehenden Output, verändert nichts
-- Persistenz: append-only JSONL im Repo (Content-Hash), keine DB-Tabellen
+    **Phase 0 (Data Feasibility) — abgeschlossen 23.09.2026, Punkte A/B/C:**
+    - Alpha Vantage `EARNINGS_ESTIMATES` liefert EPS-Konsens-Snapshots
+      (7/30/60/90 Tage zurück) und eine Revisionszählung up/down
+      (7/30 Tage). **Nur für EPS** — für Revenue gibt es weder bei AV noch
+      bei FMP eine Revisionshistorie. Die Lücke gegenüber Konzept §4
+      (EPS und Revenue gleichrangig) ist nur über ein eigenes Archiv schließbar.
+    - Historie quartalsweise ab 2017-06-30; Schema stabil über IBKR, MPC,
+      MRK, NVDA, CAT und STNG (live getestet). FMP nur per Desk-Recherche,
+      nicht mit eigenem Key.
+    - Datenqualität: `eps_estimate_revision_down_trailing_7_days` oft `null`
+      statt `0` (nie blind als 0 werten); Platzhalterwerte (MPC
+      `revenue_estimate_high` sieben Quartale identisch 40 Mrd.); dazu
+      Split-Artefakte und Nullwert-Anomalien als dokumentierte Muster.
+    - `EARNINGS_CALENDAR`-Bulk gegen das 737-Ticker-Universum: 15 Ticker
+      im 5–15-Handelstage-Fenster (Momentaufnahme 23.09.2026).
+    - Punkt C: `earnings_estimates_archive.py` v0.3 in `ko-aggregator`
+      committed — tägliches Point-in-Time-Archiv für EPS und Revenue
+      (Python, analog `iv_layer.py`), Free-Tier-sicher über persistentes
+      Tagesbudget-Log statt fixer Obergrenze, erkennt die drei
+      Anomaliemuster.
 
-**Scope**
-- Alle veröffentlichten Strategien; Ereignisfenster strategiespezifisch:
-  DTE (csp_wheel, atmna, weekly_income, cc, collar) bzw. typische Haltedauer (Equity)
-- Earnings: Quelle = vorhandener Aggregator-Earnings-Kalender
-- Makro: FOMC, CPI aus statischer, versionierter Jahres-Kalenderdatei
-- SEC 8-K (nur homeMarket=US): Erkennung + Item-Nummer-Klassifikation (z.B. 2.02, 5.02, 1.01)
+    **Entscheidung (24.09.2026): noch nicht bauen.** Vor jeder darauf
+    aufbauenden Arbeit zwei Prüfungen:
+    (a) **Point-in-Time:** Ändert Alpha Vantage historische Schätzwerte
+        nachträglich? Falls ja, sind die 7/30/60/90-Tage-Felder für
+        Backtests nicht zeitpunktgetreu (Look-ahead-Bias, vgl. PIT-Regel
+        №69 A).
+    (b) **Backtest-Validität:** Ist der DCE-Backtest-Sharpe durch geglättete
+        Renditen inflationiert?
 
-**Status-Werte:** PASS · WARN · UNVERIFIED · NOT_APPLICABLE
-- zusätzlich `would_block` (bool, hypothetisch, ohne Wirkung)
-- Grundsatz RUN ≠ DATA ≠ DATA_QUALITY: fehlende/nicht abrufbare Daten nie als PASS
+    **Offen:** erster echter Archivlauf (kein Dry-Run); Einbindung in den
+    GHA-Workflow im Code verifizieren; danach Phase 1 (Feature
+    Specification). Separat: Earnings-Vorfilter für das KI-Enrichment
+    (Bezug №61).
 
-**Pflichtfelder pro Eintrag**
-gate_version, snapshot_id*, ledger_id*, ticker, strategy, event_type, event_subtype,
-event_status, event_date_status**, event_time, source, source_verified, checked_at,
-reason_code, would_block
-(* vorhandene IDs verwenden — Existenz/Format im Code zu verifizieren)
-(** nur wo die Unterscheidung fachlich existiert: Earnings → `estimated | confirmed`
-zum checked_at-Zeitpunkt; FOMC/CPI/8-K → `null`)
+    *Verwandt mit: №15 (IV-Archiv-Muster), №61, №69, №71.*
 
-**Bewusst NICHT in Sprint 1**
-LLM-Abfragen, News-API, Websuche, Competitive Intelligence, Wettbewerbergraph,
-wirksame BLOCK-Entscheidung, Änderung des Public Outputs, LLM-confidence
+71. **Event & Surprise Gate · Sprint 1 (Deterministic Shadow Mode)**
 
-**Bekannte Lücke:** Abend-Run (22:00 UTC) sieht keine US-Premarket-Meldungen —
-dokumentiert, Lösung (strukturierter Pre-Market-Check ohne KI) erst im Freigabemodus
+    **Status:** BACKLOG · eigene Session · kein Eingriff in den produktiven Pfad
+    **Ziel:** Kostenfreie, rein deterministische Event-Protokollierung für
+    bereits veröffentlichte Kandidaten, um vor jeder KI-/News-Stufe empirisch
+    zu prüfen, ob das Gate messbaren Informationswert liefert.
 
-**Erfolgsmessung (forward-only, kein Hindsight)**
-PASS vs. WARN: Forward Return, Forward Drawdown, Gap-/Event-Moves;
-Anzahl Events, UNVERIFIED-Quote, FP/FN nach manueller Review
+    **Architektur**
+    - Separater Shadow-Step NACH `generate_public_recommendations.js`
+    - Anforderung: Gate-Fehler dürfen den Digest nie beeinflussen. Vorgesehener
+      Mechanismus: GHA `continue-on-error: true` (bzw. gleichwertig) — konkrete
+      Umsetzung bei Implementierung im Workflow zu verifizieren
+    - Liest die veröffentlichten Kandidaten aus dem bestehenden Output, verändert nichts
+    - Persistenz: append-only JSONL im Repo (Content-Hash), keine DB-Tabellen
 
-**Exit-Kriterien**
-Kandidatenübernahme zuverlässig · Earnings/FOMC/CPI/8-K deterministisch erkannt ·
-JSONL reproduzierbar · Digest nachweislich unbeeinflusst · UNVERIFIED/NOT_APPLICABLE
-sauber von PASS getrennt · ≥30 WARN-Fälle oder ≥8 Wochen Shadow-Daten (später Eintretendes)
+    **Scope**
+    - Alle veröffentlichten Strategien; Ereignisfenster strategiespezifisch:
+      DTE (csp_wheel, atmna, weekly_income, cc, collar) bzw. typische Haltedauer (Equity)
+    - Earnings: Quelle = vorhandener Aggregator-Earnings-Kalender
+    - Makro: FOMC, CPI aus statischer, versionierter Jahres-Kalenderdatei
+    - SEC 8-K (nur homeMarket=US): Erkennung + Item-Nummer-Klassifikation (z.B. 2.02, 5.02, 1.01)
 
-**Danach:** Entscheidung über Sprint 2 (LLM-Extraktion, News-Discovery).
-Amgen/Novartis (Pelacarsen) als Golden Test Case für die Frage, ob Stufe 2
-indirekte Surprises prinzipiell findet — NICHT für Wirksamkeitsmessung (hindsight-kontaminiert).
+    **Status-Werte:** PASS · WARN · UNVERIFIED · NOT_APPLICABLE
+    - zusätzlich `would_block` (bool, hypothetisch, ohne Wirkung)
+    - Grundsatz RUN ≠ DATA ≠ DATA_QUALITY: fehlende/nicht abrufbare Daten nie als PASS
 
+    **Pflichtfelder pro Eintrag**
+    gate_version, snapshot_id*, ledger_id*, ticker, strategy, event_type, event_subtype,
+    event_status, event_date_status**, event_time, source, source_verified, checked_at,
+    reason_code, would_block
+    (* vorhandene IDs verwenden — Existenz/Format im Code zu verifizieren)
+    (** nur wo die Unterscheidung fachlich existiert: Earnings → `estimated | confirmed`
+    zum checked_at-Zeitpunkt; FOMC/CPI/8-K → `null`)
+
+    **Bewusst NICHT in Sprint 1**
+    LLM-Abfragen, News-API, Websuche, Competitive Intelligence, Wettbewerbergraph,
+    wirksame BLOCK-Entscheidung, Änderung des Public Outputs, LLM-confidence
+
+    **Bekannte Lücke:** Abend-Run (22:00 UTC) sieht keine US-Premarket-Meldungen —
+    dokumentiert, Lösung (strukturierter Pre-Market-Check ohne KI) erst im Freigabemodus
+
+    **Erfolgsmessung (forward-only, kein Hindsight)**
+    PASS vs. WARN: Forward Return, Forward Drawdown, Gap-/Event-Moves;
+    Anzahl Events, UNVERIFIED-Quote, FP/FN nach manueller Review
+
+    **Exit-Kriterien**
+    Kandidatenübernahme zuverlässig · Earnings/FOMC/CPI/8-K deterministisch erkannt ·
+    JSONL reproduzierbar · Digest nachweislich unbeeinflusst · UNVERIFIED/NOT_APPLICABLE
+    sauber von PASS getrennt · ≥30 WARN-Fälle oder ≥8 Wochen Shadow-Daten (später  Eintretendes)
+
+    **Danach:** Entscheidung über Sprint 2 (LLM-Extraktion, News-Discovery).
+    Amgen/Novartis (Pelacarsen) als Golden Test Case für die Frage, ob Stufe 2
+    indirekte Surprises prinzipiell findet — NICHT für Wirksamkeitsmessung
+    (hindsight-kontaminiert).
+
+    *Verwandt mit: №70 (Earnings-Datenbasis), №69 A (RUN ≠ DATA ≠ DATA QUALITY).*
 ## Fortschreibungshistorie
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.31 | 26.09.2026 | №70 earnings_invest nachgetragen — war in 4.29 nur in der Historie vermerkt, fehlte im Backlog-Text. Rekonstruiert aus Phase-0-Session 23.09. und Entscheidung 24.09. (noch nicht bauen; PIT-Prüfung Alpha Vantage und Sharpe-Glättungsprüfung DCE vorgeschaltet). Event-Gate-Eintrag von „70." auf №71 korrigiert (entspricht 4.30) und listenkonform eingerückt. |
 | 4.30 | 26.09.2026 | №71 Event & Surprise Gate Sprint 1 als BACKLOG aufgenommen (deterministischer Shadow Mode, keine Produktivwirkung).
 | 4.29 | 26.09.2026 | №70 earnings_invest
 | 4.28 | 24.09.2026 | №69 korrigiert: Schritt 0 (Abschnitt-7/8-Templating) als „Stand ungeklärt, vor Beginn verifizieren“ umformuliert — 4.27 hatte „läuft, Restpunkt finalizeStrategyResult()“ ungeprüft übernommen, während UEBERGABE-2026-09-24.md den v1.22-Incident, den v1.23-Rückbau und Option B als nicht gebaut dokumentiert. Vorrang der Roadmap 25.09. vermerkt. Automatische Ticker-Universum-Pflege aus Stufe C gestrichen (läuft bereits als TICKER_MASTER Phase C). |
