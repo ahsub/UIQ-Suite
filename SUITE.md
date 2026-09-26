@@ -1,7 +1,7 @@
 # Investment-Suite — Dachdokument
 
 
-**Version:** 4.35
+**Version:** 4.36
 **Stand:** 26.09.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
@@ -2198,6 +2198,34 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     `TEMPLATE_FAIL`, ein hoher Teilscore erscheint nie als vollständiges
     SEPA-Setup.
 
+    **Zwischenstand 26.09.2026 (Code-Lesung, noch ohne Snapshot-Abgleich):**
+    Quelle `ko-aggregator/market_aggregator.py`, `score_long_minervini()`.
+    - **52W-Nähe ist kein Pflicht-, sondern ein Bonuskriterium:** ≥ −5 % → +20,
+      ≥ −10 % → +12, ≥ −15 % → +6, darunter 0 Punkte ohne Malus. Pflicht (Return 0)
+      ist allein Gate 1 (Stage-2-Kette Kurs > EMA50/SMA150/EMA200, 50 > 150 > 200).
+    - **Sigmoid-Sättigung:** additive Rohpunkte bis ca. 178; die Glättung
+      `100/(1+e^(−0,06·(raw−50)))` liefert gerundet bereits ab **raw ≥ 139 den
+      Wert 100**. Ein ARM-ähnliches Profil ohne jeden 52W-Bonus (raw ≈ 158)
+      ergibt 100. „SEPA 100“ heißt damit „genug Punkte“, nicht „alle
+      Template-Kriterien erfüllt“ — erklärt auch die Top-Kohorten-Bildung.
+    - `pctFromHigh52` wird sauber aus den Schlusskursen der letzten 252 Tage
+      berechnet (`max(closes[-252:])`) — kein Hinweis auf Datenfehler.
+    - **Vorläufige Klassifikation:** fehlendes Kriterium, verstärkt durch
+      missverständliche Score-Bezeichnung. Formal bestätigt erst nach
+      (a) Abgleich mit den echten ARM-Rohwerten des Snapshots und
+      (b) Verifikation, dass das Briefing-Label „SEPA-Score“ auf `sMinervini`
+      abbildet (Mapping in `axel-scanner`/`ko-prompts.js`, noch nicht gelesen).
+    - **Zusatzfund (Bug, nicht gefixt — Freeze):** Liquiditäts-Malus im selben
+      Score: `if avg_vol < 500_000: −20 elif avg_vol < 250_000: −35` — der
+      zweite Zweig ist unerreichbar, sehr illiquide Titel erhalten −20 statt −35.
+    - **Folgerung für das Regelregister:** zusätzlich zu `SEPA_TEMPLATE_52W` eine
+      Sättigungsregel (Anteil Titel am Maximum je Score, Abstand Rohwert zur
+      100er-Schwelle). Voraussetzung: Rohwert vor Sigmoid wird mit ausgegeben
+      (bisher nicht) — für den Prüfer zunächst durch Nachrechnen im Devtool
+      lösbar, ohne Aggregator-Eingriff. Da die Sigmoid-Glättung auch in
+      anderen Strategie-Scores stecken kann, gilt die Sättigungsprüfung für
+      alle Scores, nicht nur SEPA.
+
     Der Codefreeze bleibt gewahrt; Änderungen erfolgen ausschließlich in
     `uiq-devtools`.
 
@@ -2242,10 +2270,50 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     *Verwandt mit: №71 (Event-Gate), №69 A (RUN ≠ DATA ≠ DATA QUALITY),
     Grundgesetz #9 (Debug-Protokoll), №67 (Regulatory Language Spec).*
     
+73. **Repo-Sichtbarkeit und Schutz proprietärer Prompts/Codes (neu 26.09.2026)**
+
+    **Status:** OFFEN · Entscheidung vor Beta-Freigabe/Kommerzialisierung
+    **Anlass:** Beim Anhängen für №72 fiel auf, dass `ahsub/ko-aggregator`
+    öffentlich ist. Axel: Frage stellt sich ohnehin mit Blick auf öffentliche
+    Zugänglichkeit von KI-Empfehlungen, proprietären Prompts und Code.
+
+    **Zu klären (Bestandsaufnahme zuerst, dann Entscheidung):**
+    - Sichtbarkeit aller UIQ-Repos erfassen (`ko-aggregator`, `ko-modules`,
+      `axel-scanner`, `ko-sync`, `workers`, `UIQ-Suite`, `uiq-devtools`) und je
+      Repo Inhalt einordnen: Scoring-Logik, Prompts, Konzeptdokumente, Secrets-Historie.
+    - **Git-Historie:** Privatisieren schützt nichts, was bereits öffentlich war
+      (Forks, Caches, Archive). Früher committete Secrets gelten als
+      kompromittiert und müssen rotiert sein, unabhängig von der Sichtbarkeit.
+
+    **Architektur-Abhängigkeiten, die eine reine Umstellung auf „privat“ brechen:**
+    - `ko-modules` wird laut RUNBOOK über **jsDelivr** (hash-pinned) ausgeliefert —
+      jsDelivr bedient nur öffentliche GitHub-Repos. Privatisierung ⇒ Auslieferung
+      bricht; Ersatz nötig (z. B. Cloudflare Worker/Pages/R2).
+    - **Prompts, die im Browser ausgeführt oder dorthin geladen werden, sind
+      unabhängig von der Repo-Sichtbarkeit für jeden Nutzer lesbar** (DevTools).
+      Echter Schutz heißt: Prompt-Aufbau serverseitig im Worker, Client erhält
+      nur das Ergebnis. Das ist eine Architekturfrage, keine Einstellungsfrage.
+    - **GitHub-Actions-Kosten:** öffentliche Repos haben unbegrenzte
+      Standard-Runner-Minuten, private nur das Plan-Kontingent. Aggregator-,
+      CoT- und Backup-Workflows vor Umstellung gegen das Kontingent rechnen
+      (Projekt-Ökonomie).
+    - GitHub-Integrationen (Claude-App, Watchdog-PAT, Cron-Trigger) auf
+      Zugriffsrechte für private Repos prüfen.
+
+    **Abwägung:** Öffentliche Nachvollziehbarkeit kann regulatorisch/vertrauens-
+    bildend nützlich sein (Methodik, Literaturverzeichnis), steht aber gegen
+    Schutz von Scoring-Logik und Prompt-Know-how. Denkbar: getrennte Ebenen —
+    öffentlich dokumentierte Methodik, privater Code, Prompts ausschließlich
+    serverseitig.
+
+    *Verwandt mit: BACKLOG v2.0 zentrale Datenabrufe/Key-Leaks, №72
+    (Anlass), BaFin-Voranfrage.*
+
 ## Fortschreibungshistorie
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.36 | 26.09.2026 | №72 A1 Zwischenstand (Code-Lesung `score_long_minervini()`): 52W-Nähe nur Bonus-, kein Pflichtkriterium; Sigmoid sättigt ab raw ≥ 139 auf 100 (max. raw ≈ 178) → SEPA 100 ohne 52W-Bonus möglich; `pctFromHigh52` sauber aus Schlusskursen; vorläufige Klassifikation „fehlendes Kriterium + missverständliche Bezeichnung“, Bestätigung nach Snapshot-Abgleich und Label-Mapping-Prüfung. Zusatzfund: unerreichbarer Liquiditäts-Malus-Zweig (<250k). Sättigungsregel für alle Scores ergänzt. №73 (neu): Repo-Sichtbarkeit/Schutz proprietärer Prompts — jsDelivr-Abhängigkeit, clientseitige Prompt-Sichtbarkeit, GHA-Minuten, Secrets-Historie. |
 | 4.35 | 26.09.2026 | №72 A1 neu gefasst (Vorschlag Axel): statt Einmal-Skript für ARM ein generischer, read-only **Snapshot-Invarianten-Prüfer** in `uiq-devtools` — Regelregister mit Definitionsreferenz je Regel, erste Regel `SEPA_TEMPLATE_52W`, Prüfung aller Ticker × Strategien, Regelklassen Sättigung/Feldwidersprüche/Universum/Metrikkonsistenz/Missingness/Ausreißer/Label-Semantik, maschinenlesbarer Auditbericht, ERROR/WARNING/INFO, versionierte Regeln mit Positiv-/Negativtests. Freeze-Aufhebung präzisiert: nur Abnahmekriterium (erste Regel + Klassifikation + Fixture), weitere Regelklassen kein Freeze-Kriterium. |
 | 4.34 | 26.09.2026 | №72 (neu): Scoring-/Daten-Integritäts-Audit aus dem Momentum-Briefing 26.09. (ARM SEPA 100 trotz −30,29 % zum 52W-Hoch; QTEC ETF-Volumen 19,11x; ASML Earnings-Feld leer bei Termin 14.10. laut Aggregatoren; HVP/IVP-Vermischung; Markov-50-%-Schwelle; Composite-Deckelung). Reihenfolge A1 ARM-Audit → A2 Event-Status (erweitert №71 um UNKNOWN/CONFLICT, Quellenfeld) → A3 ETF-Universum + Median-Volumenbasis → A4 Metrik-Hygiene → A5 Entry-Readiness. Neuer Architekturgrundsatz: Briefing-Layer darf Unsicherheit aus dem Scoring-Layer nicht wegformulieren. **Codefreeze** UIQ bis Abschluss A1 (Kopf-Banner); №69/№71 bis dahin pausiert, Aggregator/Digest laufen weiter. |
 | 4.33 | 26.09.2026 | №34 Korrektur 4.33 (eigener Block, 4.32 bleibt nachvollziehbar stehen): DSR-Modul `deflated_sharpe_ratio.py` v1 hatte einen Einheitenfehler (annualisierte Sharpe mit täglicher Beobachtungszahl, Default-Streuung 1,0) → „DSR 0,00“ (4.32) und die DSR-Werte aus `dsr_check.py` (23.08.) sind Rechenartefakte; korrigiert in v2.0 mit Selbsttests. Maßgeblicher Test jetzt die Differenzrendite gegenüber Buy & Hold (Newey-West, einseitig) — keine geprüfte Variante (Gate A/B, regime_v1/v2/5f; Lag 1/2) schlägt Buy & Hold. Go-Kriterium 2 neu gefasst und vorab fixiert; Status №34: nicht bestanden für die geprüften Varianten, keine allgemeine Widerlegung des Regime-Moduls. Forschungscode: `regime_gate_backtest_v2.py` v2.2, `regime_compare/dsr_check.py` v2.0. Folgepunkt: Nachträge in `docs/REGIME-BACKTEST-VALIDIERUNG.md` und `docs/Backlog-marketstate-2026-08-18.md`. |
