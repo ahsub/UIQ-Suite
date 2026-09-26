@@ -18,9 +18,44 @@
  * um den Diff auf den Trading-Day-Skip-Check zu beschränken.]
  * ====================================================================
  *
- * Skript-Version: v1.24
+ * Skript-Version: v1.25
  *
  * CHANGELOG (neueste zuerst):
+ * v1.25 (26.09.2026, Claude + Axel, FELDPFAD-FIX mcm_regime):
+ *      Einzige Aenderung: Lesepfad von snapshot.mcm_regime in
+ *      buildDailyMarketSnapshot() (plus dieser Changelog, Versionszeile und
+ *      Kommentar an der Zeile). Kein Prompt-, Validierungs-, Retry-,
+ *      Caching-, Token- oder Batch-Eingriff.
+ *      Befund (verifiziert, nicht vermutet — Grundgesetz #9):
+ *        Lauf:       26.09.2026 00:26 UTC (GHA-Run 36204811096), Skript v1.24,
+ *                    market_aggregator.py v5.44.0
+ *        Log:        "SNAP-20260926-003324Z — Regime: null"
+ *        Ursache:    Skript las masterData.strategyMeta.regime; der Aggregator
+ *                    schreibt aber master["strategyMeta"] = {regimeUsed,
+ *                    timestamp, enriched} sowie master["meta"]["regimeUsed"]
+ *                    (market_aggregator.py ~Z. 11440-11447, Quelle:
+ *                    build_leaderboards() -> "regimeUsed": regime_upper).
+ *                    Ein Feld "regime" existiert dort nicht -> mcm_regime war
+ *                    in jedem Lauf null. Gleiche Fehlerklasse wie der
+ *                    meta.regimeUsed-Fix vom 14.07.2026.
+ *        Folgen bis v1.24: Digest market_regime.mse_regime = null,
+ *                    Decision-/Ledger-Snapshots regime = null (Regime-Dimension
+ *                    im Track-Record fehlt fuer alle bisherigen Eintraege),
+ *                    meanrev-Signale ohne _snapshotRegime, Logzeile null.
+ *        NICHT betroffen: Prompts — buildMarktkontext() und
+ *                    buildOptionsMarktkontext() lesen mcm_regime nicht. (Dass
+ *                    die Prompts das MSE-regime_v2 gar nicht enthalten, ist ein
+ *                    separater Backlog-Punkt, bewusst nicht Teil dieses Fixes.)
+ *      Fix: mcm_regime = strategyMeta.regimeUsed ?? meta.regimeUsed ?? null.
+ *      mcm_context_downgrades bleibt unveraendert: das Feld wird vom
+ *      Aggregator derzeit NICHT geliefert und ist daher immer [] — bekannt und
+ *      dokumentiert, keine Verhaltensaenderung in diesem Release.
+ *      KO_MODULES_VENDOR_DRIFT_COMMIT unveraendert ('475cf2a') — die
+ *      Vendor-Kopien (ko-prompts.js etc.) sind von dieser Aenderung nicht
+ *      beruehrt.
+ *      Verifikation nach dem naechsten Lauf: Logzeile "Regime: <Wert>" statt
+ *      null; KV public/digest/latest -> market_regime.mse_regime belegt;
+ *      neuer Decision-Snapshot im Archiv mit regime != null.
  * v1.24 (25.09.2026, Claude + Axel, ANTHROPIC_MAX_TOKENS 4096 -> 8192):
  *      Einzige Aenderung: der Wert der Konstante ANTHROPIC_MAX_TOKENS (plus
  *      dieser Changelog, Versionszeile und Kommentar an der Konstante).
@@ -1255,7 +1290,12 @@ async function buildDailyMarketSnapshot(masterData) {
     indicator_registry_version: indicatorRegistryVersion,
     gha_run_id: process.env.GITHUB_RUN_ID ?? null,
     ticker_universe_size: masterData.meta?.total ?? masterData.tickers?.length ?? null,
-    mcm_regime: masterData.strategyMeta?.regime ?? null,
+    // v1.25 (26.09.2026): Feldpfad-Fix — der Aggregator schreibt
+    // strategyMeta.regimeUsed (Fallback meta.regimeUsed), NICHT
+    // strategyMeta.regime. Vorher war mcm_regime in jedem Lauf null.
+    mcm_regime: masterData.strategyMeta?.regimeUsed ?? masterData.meta?.regimeUsed ?? null,
+    // Hinweis v1.25: context_downgrades wird vom Aggregator (v5.44.0) derzeit
+    // nicht geliefert -> immer []. Bewusst unveraendert gelassen.
     mcm_context_downgrades: masterData.strategyMeta?.context_downgrades ?? [],
     vix: masterData.market?.vixTerm?.vix ?? null,
   };
