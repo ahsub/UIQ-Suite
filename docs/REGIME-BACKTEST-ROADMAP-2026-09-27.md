@@ -91,6 +91,28 @@ Jede Hypothese wird **vor** dem Test mit Definition, Schwellen-Kalibrierungsfens
 | H4 | Makro-Achse (Kurvensteilheit, Claims, OFR FSI) | ALFRED, OFR | wie H2; nur Vintage-Daten |
 | H5 | VIX-Futures-Kurve (Basis, Slope, Curvature) | Bloomberg-Dump (nur Research) bzw. CFE | wie H2; Ergebnis nicht veröffentlichen, solange Quelle nicht lizenzsauber |
 
+**H1 · Stand 27.09.2026: ❌ nicht bestätigt (abgeschlossener negativer Primärtest).**
+Präregistrierung `regime-test/docs/preregistration/H1_laufzeit_gate.md` Rev. 3 (Commit `8e05c0a`,
+13:40, vor Auswertung; nach externem Review: Daten-Vintage, Versuchsprotokoll, feste
+Stressphasen, ein primärer Kandidat, keine Ersatzauswahl). Auswertung `run_phase3_h1.py`,
+Bericht `results/phase3/H1_bericht.md`. Primärer Kandidat O-6M (Overlay, VIX6M/VIX < 1,05 →
+Position 0), im Entwicklungsfenster 2009–2016 gewählt. Bestätigungsfenster 2017–2026 gegen
+Baseline: Max DD −27,3 % vs. −24,6 % (Kriterium ≥ 3 Pp besser verfehlt), Calmar 0,27 vs. 0,43,
+CAGR 7,4 % vs. 10,6 %; Stressphasen 5 von 5 nicht schlechter. Sekundär 0 von 3 erfüllt.
+**Konsequenz:** kein Laufzeit-Filter in der UIQ-Logik.
+**Fehleranalyse 2022 (eigenständiger Befund):** Beide Varianten erreichen den maximalen
+Drawdown im Bärenmarkt 2022 (Baseline: Hoch 03.01.2022 → Tief 12.10.2022; Filter: Hoch
+18.11.2021 → Tief 28.12.2022). Der Filter stieg in 2022 mehrfach aus und wieder ein und vertiefte
+so den Verlust über die fest abgegrenzte Stressphase (bis 12.10.2022) hinaus. Zugleich zeigt
+2022 eine Schwäche der bestehenden Marketstate-Logik: eine langsame, lang anhaltende
+Abwärtsphase ohne ausgeprägte Laufzeit-Inversion wird kaum abgefangen (Baseline −24,1 % vs.
+B&H −24,9 % in der Phase).
+**Forschungsnotiz H1b (kein Produktivfilter):** Schockschutz ist real (Covid −1 % vs. −7 %,
+Volmageddon −3 % vs. −7 %, 2008 im Methodentest −0,5 % vs. −47 %), wird aber durch Whipsaw und
+verpasste Erholungen überkompensiert (Zeit im Markt 87 %, 229 statt 162 Wechsel). Weiterverfolgung
+nur als neu präregistrierte Hypothese mit eigener Wiedereinstiegs-/Haltedauerregel und
+unberührtem Bestätigungsdesign – derzeit nicht priorisiert.
+
 **Abbruchkriterium je Hypothese:** kein Nutzen im Entwicklungsfenster → nicht ins Bestätigungsfenster (spart Rechen- und Analyseaufwand, schützt das Bestätigungsfenster).
 
 ## Phase 4 – Validierung
