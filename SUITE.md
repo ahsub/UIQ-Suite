@@ -1,7 +1,7 @@
 # Investment-Suite — Dachdokument
 
 
-**Version:** 4.39
+**Version:** 4.40
 **Stand:** 26.09.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
@@ -2349,6 +2349,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.40 | 27.09.2026 | Regime-Roadmap Phase 3 abgeschlossen (nur Doku): H4 Makro-Achse nicht bestätigt (Claims-Signal schützt stark, DD +8,3 Pp, aber Calmar 0,15 vs. 0,43; Zinskurve ohne Nutzen); Phase-3-Synthese – in allen vier Filterfamilien Trade-off Krisenschutz vs. Investitionsquote, keiner mit mindestens gleichwertigem Gesamtprofil; Informationsmehrwert ≠ wirtschaftlicher Mehrwert. Konsequenz: Baseline unverändert, kein zusätzlicher Ausstiegsfilter; Details `docs/REGIME-BACKTEST-ROADMAP-2026-09-27.md`. |
 | 4.39 | 27.09.2026 | №72 Zusatzbefund PCR quantifiziert (nur Doku, Freeze): H2-Datenaudit 2009–2019 – ρ(echte Total-PCR, UIQ-Proxy) 0,39, Zustandsübereinstimmung mit produktiven Overlay-Schwellen κ 0,08; Skalenproblem (Proxy-„Gier“ 51 % vs. echte PCR 6,5 % der Tage). Proxy als eigenständiger „VIX-Stress-Proxy“ zu führen, nicht als PCR; Overlay-Schwellen separat prüfen. Regime-Roadmap: H1 und H3 nicht bestätigt, H2 Informationshypothese bestätigt / Wirtschaftshypothese nicht getestet. |
 | 4.38 | 27.09.2026 | №72 Zusatzbefund (nur Doku, kein Fix — Freeze): UIQ-„PCR“ ist bei jedem Lauf ein VIX-Proxy (`fetch_pcr_cboe()` → alte Cboe-URL 404, auf GHA zusätzlich 403 → `calc_pcr_proxy()` aus VIX/VIX3M/VVIX) → Doppelzählung der Vol-Struktur im Macro Risk Overlay und in den Makro-Z-Scores, irreführendes Label. Freie Cboe-PCR-Historie endet 04.10.2019. Entscheidung über Umbenennung/Entfernung vs. echte Quelle nach Regime-Backtest H2 (`docs/REGIME-BACKTEST-ROADMAP-2026-09-27.md`); neue Doku `docs/REGIME-DATENQUELLEN.md`. |
 | 4.37 | 26.09.2026 | Codefreeze-Banner präzisiert (Axel-Entscheidung): gesperrt bleibt der Scoring-, Prompt- und Output-Pfad (u. a. STRATEGIEPRINZIP-Fix, B1, B2, B2b); ausgenommen ist reine Infrastruktur ohne Scoring-Bezug (FIN-Entkopplung, Runner-Pin vor 19.10., Watchdog/cron-trigger), weiterhin eine Produktionsänderung pro Nacht und Freeze bis nach dem Telefonat 28.09. |

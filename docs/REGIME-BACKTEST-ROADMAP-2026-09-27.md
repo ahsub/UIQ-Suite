@@ -144,6 +144,57 @@ daher bewusst **nicht** durchgeführt. **Konsequenz:** kein PCR-Filter in UIQ; k
 **VIX-Stress-Proxy** zu dokumentieren und darf nicht als Put/Call-Ratio bezeichnet oder
 interpretiert werden (→ SUITE.md №72); echte PCR bleibt Daten-/Forschungsoption.
 
+**H4 · Stand 27.09.2026: ❌ nicht bestätigt (Calmar verfehlt) · sehr eigenständige Information.**
+Phase 0: Point-in-time-Audit ALFRED (Commit `a18778f`): Zinskurve aus Erstveröffentlichungen
+der H.15-Bausteine DGS10/DGS3MO/DGS2 (Vintages ab 06/2005) rekonstruiert (Abgleich mit FRED
+T10Y3M ab 2014: 3.180 von 3.181 Tagen identisch); Initial Claims nur Erstveröffentlichungen (ab
+05/2009); **ausgeschlossen:** BAA10Y (DBAA erst ab 04/2014 point-in-time), NFCI (erst ab 06/2011,
+Korrelation Erst-/heutiger Stand nur 0,85), STLFSI4 (erst ab 11/2022). Präregistrierung
+`regime-test/docs/preregistration/H4_makro_achse.md` Rev. 2 (Commit `dc6df73`, 14:34; nach
+Review: Eligibility ≥ 20 Handelstage als reine Zulassungsregel, keine Nachschub-Schwellen,
+neutrale Primärbegründung, exaktes Timing). Auswertung `run_phase3_h4.py`, Bericht
+`results/phase3/H4_bericht.md`. Eligibility: +5 % 546 Tage ✅, +10 % 129 ✅, +15 % 10 ❌.
+Primär A-0,05 (Risiko-aus, wenn 4-Wochen-Mittel der Erstveröffentlichungen ≥ 5 % über seinem
+52-Wochen-Tief): Max DD −16,3 % vs. −24,6 % (+8,3 Pp ✅), Stressphasen 5 von 5 ✅, **Calmar 0,15
+vs. 0,43 ❌** – nur 35 % Zeit im Markt, CAGR 2,4 % vs. 10,6 % (lang anhaltendes Risiko-aus ab 2022
+bei langsam steigenden Claims ohne Rezession). Entwicklungsfenster war stark (Calmar 0,85 vs.
+0,45) – generalisiert nicht. Sekundär K (10J−3M < 0) und Z (10J−2J < 0): 0 von 2.
+Informationsmehrwert: nur 6 % Überlappung mit Baseline-Ausstiegen.
+
+### Phase-3-Synthese (27.09.2026)
+
+| Hypothese | Krisenschutz | Gesamtprofil ggü. Baseline | eigenständige Information |
+|---|---|---|---|
+| H1 Laufzeit-Gate (VIX6M/VIX, VIX1Y/VIX) | ja (Covid, Volmageddon) | ❌ Calmar 0,27 vs. 0,43 | – |
+| H2 Put/Call-Ratio | nicht getestet | nicht getestet (Daten bis 10/2019) | ✅ (ρ 0,39 zum Proxy, κ 0,08) |
+| H3 Implied Correlation (COR1M) | teilweise (4 von 5) | ❌ knapp (DD +1,8 statt ≥ 3 Pp) | ✅ (50 % eigenständige Ausstiege) |
+| H4 Makro (Claims, Zinskurve) | ja, stark (5 von 5, DD +8,3 Pp) | ❌ deutlich (Calmar 0,15 vs. 0,43) | ✅ (94 % eigenständige Ausstiege) |
+
+**Befund (durch die Experimente gedeckt, kein allgemeines Gesetz):** In den vier untersuchten
+Filterfamilien zeigte sich konsistent ein Trade-off zwischen Krisenschutz und langfristiger
+Investitionsquote. Keiner der getesteten Filter konnte den zusätzlichen Drawdown-Schutz mit einem
+mindestens gleichwertigen Gesamtprofil verbinden.
+
+**Informationsmehrwert ≠ wirtschaftlicher Mehrwert:** H2 – eigenständige Information
+nachgewiesen, ökonomischer Test bewusst nicht durchgeführt; H3 – eigenständige Information,
+begrenzter ökonomischer Effekt, Kriterium knapp verfehlt; H4 – sehr eigenständige Information,
+starker Krisenschutz, deutlicher Rendite-/Calmar-Preis.
+
+**Konsequenzen für UIQ (nach Freeze-Aufhebung, jeweils als eigener SUITE-Punkt):**
+1. Die Baseline `classify_regime_v2()` bleibt unverändert; **kein** zusätzlicher binärer
+   Ausstiegsfilter aus H1–H4.
+2. Kommunikation der Marketstate-Logik: Nutzen = Drawdown-Schutz ggü. Buy & Hold, **kein**
+   belastbarer Sharpe-Vorteil (Phase 2).
+3. „PCR“ in UIQ als VIX-Stress-Proxy führen; Overlay-Schwellen separat prüfen (№72).
+4. Eigenständige Informationskanäle (COR1M, Claims, echte PCR) nicht als Handelsfilter, allenfalls
+   als beschreibender Kontext – jede weitergehende Nutzung (z. B. Teilreduktion statt Ausstieg)
+   wäre eine **neue**, eigens präregistrierte Hypothesenfamilie.
+5. Kein H5 „auf Verdacht“. H5 (VIX-Futures-Kurve) bleibt wegen Bloomberg-Lizenz ohnehin nur
+   Research. Option: O-A (H3) als eingefrorener Shadow-Mode-Vorwärtstest ab 10/2026 – nicht
+   beschlossen.
+
+**Kumulierte Versuche Phase 2–3:** 5 frühere Kandidaten + 16 (H1) + 16 (H3) + 5 (H4) = 42.
+
 **Abbruchkriterium je Hypothese:** kein Nutzen im Entwicklungsfenster → nicht ins Bestätigungsfenster (spart Rechen- und Analyseaufwand, schützt das Bestätigungsfenster).
 
 ## Phase 4 – Validierung
