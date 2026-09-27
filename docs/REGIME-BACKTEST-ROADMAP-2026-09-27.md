@@ -37,6 +37,18 @@ Stand: 27.09.2026 · Research-Repo: `ahsub/regime-test` · Datenbasis: siehe `RE
 
 **Gate:** Datenqualitätsbericht grün, bevor eine einzige Strategie läuft.
 
+**Stand 27.09.2026: ✅ abgeschlossen** – `ahsub/regime-test` Commit `88a0d12`
+(`src/datalayer/`, `run_phase1.py`, `tests/test_datalayer.py`, Snapshot
+`data/raw/cboe/2026-09-27/` mit `SHA256SUMS.txt`). Kalender: NYSE über Paket
+`holidays` (inkl. Sonderschließungen). QC-Status WARN, vollständig erklärt:
+(1) Cboe-VIX-Historie enthält 34 Zeilen an NYSE-Feiertagen (u. a. 11.06.2004,
+seit 2022 nahezu jeder US-Feiertag) → verworfen; die bisherigen
+`regime-test`-Skripte haben diese Zeilen als Handelstage behandelt;
+(2) VVIX 2006 lückenhaft (59 Tage) → faktisch ab 2007 nutzbar;
+(3) VIX1Y fehlt an Columbus/Veterans Day (Anleihemarkt geschlossen) → bleibt
+NaN. Abgleich mit dem Snapshot vom 30.08.2026: 0 Abweichungen bei VIX, VIX3M,
+VVIX, SKEW (keine Revisionen). Tests laufen unter pandas 2.3 und 3.0.
+
 ## Phase 2 – Baseline reproduzieren
 
 1. **Quellen-Parität:** VIX, VIX3M, VVIX, SKEW aus Cboe gegen die bisher genutzte Quelle (yfinance) abgleichen. Abweichungen erklären, bevor weitergemacht wird.
