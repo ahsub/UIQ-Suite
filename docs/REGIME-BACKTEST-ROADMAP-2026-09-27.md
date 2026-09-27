@@ -217,6 +217,26 @@ Positionsgröße) zu eng.
   H1–H4 inhaltlich bekannt; die externe Replikation ist deshalb der eigentliche Härtetest.
 - Danach erst die UIQ-Kette: Prognose → Strategiewahl → Positionsgröße.
 
+**Nullhypothese Phase 4 (Reviewer):** H0 – COR1M, PCR, Claims und weitere Kanäle liefern über die
+bereits im VIX enthaltene Information hinaus keinen relevanten zusätzlichen Prognosewert.
+
+**Checkliste Präregistrierung Phase 4 (vor jedem Code):**
+1. Zielvariablen exakt definiert (Horizonte, Ereignisschwellen)
+2. Information Set: was ist zum Prognosezeitpunkt tatsächlich verfügbar (point-in-time)
+3. Benchmark „VIX allein“, vollständig eingefroren
+4. Zusatzmodelle: jeweils genau definierte Einzelkanäle
+5. Messgrößen: Brier Score, Log Loss, Kalibrierung, ggf. AUC – nicht primär Rendite
+6. Entscheidend: inkrementelle Verbesserung gegenüber dem VIX-Benchmark
+7. Entwicklung/Bestätigung ohne nachträgliche Zielvariablen- oder Modellwahl
+8. Europa von Anfang an als externe Replikation eingeplant
+
+**Grundsatz:** Prognosegüte und ökonomische Verwertbarkeit sind zwei getrennte Hypothesen. Ein
+besser kalibrierter Prognosewert muss keinen handelbaren Vorteil liefern; umgekehrt kann ein
+kleiner, gut kalibrierter Informationsgewinn für die UIQ-Strategiewahl wertvoll sein.
+
+Einstieg nächste Sitzung: „weiter mit Phase 4 der Regime-Roadmap“ – beginnt mit der
+Präregistrierung, noch ohne Code.
+
 **Abbruchkriterium je Hypothese:** kein Nutzen im Entwicklungsfenster → nicht ins Bestätigungsfenster (spart Rechen- und Analyseaufwand, schützt das Bestätigungsfenster).
 
 ## Phase 4 – Validierung
