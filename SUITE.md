@@ -1,7 +1,7 @@
 # Investment-Suite — Dachdokument
 
 
-**Version:** 4.38
+**Version:** 4.39
 **Stand:** 26.09.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
@@ -2283,6 +2283,18 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     als „VIX-Proxy“ benennen bzw. aus dem Overlay nehmen; klarer Mehrwert →
     Kosten-Nutzen-Prüfung einer aktuellen PCR-Quelle. Umsetzung erst nach
     Freeze-Aufhebung, Einordnung in A4 (Metrik-Hygiene).
+    **Quantifiziert 27.09.2026 (H2-Datenaudit, `regime-test/results/h2_audit/`,
+    deskriptiv, 2009–2019):** Der Proxy bildet die Put/Call-Ratio **nicht** ab –
+    ρ(echte Cboe-Total-PCR, Proxy) 0,39; Zustände mit den produktiven Overlay-
+    Schwellen (0,75/1,10) stimmen zu 42 % überein, **κ 0,08 (≈ Zufall)**. Zusätzlich
+    ein **Kalibrierungs-/Skalenproblem**: mit dem Proxy meldet das Overlay an 51 % aller
+    Tage „Gier“ (CC-Abwertung), mit der echten Total-PCR an 6,5 %. **Konsequenz
+    (Doku, kein Fix – Freeze):** Der Proxy ist ein eigenständiger VIX-basierter
+    Stressindikator und darf nicht als PCR bezeichnet oder interpretiert werden
+    (Umbenennung „VIX-Stress-Proxy“); die Overlay-Schwellen sind unabhängig davon zu
+    überprüfen. Ein PCR-Renditetest wurde bewusst nicht durchgeführt (Daten nur bis
+    10/2019, aussageschwach); echte PCR bleibt Forschungsoption. Details:
+    `docs/REGIME-BACKTEST-ROADMAP-2026-09-27.md` (H2).
 
     **Freeze-Aufhebung:** durch Axel, sobald das A1-Abnahmekriterium erfüllt
     ist (Regelregister + `SEPA_TEMPLATE_52W` laufen, Ursache klassifiziert,
@@ -2337,6 +2349,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.39 | 27.09.2026 | №72 Zusatzbefund PCR quantifiziert (nur Doku, Freeze): H2-Datenaudit 2009–2019 – ρ(echte Total-PCR, UIQ-Proxy) 0,39, Zustandsübereinstimmung mit produktiven Overlay-Schwellen κ 0,08; Skalenproblem (Proxy-„Gier“ 51 % vs. echte PCR 6,5 % der Tage). Proxy als eigenständiger „VIX-Stress-Proxy“ zu führen, nicht als PCR; Overlay-Schwellen separat prüfen. Regime-Roadmap: H1 und H3 nicht bestätigt, H2 Informationshypothese bestätigt / Wirtschaftshypothese nicht getestet. |
 | 4.38 | 27.09.2026 | №72 Zusatzbefund (nur Doku, kein Fix — Freeze): UIQ-„PCR“ ist bei jedem Lauf ein VIX-Proxy (`fetch_pcr_cboe()` → alte Cboe-URL 404, auf GHA zusätzlich 403 → `calc_pcr_proxy()` aus VIX/VIX3M/VVIX) → Doppelzählung der Vol-Struktur im Macro Risk Overlay und in den Makro-Z-Scores, irreführendes Label. Freie Cboe-PCR-Historie endet 04.10.2019. Entscheidung über Umbenennung/Entfernung vs. echte Quelle nach Regime-Backtest H2 (`docs/REGIME-BACKTEST-ROADMAP-2026-09-27.md`); neue Doku `docs/REGIME-DATENQUELLEN.md`. |
 | 4.37 | 26.09.2026 | Codefreeze-Banner präzisiert (Axel-Entscheidung): gesperrt bleibt der Scoring-, Prompt- und Output-Pfad (u. a. STRATEGIEPRINZIP-Fix, B1, B2, B2b); ausgenommen ist reine Infrastruktur ohne Scoring-Bezug (FIN-Entkopplung, Runner-Pin vor 19.10., Watchdog/cron-trigger), weiterhin eine Produktionsänderung pro Nacht und Freeze bis nach dem Telefonat 28.09. |
 | 4.36 | 26.09.2026 | №72 A1 Zwischenstand (Code-Lesung `score_long_minervini()`): 52W-Nähe nur Bonus-, kein Pflichtkriterium; Sigmoid sättigt ab raw ≥ 139 auf 100 (max. raw ≈ 178) → SEPA 100 ohne 52W-Bonus möglich; `pctFromHigh52` sauber aus Schlusskursen; vorläufige Klassifikation „fehlendes Kriterium + missverständliche Bezeichnung“, Bestätigung nach Snapshot-Abgleich und Label-Mapping-Prüfung. Zusatzfund: unerreichbarer Liquiditäts-Malus-Zweig (<250k). Sättigungsregel für alle Scores ergänzt. №73 (neu): Repo-Sichtbarkeit/Schutz proprietärer Prompts — jsDelivr-Abhängigkeit, clientseitige Prompt-Sichtbarkeit, GHA-Minuten, Secrets-Historie. |

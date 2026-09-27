@@ -113,6 +113,37 @@ verpasste Erholungen überkompensiert (Zeit im Markt 87 %, 229 statt 162 Wechsel
 nur als neu präregistrierte Hypothese mit eigener Wiedereinstiegs-/Haltedauerregel und
 unberührtem Bestätigungsdesign – derzeit nicht priorisiert.
 
+**H3 · Stand 27.09.2026: ❌ nicht bestätigt (knapp) · eigenständige Informationsachse nachgewiesen.**
+Präregistrierung `regime-test/docs/preregistration/H3_implied_correlation.md` Rev. 2 (Commit
+`e40226f`, 13:54, vor Auswertung; nach Review: Familie B mathematisch präzisiert, Redundanz vom
+Erfolgskriterium getrennt). Auswertung `run_phase3_h3.py` (Commit `78c0edc`), Bericht
+`results/phase3/H3_bericht.md`. Regeln über rollierende 252-Tage-Perzentile (COR1M-Niveau
+nicht stationär: Median 2010 61,5 → 2026 10,5). Primärer Kandidat O-A (Risiko-aus bei
+COR1M-Perzentil ≥ 0,95): Max DD −22,8 % vs. −24,6 % = **+1,8 Pp (Kriterium ≥ 3 Pp verfehlt)**,
+Calmar 0,437 vs. 0,429, Stressphasen 4 von 5. Sekundär 0 von 3. Kostenempfindlich (0 Bp:
+Calmar 0,50 vs. 0,47; 10 Bp: 0,38 vs. 0,39). Informationsmehrwert: nur 50 % der
+Risiko-aus-Tage überlappen mit Baseline-Ausstiegen → COR1M ist **keine Kopie des VIX-Signals**
+(eigenständige Information ≠ nachgewiesener Anlagenutzen). Familie B (Perzentil-Differenz zum
+VIX) praktisch wirkungslos (31 aktive Tage). Daten-Vintage: COR1M bis 17.03.2022 vermutlich
+rückberechnet; Live-Teilfenster ab 03/2022 für O-A günstiger (DD −17,1 % vs. −19,9 %) – nur
+sekundär. **Konsequenz:** kein COR1M-Filter in UIQ; **keine Nachoptimierung** von O-A.
+**Option (nicht beschlossen):** O-A exakt eingefroren als Vorwärtstest (Shadow Mode) ab
+10/2026 auf neuen Daten, ohne Handel und ohne Anpassung.
+
+**H2 · Stand 27.09.2026: Informationshypothese bestätigt · Wirtschaftshypothese nicht getestet.**
+Statt Renditetest ein deskriptives Daten-/Informationsaudit (`regime-test/run_h2_audit.py`,
+`results/h2_audit/H2_audit.md`), Fenster 18.09.2009 – 04.10.2019, Proxy = UIQ
+`calc_pcr_proxy()` wörtlich. Befunde: ρ(echte Total-PCR, Proxy) 0,39; ρ(echte PCR, VIX) 0,31;
+Zustände mit produktiven UIQ-Schwellen: Übereinstimmung 42 %, **κ 0,08 (≈ Zufall)**;
+**Skalen-/Kalibrierungsproblem:** Overlay meldet mit Proxy an 51 % der Tage „Gier“, mit echter
+Total-PCR an 6,5 %; schnelle Vol-Schocks meldet der Proxy früher, 2018 Q4 die echte PCR.
+Ein Renditetest auf 2009–2019 (5 Stressphasen, ohne Covid/2022/2024, nur Cboe-Volumen mit
+Strukturbrüchen 2012) wäre aussageschwach – positive wie negative Ergebnisse kaum belastbar;
+daher bewusst **nicht** durchgeführt. **Konsequenz:** kein PCR-Filter in UIQ; kein
+„Widerlegen“ der PCR durch einen schwachen Test; UIQ-Proxy ist als eigenständiger
+**VIX-Stress-Proxy** zu dokumentieren und darf nicht als Put/Call-Ratio bezeichnet oder
+interpretiert werden (→ SUITE.md №72); echte PCR bleibt Daten-/Forschungsoption.
+
 **Abbruchkriterium je Hypothese:** kein Nutzen im Entwicklungsfenster → nicht ins Bestätigungsfenster (spart Rechen- und Analyseaufwand, schützt das Bestätigungsfenster).
 
 ## Phase 4 – Validierung
