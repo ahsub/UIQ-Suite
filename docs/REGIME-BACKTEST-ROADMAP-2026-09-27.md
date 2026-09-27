@@ -195,6 +195,28 @@ starker Krisenschutz, deutlicher Rendite-/Calmar-Preis.
 
 **Kumulierte Versuche Phase 2–3:** 5 frühere Kandidaten + 16 (H1) + 16 (H3) + 5 (H4) = 42.
 
+### Nächste Stufe (Plan für die nächste Sitzung, 27.09.2026 – nicht beschlossen, nichts ausgewertet)
+
+Leitfrage (Claude + Reviewer): **Was soll Marketstate prognostizieren – und wie messen wir das ohne
+Trading-Bias?** Der bisherige Maßstab „S&P-500-Ein/Aus“ ist für UIQ (Strategiewahl CSP/CC/Spreads/KO,
+Positionsgröße) zu eng.
+
+- **Phase 4 (neu gefasst): Prognose statt Timing.** Zuerst Zielvariablen festlegen und
+  präregistrieren, z. B. P(Drawdown ≥ 5 % in 20 Tagen), zukünftige 20-Tage-Realized-Volatility
+  (Klasse). Bewertung mit Prognosegüte (Brier-Score, Kalibrierung), **gegen einen einfachen
+  Benchmark** (nur VIX bzw. Baseline-Zustand) – die entscheidende Frage ist der *inkrementelle*
+  Informationswert. Zuerst univariat je Kanal (Vol-Struktur, COR1M, Claims; PCR nur bis 10/2019),
+  ohne Trading.
+- **Phase 4b: Kombination** der Kanäle zu einer kalibrierten „Market Risk Probability“ – erst wenn
+  Phase 4 univariate Information belegt. Stufen/Schwellen für Aktionen („Risk Intensity“) erst
+  danach und nur bei nachgewiesener monotoner Beziehung.
+- **Multiple Testing klein halten:** ein primäres Ziel, wenige Horizonte, vorab fixiert.
+- **Reihenfolge der Märkte (Reviewer):** zuerst eine eingefrorene US-Prognosearchitektur
+  (Entwicklung + interne Bestätigung), **danach** Europa (DAX/VDAX, Euro Stoxx/VSTOXX) als externe
+  Replikation – nicht als weiteres Optimierungsfeld. Hinweis: das US-Fenster 2017–2026 ist durch
+  H1–H4 inhaltlich bekannt; die externe Replikation ist deshalb der eigentliche Härtetest.
+- Danach erst die UIQ-Kette: Prognose → Strategiewahl → Positionsgröße.
+
 **Abbruchkriterium je Hypothese:** kein Nutzen im Entwicklungsfenster → nicht ins Bestätigungsfenster (spart Rechen- und Analyseaufwand, schützt das Bestätigungsfenster).
 
 ## Phase 4 – Validierung
