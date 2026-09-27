@@ -57,6 +57,28 @@ VVIX, SKEW (keine Revisionen). Tests laufen unter pandas 2.3 und 3.0.
 
 **Gate:** Reproduktion innerhalb kleiner, erklärter Toleranz. Sonst Fehlersuche statt neuer Hypothesen.
 
+**Stand 27.09.2026: ✅ abgeschlossen** – `ahsub/regime-test` Commit `cfcab55`
+(`run_phase2_baseline.py`, `results/phase2/baseline_2026-09-27.md`; Snapshots
+`data/raw/yahoo/2026-09-27/` für ^GSPC, `data/raw/squeezemetrics/2026-08-30/` für GEX).
+
+| Fenster | Sharpe | B&H Sharpe | Max DD | B&H DD | Trades |
+|---|---|---|---|---|---|
+| 20.10.2011 – 27.08.2026 (bisher, exakte Replik) | 0,75 | 0,71 | −20,3 % | −33,9 % | 261 |
+| 03.01.2011 – 28.08.2026 | 0,66 | 0,65 | −20,3 % | −33,9 % | 285 |
+| 18.09.2009 – 25.09.2026, ohne GEX | 0,62 | 0,65 | −23,8 % | −33,9 % | 265 |
+
+Befunde: (1) Replik exakt (0,753 / 403,18 % / −20,29 % / 261). (2) Das bisherige
+Fenster begann wegen HMM-Anlauf erst am 20.10.2011 – nach dem Downgrade-Einbruch.
+(3) **Kein belastbarer Sharpe-Vorteil ggü. Buy & Hold; der Nutzen ist
+Drawdown-Schutz** (Covid −7 % vs. −34 %, 2018 Q4 −13 % vs. −19 %), aber kein Schutz
+bei schnellen Schocks (2011, 08/2015, 08/2024) und noch ohne Kosten.
+(4) Rückwärts aufgefülltes GEX in `market_data.csv` ohne Einfluss; GEX-Filter
++0,02 Sharpe, v. a. 2022. (5) Cboe-VIX3M-Historie beginnt erst 18.09.2009 → die
+Baseline selbst kann 2008 nicht abdecken; 2008 nur über H1 (VIX1Y/VIX6M).
+**Konsequenz für Phase 3:** Erfolgskriterium aller Hypothesen = inkrementeller
+**Drawdown-/Tail-Schutz ggü. B&H im selben Fenster** (Max DD, Stressphasen,
+Ulcer/CVaR), Sharpe nur ergänzend. README `regime-test` entsprechend korrigiert.
+
 ## Phase 3 – Hypothesentests (nach erwartetem Nutzen geordnet)
 
 Jede Hypothese wird **vor** dem Test mit Definition, Schwellen-Kalibrierungsfenster und Erfolgskriterium registriert (Kandidaten-Register), um Überanpassung durch Nachjustieren zu vermeiden.
