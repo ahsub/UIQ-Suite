@@ -1,7 +1,7 @@
 # Investment-Suite — Dachdokument
 
 
-**Version:** 4.37
+**Version:** 4.38
 **Stand:** 26.09.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
@@ -2261,6 +2261,29 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     gemäß UIQ-REGULATORY-LANGUAGE-SPEC (qualitativ, keine Einzeltitel-Auswahl
     im Stil „ich würde X wählen“).
 
+    **Zusatzbefund 27.09.2026 · PCR ist durchgehend ein VIX-Proxy (nur Doku,
+    kein Fix — Freeze).** Code-Lesung `ko-aggregator/market_aggregator.py`:
+    `fetch_pcr_cboe()` ruft
+    `www.cboe.com/publish/scheduledtask/mktdata/datahouse/totalpc.csv` ab —
+    die Adresse liefert HTTP 404 (Prüfung 27.09.2026), auf GitHub Actions laut
+    Code-Kommentar zusätzlich 403. Damit greift bei **jedem** Lauf
+    `calc_pcr_proxy()` — eine Umrechnung aus VIX-Niveau, VIX/VIX3M-Ratio und
+    VVIX. Folgen: (a) Die PCR-Regeln im Macro Risk Overlay
+    (`apply_macro_risk_overlay`: < 0,75 CC abgewertet, > 1,10 Spread bevorzugt)
+    und die PCR in `calc_macro_zscores` reagieren faktisch auf die
+    Vol-Struktur → **Doppelzählung** statt unabhängiger Sentiment-Information;
+    (b) Label-Semantik: „PCR“ suggeriert eine gemessene Put/Call-Ratio
+    (Grundgesetz „Briefing-Layer darf Unsicherheit nicht wegformulieren“ /
+    A1-Regelklasse Label-Semantik). Die freie Cboe-PCR-Historie
+    (`cdn.cboe.com/resources/options/volume_and_call_put_ratios/`) endet am
+    04.10.2019 — auch die korrigierte URL liefert also keinen aktuellen Wert.
+    **Entscheidungsgrundlage:** Regime-Backtest H2
+    (`docs/REGIME-BACKTEST-ROADMAP-2026-09-27.md`) prüft auf 2006–2019, ob die
+    echte PCR gegenüber dem Proxy Mehrwert hat. Kein Mehrwert → Proxy ehrlich
+    als „VIX-Proxy“ benennen bzw. aus dem Overlay nehmen; klarer Mehrwert →
+    Kosten-Nutzen-Prüfung einer aktuellen PCR-Quelle. Umsetzung erst nach
+    Freeze-Aufhebung, Einordnung in A4 (Metrik-Hygiene).
+
     **Freeze-Aufhebung:** durch Axel, sobald das A1-Abnahmekriterium erfüllt
     ist (Regelregister + `SEPA_TEMPLATE_52W` laufen, Ursache klassifiziert,
     ARM-Fixture eingefroren). Die übrigen Regelklassen aus A1 Punkt 4 sind
@@ -2314,6 +2337,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.38 | 27.09.2026 | №72 Zusatzbefund (nur Doku, kein Fix — Freeze): UIQ-„PCR“ ist bei jedem Lauf ein VIX-Proxy (`fetch_pcr_cboe()` → alte Cboe-URL 404, auf GHA zusätzlich 403 → `calc_pcr_proxy()` aus VIX/VIX3M/VVIX) → Doppelzählung der Vol-Struktur im Macro Risk Overlay und in den Makro-Z-Scores, irreführendes Label. Freie Cboe-PCR-Historie endet 04.10.2019. Entscheidung über Umbenennung/Entfernung vs. echte Quelle nach Regime-Backtest H2 (`docs/REGIME-BACKTEST-ROADMAP-2026-09-27.md`); neue Doku `docs/REGIME-DATENQUELLEN.md`. |
 | 4.37 | 26.09.2026 | Codefreeze-Banner präzisiert (Axel-Entscheidung): gesperrt bleibt der Scoring-, Prompt- und Output-Pfad (u. a. STRATEGIEPRINZIP-Fix, B1, B2, B2b); ausgenommen ist reine Infrastruktur ohne Scoring-Bezug (FIN-Entkopplung, Runner-Pin vor 19.10., Watchdog/cron-trigger), weiterhin eine Produktionsänderung pro Nacht und Freeze bis nach dem Telefonat 28.09. |
 | 4.36 | 26.09.2026 | №72 A1 Zwischenstand (Code-Lesung `score_long_minervini()`): 52W-Nähe nur Bonus-, kein Pflichtkriterium; Sigmoid sättigt ab raw ≥ 139 auf 100 (max. raw ≈ 178) → SEPA 100 ohne 52W-Bonus möglich; `pctFromHigh52` sauber aus Schlusskursen; vorläufige Klassifikation „fehlendes Kriterium + missverständliche Bezeichnung“, Bestätigung nach Snapshot-Abgleich und Label-Mapping-Prüfung. Zusatzfund: unerreichbarer Liquiditäts-Malus-Zweig (<250k). Sättigungsregel für alle Scores ergänzt. №73 (neu): Repo-Sichtbarkeit/Schutz proprietärer Prompts — jsDelivr-Abhängigkeit, clientseitige Prompt-Sichtbarkeit, GHA-Minuten, Secrets-Historie. |
 | 4.35 | 26.09.2026 | №72 A1 neu gefasst (Vorschlag Axel): statt Einmal-Skript für ARM ein generischer, read-only **Snapshot-Invarianten-Prüfer** in `uiq-devtools` — Regelregister mit Definitionsreferenz je Regel, erste Regel `SEPA_TEMPLATE_52W`, Prüfung aller Ticker × Strategien, Regelklassen Sättigung/Feldwidersprüche/Universum/Metrikkonsistenz/Missingness/Ausreißer/Label-Semantik, maschinenlesbarer Auditbericht, ERROR/WARNING/INFO, versionierte Regeln mit Positiv-/Negativtests. Freeze-Aufhebung präzisiert: nur Abnahmekriterium (erste Regel + Klassifikation + Fixture), weitere Regelklassen kein Freeze-Kriterium. |
