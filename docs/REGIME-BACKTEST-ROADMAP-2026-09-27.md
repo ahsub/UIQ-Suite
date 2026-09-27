@@ -22,6 +22,8 @@ Stand: 27.09.2026 · Research-Repo: `ahsub/regime-test` · Datenbasis: siehe `RE
 | 0.4 | COR1M & Co.: Historienbeginn | Umfang H3 |
 | 0.5 | CFE: freie Settlement-Historie je VIX-Futures-Kontrakt? | ob H5 lizenzsauber möglich ist |
 
+**Stand 27.09.2026:** 0.1 ✅ (VIX1Y/VIX6M bis 25.09.2026), 0.2 ✅ geprüft – PCR nur bis 04.10.2019, `indexpc.csv` vorhanden, 0.4 ✅ (COR1M ab 2006); 0.3 und 0.5 offen. Zusatzbefund: `regime-test` nutzt den PutWrite-Index `PUT` als Feature – Klärung nötig.
+
 **Gate:** Ergebnisse in `REGIME-DATENQUELLEN.md` eintragen. Fällt die PCR nach 2019 aus, entscheidet 0.3 über Plan B (Anschlussquelle suchen oder PCR-Test auf 2006–2019 begrenzen und das offen ausweisen).
 
 ## Phase 1 – Datenschicht (reproduzierbar, point-in-time)

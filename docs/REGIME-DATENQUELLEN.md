@@ -25,7 +25,7 @@ Leitet per HTTP 302 auf `https://cdn-api.cboe.com/api/global/us_indices/daily_pr
 | COR1M / COR3M / COR6M / COR1Y | Implied Correlation | – | Kandidat exogene 2. Achse |
 
 Weitere Symbole im selben Schema (bei Bedarf): RVX, VXD, OVX, GVZ, EUVIX, JYVIX, VXAPL, VXAZN, VXEEM, VXEFA, VXFXI, DSPX, TNX, FVX, TYX, IRX, BXM u. a.
-**Achtung:** Symbol `PUT` = Cboe S&P 500 PutWrite Index (Strategie-Benchmark), **keine** Put/Call-Ratio.
+**Achtung:** Symbol `PUT` = Cboe S&P 500 PutWrite Index (Strategie-Kursindex, Werte 153 → 3.618), **keine** Put/Call-Ratio. In `ahsub/regime-test` wird `PUT_History.csv` als Feature `put_ma_20/put_ratio/put_signal` geladen → klären, ob dort eine PCR gemeint war (Stand 27.09.2026 offen).
 
 Beispiel-URLs:
 - https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX1Y_History.csv
@@ -34,14 +34,24 @@ Beispiel-URLs:
 
 Verifiziert (27.09.2026): VIX1Y 27.10.2008 = 45,48; VIX6M 27.10.2008 = 52,29.
 
+Phase-0-Prüfung (27.09.2026, Snapshot `regime-test/data/raw/cboe/2026-09-27/` inkl. `SHA256SUMS.txt`):
+
+| Reihe | Zeitraum | Tage | Befund |
+|---|---|---|---|
+| VIX1Y | 03.01.2007 – 25.09.2026 | 4.958 | lückenlos, keine NaN/Duplikate/Wochenenden; max. 53,53 (20.11.2008) |
+| VIX6M | 02.01.2008 – 25.09.2026 | 4.713 | lückenlos; max. 61,47 (20.11.2008); 05.08.2024 = 30,28 identisch mit Bloomberg-Dump |
+| COR1M | 03.01.2006 – 25.09.2026 | 5.215 | lückenlos; 27.10.2008 = 90,88, 16.03.2020 = 86,71 |
+
+Längste Lücke je 5 Kalendertage (Feiertage bzw. Börsenschließung Hurrikan Sandy 10/2012) – plausibel.
+
 Hinweise:
-- **Enddatum prüfen**: laufen VIX1Y/VIX6M bis heute durch?
+- Reihen laufen aktuell durch (Stand 25.09.2026).
 - Frühe Werte nur Schlusskurse (O = H = L = C).
 - Frühe Jahre vermutlich rückwirkend nach aktueller Methodik berechnet – kein Kurs-Look-ahead, aber im Ergebnisbericht vermerken.
 
 Fundstelle des Katalogs: github.com/Maggyee/Nishiki-Trader → `docs/progress/*data-sources*.json` (Repo selbst enthält keine Daten).
 
-## 2. Cboe – Put/Call-Ratio (frei) ✅ (Enddatum offen)
+## 2. Cboe – Put/Call-Ratio (frei) ⚠️ nur 2006 – 10/2019
 
 Basis-URL:
 
@@ -49,24 +59,24 @@ Basis-URL:
 https://cdn.cboe.com/resources/options/volume_and_call_put_ratios/<DATEI>
 ```
 
-| Datei | Inhalt | Historie ab | Spalten |
+| Datei | Inhalt | Zeitraum (geprüft 27.09.2026) | Spalten |
 |---|---|---|---|
-| `totalpc.csv` | Total PCR (alle Cboe-Optionen) | 01.11.2006 | DATE, CALLS, PUTS, TOTAL, P/C Ratio |
-| `equitypc.csv` | **Equity PCR** | 01.11.2006 | DATE, CALL, PUT, TOTAL, P/C Ratio |
-| `totalpcarchive.csv` | Total PCR, Archiv | 17.10.2003 | Trade_date, Call, Put, Total, P/C Ratio |
-| `indexpc.csv` | Index PCR (vermutet) | ? | **ungeprüft** |
+| `totalpc.csv` | Total PCR (alle Cboe-Optionen) | 01.11.2006 – **04.10.2019** | DATE, CALLS, PUTS, TOTAL, P/C Ratio |
+| `equitypc.csv` | Equity PCR | 01.11.2006 – **04.10.2019** | DATE, CALL, PUT, TOTAL, P/C Ratio |
+| `indexpc.csv` | Index PCR | 01.11.2006 – **04.10.2019** | DATE, CALL, PUT, TOTAL, P/C Ratio |
+| `totalpcarchive.csv` | Total PCR, Archiv | ab 17.10.2003 (nicht heruntergeladen) | Trade_date, Call, Put, Total, P/C Ratio |
 
 Direkt-URLs:
 - https://cdn.cboe.com/resources/options/volume_and_call_put_ratios/totalpc.csv
 - https://cdn.cboe.com/resources/options/volume_and_call_put_ratios/equitypc.csv
+- https://cdn.cboe.com/resources/options/volume_and_call_put_ratios/indexpc.csv
 - https://cdn.cboe.com/resources/options/volume_and_call_put_ratios/totalpcarchive.csv
-- https://cdn.cboe.com/resources/options/volume_and_call_put_ratios/indexpc.csv (Existenz prüfen)
 
 Hinweise:
-- **Mehrzeiliger Disclaimer-Kopf** vor der Spaltenzeile (Parser muss Header suchen, z. B. Zeile mit `DATE`/`Trade_date`); Format variiert zwischen den Dateien.
-- **Enddatum prüfen** – vermutlich um 2019 eingefroren → Lücke Covid 2020 und 2022–2024; ggf. zweite Quelle anstückeln.
-- **Strukturbruch 31.05.2012**: Wechsel der Volumenbasis (cleared vs. preliminary) → keine naiven Z-Scores/Perzentile über die Grenze.
-- **Nur Cboe-Volumen**, nicht Gesamtmarkt; sinkender Marktanteil verschiebt das Niveau → relative Signale (Perzentil, Abweichung vom MA) statt fester Schwellen.
+- **Reihen enden am 04.10.2019 (eingefroren).** Covid 2020, 2022 und Aug. 2024 sind **nicht** abgedeckt → Anschlussquelle nötig oder PCR-Tests auf 2006–2019 begrenzen und offen ausweisen.
+- **Mehrzeiliger Disclaimer-Kopf** vor der Spaltenzeile; Werte mit führenden Leerzeichen (`skipinitialspace`).
+- **Zwei Strukturbrüche laut Datei-Kopf:** (1) bis 31.05.2012 cleared volume (OCC), danach preliminary volume; (2) ab 11.06.2012 Equity/Index ohne exchange-traded products. Niveau-Effekt Equity PCR gering (Mittel 0,66 vor / 0,64 nach), trotzdem keine naiven Z-Scores über die Grenze.
+- **Nur Cboe-Volumen**, nicht Gesamtmarkt → relative Signale (Perzentil, Abweichung vom MA) statt fester Schwellen.
 - **Definition an UIQ-Produktion angleichen** (Equity / Total / Index?).
 
 Fundstelle: github.com/chrmatique/vol-analysis → `src/data/cboe.rs` (Repo-Cache enthält keine PCR-Daten).
@@ -106,8 +116,9 @@ Einschränkungen:
 
 ## 6. Offene Lücken
 
-- [ ] Enddaten prüfen: VIX1Y, VIX6M, totalpc/equitypc; Existenz `indexpc.csv`
-- [ ] PCR nach ~2019 (falls eingefroren): Ersatz-/Anschlussquelle
+- [x] Enddaten geprüft (27.09.2026): VIX1Y/VIX6M/COR1M bis 25.09.2026; totalpc/equitypc/indexpc nur bis 04.10.2019
+- [ ] **PCR ab 10/2019: Anschlussquelle** (Kandidaten: OCC-Volumenstatistik, Cboe DataShop kostenpflichtig) oder PCR-Tests auf 2006–2019 begrenzen
+- [ ] `regime-test`: Feature `PUT` (PutWrite-Index) vs. gemeinte PCR klären
 - [ ] **Intraday mit Stressphase** – IBKR/TWS oder Bezahlanbieter (Polygon.io, Databento, Tiingo)
 - [ ] VIX-Futures-Settlements je Kontrakt frei bei Cboe Futures Exchange (CFE)? – ungeprüft
 - [ ] **Nutzungsbedingungen Cboe** für kommerzielle Verwendung in UIQ klären (Research ≠ Produkt)
