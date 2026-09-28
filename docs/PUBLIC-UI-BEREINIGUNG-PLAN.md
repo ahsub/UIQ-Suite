@@ -47,6 +47,12 @@ Maßnahmen: **E** = entfernen · **U** = umformulieren (deskriptiv) · **G** = h
 | 2.9 | `ko-prompts.js` @475cf2a `_getIntermarketPrompt()` Punkt 8 (~Z. 7072) — KI-Makroanalyse (`autoMakro`), **nicht EIC-gated** | Prompt fordert „KONKRETE HANDLUNGSEMPFEHLUNG: … welche Sektoren bevorzugen, welche meiden, Positionsgröße, KO-Abstand“ | **U** — höchste Priorität; Punkt 8 deskriptiv neu fassen (Regime-/Sektorlage, keine Handlungsanweisung) |
 | 2.10 | `ko-prompts.js` `STRATEGIES.ko.focus` + `hint` (~Z. 5846/5856) — fließt über `_publicKriterienBlock()` in den **Public**-KO-Prompt | „Positionsgroessen-Passung: … Limit von max. 2.000 EUR (Starter- vs. Aufstockungs-Groesse)“ | **E** aus Public-Kriterien (ggf. nur EIC) |
 
+| 2.11 | `ko-aggregator/market_aggregator.py` (~Z. 10176), McClellan-↔-Regime-Divergenz-`explanation` | „Regime-Downgrade-Risiko erhöht — Positionsgrößen reduzieren, Breakout-Setups pausieren.“ | **U** — serverseitiger Text, eigener Batch (Aggregator-Lauf nötig) |
+| 2.12 | `ko-aggregator/dce_layer.py` `_collect_warnings()` / `_derive_action()` (~Z. 448–476) | „GELBE AMPEL: Reduzierte Positionsgrößen, selektiv vorgehen“, „ROTE AMPEL: Keine neuen Positionen — Kapitalschutz“, „defensive Positionierung“; `_derive_action()` liefert ein Feld `position_size` | **U** + **P** — prüfen, wo DCE-Warnungen/`position_size` im Public-UI erscheinen |
+| 2.13 | `ko-prompts.js` `_getOversoldPrompt()` | „Rebound-Potenzial“, `rebound_days`, `oversold_score` = „Oversold-Wahrscheinlichkeit“ | **P** — Prognosecharakter prüfen |
+
+**Batch 1 erledigt (28.09.2026):** 2.1, 2.2, 2.4, 2.7, 2.8, 2.9, 2.10, 4.3 sowie Nachfunde (Scanner-Hinweiszeile, Intermarket-Score-Verdict, QQQ-Markov-Untertitel) — `ko-prompts.js` v2.55.0, `index.html` v514. Offen aus Abschnitt 2: 2.3/2.5/2.6 (mit Batch 2/3), 2.11–2.13.
+
 Geprüft: EIC-Master-Prompt §23 (~Z. 4889) und Ebene 5 (~Z. 5037) **verbieten** konkrete Positionsgrößen ausdrücklich — der EIC-Modus selbst gibt keine Positionsgrößen aus.
 
 ## 3. Positionsgrößenlogik
