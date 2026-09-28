@@ -1,6 +1,25 @@
 /**
  * ko-prompts.js — UnderlyingIQ Strategy Prompts Module
  * ══════════════════════════════════════════════════════════════════
+ *  Version: 2.55.0 (28.09.2026) — "PUBLIC-OUTPUT-DESKRIPTIV" (Batch 1 der
+ *  Public-UI-Bereinigung, Umbauplan Punkte 2.9 + 2.10; Anlass: Bestandsauf-
+ *  nahme vom 28.09.2026 vor Beta-Vorbereitung). Keine Logik-/Scoring-
+ *  Aenderung, ausschliesslich Prompt-Texte:
+ *  (1) _getIntermarketPrompt() (KI-Makroanalyse, autoMakro, NICHT EIC-
+ *      gated): Punkt 8 "KONKRETE HANDLUNGSEMPFEHLUNG ... Positionsgroesse,
+ *      KO-Abstand" ersetzt durch deskriptive Einordnung fuer Strategie-
+ *      Typen; Rollenbeschreibung nicht mehr auf ein persoenliches
+ *      Anlegerprofil (KO-Turbos + Wheel) zugeschnitten; Punkt 2
+ *      ("Implikationen fuer Positionierung"), verdictText ("mit konkreter
+ *      Handlungsempfehlung") und factor.desc ("Implikation fuer Investor")
+ *      deskriptiv neu gefasst; neue Regel gegen Handlungsanweisungen.
+ *  (2) STRATEGIES.ko: Kriterium "Positionsgroessen-Passung ... max. 2.000
+ *      EUR (Starter- vs. Aufstockungs-Groesse)" aus der Kriterienliste
+ *      entfernt (floss ueber _publicKriterienBlock() in den Public-Prompt,
+ *      persoenliche Handelsregel); hint-Text ohne Positionsgroessen-Limit.
+ *  EIC-Master-Prompt unveraendert (verbietet konkrete Positionsgroessen
+ *  bereits in §23 + Ebene 5). Noch KEIN Live-Test dieser Version.
+ *
  *  Version: 2.54.4 (23.09.2026) — "ABSCHNITT-7+8-TEMPLATING" (Backlog-Punkt
  *  vom 13.09.2026, heute aufgegriffen: "Boilerplate-Abschnitte 7+8 ... sind
  *  grossteils statisch ... sollen app-seitig templatet statt vom LLM
@@ -5843,7 +5862,7 @@ Das ist der eigentliche Mehrwert des EIC-Modus.
     ko: {
       lbKey: 'ko_long',
       label: 'KO-Zertifikat-Setups (Long)',
-      hint:  '⚡ KO-Zertifikat: Hebel 3–8x · KO-Abstand · Positionsgröße max. €2.000',
+      hint:  '⚡ KO-Zertifikat: Hebel 3–8x · KO-Abstand · Totalverlustrisiko',
       color: '#818cf8',
       focus: [
         "Hebel-Eignung: Passt die Volatilitaet (ATR) des Titels zu einem 3-8x-Hebel, ohne durch normales Kursrauschen ausgeknockt zu werden? WICHTIG (aktualisiert 07.09.2026 — echte IV-Perzentil-Daten integriert, s. ivpPercentile-Feld): weder HVP (historische realisierte Volatilitaet) noch ivpPercentile (implizite Volatilitaet, falls fuer den Titel verfuegbar) sind ein Mass fuer den Hebel, die Produktvolatilitaet oder die KO-Wahrscheinlichkeit eines konkreten Zertifikats — diese haengen ausschliesslich vom gewaehlten Produkt ab.",
@@ -5853,7 +5872,6 @@ Das ist der eigentliche Mehrwert des EIC-Modus.
         "Ueberdehnung/Extension-Kontext (KONKRETISIERT 08.09.2026): bbPos (Position innerhalb der Bollinger-Baender) zusaetzlich zum bestehenden EMA200-Abstand als kurzfristigere Ueberdehnungs-Dimension nennen, WENN im Datenkontext vorhanden — ein hoher bbPos-Wert beschreibt eine Position nahe dem oberen Band, KEINE Kursziel- oder Ruecksetzer-Prognose.",
         "Marktzugang: fuer Titel mit homeMarket=US ist die Emission entsprechender Hebelprodukte fuer Privatanleger seit einer US-Steuerregeländerung 2017 eingeschraenkt bzw. gar nicht verfuegbar — der deutsche/europaeische Markt (homeMarket=DE/FR/NL/IT/CH/UK/DK/SE/AU) bietet strukturell das breitere, liquidere Angebot. Bei homeMarket=US zusaetzlich Quellensteuer-Aspekte und typischerweise geringeres Emittenten-Angebot beachten. WICHTIG: homeMarket bezeichnet die Handelsboerse (Handelszeit), NICHT den Firmensitz — auch ADRs nicht-amerikanischer Konzerne (z.B. SAP, ASML, RIO) haben homeMarket=US, da sie selbst auf NYSE/NASDAQ handeln. Dies ist eine allgemeine Marktzugangs-Charakteristik, keine Empfehlung einzelner Titel oder Sektoren durch UIQ.",
         "Gap-/Overnight-Risiko: bei Kandidaten mit dem Datenfeld homeMarket=US (siehe FELDERKLÄRUNG) besteht ein Zeitzonen-Versatz zwischen deutscher und US-Handelszeit — eine schnelle Kursbewegung oder ein Gap kann die KO-Barriere erreichen, bevor eine manuelle Reaktion moeglich ist. Dieses Risiko ist bei gehebelten Produkten strukturell staerker ausgepraegt als bei der Aktie selbst. WICHTIG: homeMarket=US bedeutet Handel auf einer US-Boerse (NYSE/NASDAQ/OTC) und gilt AUCH fuer ADRs nicht-amerikanischer Unternehmen — NIEMALS versuchen, die Boersenzugehoerigkeit stattdessen aus dem Tickersymbol selbst zu erraten (z.B. der Ticker \"DE\" ist Deere & Co., NYSE, NICHT das Laenderkuerzel Deutschland). WICHTIG (Ausgabeform): homeMarket ist ein interner Datenpunkt fuer die Bewertung — NIEMALS die Feldnotation \"homeMarket=US\" wörtlich in den Text uebernehmen, sondern natuerlichsprachlich verbalisieren, z.B. \"diese Titel werden an US-Boersen gehandelt\" oder \"da es sich um einen an einer US-Boerse gehandelten Titel handelt\".",
-        "Positionsgroessen-Passung: Wie fuegt sich der Titel ins Limit von max. 2.000 EUR ein (Starter- vs. Aufstockungs-Groesse)? WICHTIG: die 2.000-EUR-Grenze ist eine Obergrenze fuer den maximalen Kapitaleinsatz/potenziellen Totalverlust — KEIN Stop-Loss-Mechanismus und keine Risikobegrenzung waehrend der Positionslaufzeit.",
         "UIQ-Score/Strategy-Fit ≠ Gewinnwahrscheinlichkeit: ein hoher Score beschreibt die Uebereinstimmung des Basiswerts mit den technischen Kriterien, NICHT die Erfolgswahrscheinlichkeit eines konkreten KO-Trades. Ein Titel kann gleichzeitig hohen Strategy Fit UND ein erhoehtes Korrekturrisiko aufweisen (z.B. hoher Score bei gleichzeitig grossem EMA200-Abstand) — beides klar getrennt darstellen, nicht als Widerspruch behandeln.",
         "Hauptrisiko fuer die Long-These: was koennte kurzfristig zum KO-Ereignis fuehren? WICHTIG: ein KO-Ereignis fuehrt in der Regel zum sofortigen Totalverlust des in dieser Position eingesetzten Kapitals — ein grundlegend anderes Risikoprofil als der Besitz der Aktie selbst. Eine eigene, vor Positionseroeffnung festgelegte Risikobegrenzung wird generell empfohlen (OHNE dass UIQ einen konkreten Stop-Loss-Wert vorgibt — das bleibt individuelle Festlegung bzw. EIC-exklusiv)."
       ],
@@ -7034,8 +7052,8 @@ Das ist der eigentliche Mehrwert des EIC-Modus.
   function _getIntermarketPrompt(ctx) {
     var c = ctx || {};
     var d = c.today || new Date().toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'numeric'});
-    return 'Du bist ein professioneller Finanzmarktanalyst der täglich eine Marktlageeinschätzung für einen aktiven Retail-Investor erstellt, '
-      + 'der in deutschen und US-amerikanischen Märkten in KO-Turbo-Zertifikate und Aktienoptionen (Wheel-Strategie) investiert.\n\n'
+    return 'Du bist ein professioneller Finanzmarktanalyst, der täglich eine allgemeine, nicht auf einzelne Anleger zugeschnittene '
+      + 'Marktlagebeschreibung für deutsche und US-amerikanische Märkte erstellt. Du beschreibst Daten, du gibst keine Handlungsanweisungen.\n\n'
       + '== MARKTDATEN vom ' + d + ' ==\n'
       + '\nINDIZES:\n'
       + '- S&P 500: ' + (c.sp || '—') + '\n'
@@ -7063,25 +7081,28 @@ Das ist der eigentliche Mehrwert des EIC-Modus.
       + 'Verwende AUSSCHLIESSLICH die oben angegebenen Daten. Erfinde KEINE Kurse, Prozentzahlen oder Ereignisse.\n\n'
       + 'Analysiere dabei folgende Themenbereiche soweit die Daten es erlauben:\n'
       + '1. MARKTREGIME: Ist der Markt Risk-On oder Risk-Off? Begründe mit konkreten Intermarket-Signalen.\n'
-      + '2. SEKTORROTATION: Welche Sektoren führen, welche hinken nach? Konkrete Implikationen für Positionierung.\n'
+      + '2. SEKTORROTATION: Welche Sektoren führen, welche hinken nach? Beschreibe die Breite und Stabilität der Rotation.\n'
       + '3. TECHNOLOGIE & WACHSTUM: Lage der Hyperscaler (MSFT, AMZN, GOOGL, META), Halbleiter/Chip-Hersteller (NVDA, AMD, AVGO, AMAT), KI-Infrastruktur, Robotik. Nur wenn Sektor-Daten vorhanden.\n'
       + '4. ZINSEN & INFLATION: Interpretation der Yield Curve, Inflationserwartungen, Implikationen für zinssensitive Sektoren (Versorger, REITs, Immobilien).\n'
       + '5. ENERGIE & ROHSTOFFE: Öl, Kupfer, Gold — was signalisieren sie über globales Wachstum?\n'
       + '6. HOUSING USA: Lage des Immobilienmarkts, Bauaktivität, Implikationen für Zinserwartungen.\n'
       + '7. CONSUMER & DEFENSIVE: Stärke der Consumer-Aktien als Konjunkturindikator.\n'
-      + '8. KONKRETE HANDLUNGSEMPFEHLUNG: Für KO-Trader und Options-Wheel-Strategie — welche Sektoren bevorzugen, welche meiden, Positionsgröße, KO-Abstand.\n\n'
+      + '8. EINORDNUNG FÜR STRATEGIE-TYPEN: Beschreibe, welche Marktbedingungen die Daten für trendfolgende, gehebelte und prämienbasierte Ansätze zeigen '
+      + '(z.B. Volatilitätsniveau, Trendstabilität, Sektorbreite). Ausschließlich deskriptiv: keine Handlungsanweisungen, keine Positionsgrößen, '
+      + 'keine KO-Abstände, keine Formulierungen wie "bevorzugen", "meiden", "absichern", "reduzieren" oder "kaufen".\n\n'
       + 'Erstelle das Ergebnis als JSON mit dieser Struktur:\n'
       + '{\n'
       + '  "verdict": "bull" oder "neu" oder "bear",\n'
-      + '  "verdictText": "3-4 Sätze Gesamteinschätzung mit konkreter Handlungsempfehlung auf Deutsch",\n'
+      + '  "verdictText": "3-4 Sätze deskriptive Gesamteinschätzung der Marktlage auf Deutsch, ohne Handlungsempfehlung",\n'
       + '  "factors": [\n'
-      + '    {"icon":"bull","title":"Thema","desc":"Faktenbasierte Analyse 2-3 Sätze mit Implikation für Investor"},\n'
+      + '    {"icon":"bull","title":"Thema","desc":"Faktenbasierte Analyse 2-3 Sätze: was die Daten zeigen und wie sie einzuordnen sind"},\n'
       + '    ... (5-8 Faktoren, jeder Themenbereich der abgedeckt ist bekommt einen Eintrag)\n'
       + '  ]\n'
       + '}\n\n'
       + 'Regeln:\n'
       + '- icon: nur "bull", "neu" oder "bear"\n'
-      + '- Jeder factor.desc: 2-3 Sätze, faktenbasiert, mit konkreter Implikation\n'
+      + '- Jeder factor.desc: 2-3 Sätze, faktenbasiert, beschreibend (was die Daten zeigen), keine Handlungsanweisung\n'
+      + '- Keine Handlungsanweisungen im gesamten Output: keine Positionsgrößen, keine KO-Abstände, keine Kauf-/Verkaufs-/Absicherungsaufforderungen, keine Imperative an den Leser\n'
       + '- Wenn Daten für ein Thema fehlen: diesen Faktor weglassen\n'
       + '- Kein Faktor ohne Datenbasis aus dem Prompt\n'
       + '- Antworte NUR mit dem JSON, kein weiterer Text\n'
@@ -7136,7 +7157,7 @@ Das ist der eigentliche Mehrwert des EIC-Modus.
 
   // ── PUBLIC API ─────────────────────────────────────────────────────────────
   const KoPrompts = {
-    VERSION: '2.54.4',
+    VERSION: '2.55.0',
 
     STRATEGIES,
     KI_ANTI_HALLUZINATION,
