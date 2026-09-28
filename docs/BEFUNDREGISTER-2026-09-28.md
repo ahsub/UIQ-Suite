@@ -135,4 +135,8 @@ Die regulatorische Einordnung der konkreten öffentlichen Darstellung bleibt von
 
 ## Nachträge
 
-*(noch keine)*
+### 28.09.2026 abends — D13 (aus Literatur-Review Alexander, *Market Models*, gegen Code verifiziert)
+
+| # | P | Fundstelle | Befund | Status |
+|---|---|---|---|---|
+| D13 | **P0** (für ADR-1 Stufe 1) | `ko-aggregator/dce_layer.py` `_calculate_evt_var()` (~Z. 364), Eingabe `spy_returns_60d` aus `market_aggregator.py` (~Z. 11476, `[-60:]`) | Schwelle = 5-%-Quantil von 60 Tagesrenditen → genau 3 Werte darunter; GPD-Fit verlangt `len(excess) > 3` → greift praktisch nie (Simulation 2.000 × 60 Renditen: 0 % Fits). Tatsächlich geliefert wird immer der Fallback `np.percentile(arr, 1)` = empirisches 1-%-Quantil der letzten 60 Tage (≈ schlechtester Tag). Bezeichnung „EVT-VaR(95)“ doppelt unzutreffend (keine EVT, nicht 95 %). Ebene laut Taxonomie: **Transformation**. Vor jeder Veröffentlichung als DCE-Marktdiagnostik: entweder ausreichendes Schätzfenster mit validiertem GPD-Fit und Überschreitungs-Backtest oder ehrliche Bezeichnung („größter Tagesverlust der letzten 60 Handelstage“). | ✅ |
