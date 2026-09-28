@@ -44,6 +44,10 @@ Maßnahmen: **E** = entfernen · **U** = umformulieren (deskriptiv) · **G** = h
 | 2.6 | Rechner Hinweiszeile (~Z. 10538, 2195) | „Positionsgröße reduzieren“, „KO-Abstand ≥20 % empfohlen“ | **G** (folgt 1.2) |
 | 2.7 | Strategie-Header (~Z. 20273) | „KO-Trading: Hebel 3–8x · … · Positionsgröße max. €2.000“ | **U/E** — persönliche Regel als Produkttext |
 | 2.8 | `help.html` (Z. 617) | „Max. 1–2 % des Depots pro KO-Position“ | **U** → als Literatur-/Konventionshinweis kennzeichnen oder **E** |
+| 2.9 | `ko-prompts.js` @475cf2a `_getIntermarketPrompt()` Punkt 8 (~Z. 7072) — KI-Makroanalyse (`autoMakro`), **nicht EIC-gated** | Prompt fordert „KONKRETE HANDLUNGSEMPFEHLUNG: … welche Sektoren bevorzugen, welche meiden, Positionsgröße, KO-Abstand“ | **U** — höchste Priorität; Punkt 8 deskriptiv neu fassen (Regime-/Sektorlage, keine Handlungsanweisung) |
+| 2.10 | `ko-prompts.js` `STRATEGIES.ko.focus` + `hint` (~Z. 5846/5856) — fließt über `_publicKriterienBlock()` in den **Public**-KO-Prompt | „Positionsgroessen-Passung: … Limit von max. 2.000 EUR (Starter- vs. Aufstockungs-Groesse)“ | **E** aus Public-Kriterien (ggf. nur EIC) |
+
+Geprüft: EIC-Master-Prompt §23 (~Z. 4889) und Ebene 5 (~Z. 5037) **verbieten** konkrete Positionsgrößen ausdrücklich — der EIC-Modus selbst gibt keine Positionsgrößen aus.
 
 ## 3. Positionsgrößenlogik
 
