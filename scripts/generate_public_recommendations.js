@@ -1097,7 +1097,7 @@ async function fetchIndicatorRegistryVersion() {
 // verglichen — bei Abweichung LAUT warnen statt still zu veralten.
 // Netzwerkfehler beim Vergleich selbst dürfen den Hauptlauf nicht brechen
 // (§4-Grundsatz, wie bei fetchIndicatorRegistryVersion oben).
-const KO_MODULES_VENDOR_DRIFT_COMMIT = '475cf2a';  // Stand 23.09.2026 (ko-prompts.js v2.54.4, Abschnitt-7+8-Templating — PUBLIC_REGULATORY_GUARDRAIL/SHARED_STATIC_PREFIX unveraendert, neu: ctx.skipAbschnitt78-Flag + _buildAbschnitt78()).
+const KO_MODULES_VENDOR_DRIFT_COMMIT = 'e82508a';  // Stand 28.09.2026 (ko-prompts.js v2.55.0, Public-UI-Bereinigung Batch 1: Makro-KI-Prompt deskriptiv, KO-Positionsgroessen-Kriterium entfernt; ko-markov.js unveraendert). Vorher: 475cf2a (23.09.2026, v2.54.4).
 const KO_MODULES_VENDOR_FILES = ['ko-prompts.js', 'ko-markov.js'];
 
 async function checkVendorDrift() {
