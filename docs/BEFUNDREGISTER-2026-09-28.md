@@ -3,6 +3,7 @@
 **Stand:** 28.09.2026 · **Status:** Bestandsaufnahme, nichts gefixt
 **Grundlage:** axel-scanner `9f016bd` · ko-modules `e82508a` · ko-aggregator `d980e76` · UIQ-Suite `75717b6` · workers `7b714e8` · ko-sync `1255425` · Live-Ausgaben MB-Briefing und Makro-Tab vom 28.09.2026
 **Methode:** (1) maschineller Scan aller Repos nach direktiver Sprache, Positionsgrößen, Zielen/Trefferquoten und veralteten Statustexten (Kommentare ausgeschlossen, Treffer in Verbotslisten der Prompts herausgefiltert), jeder Treffer von Hand eingeordnet; (2) Live-Funde gegen den Code zurückverfolgt.
+**Fortschreibungsregel:** Dieses Register ist die eingefrorene Ausgangsbasis vom 28.09.2026. Die Befunde R, D, U und S werden nicht rückwirkend geändert. Korrekturen, Laufzeitergebnisse und Abnahmen kommen als datierte Einträge in den Abschnitt „Nachträge“ am Ende.
 **Belegstatus:** ✅ im Code verifiziert · 🔎 Ursache eingegrenzt, Laufzeitprüfung offen · ❓ Diagnose offen (nach Regel „Never guess, always correctly diagnose“ kein Fix vor Ursachenbeleg)
 
 Ergänzt `PUBLIC-UI-BEREINIGUNG-PLAN.md`; dortige Nummern (2.x, 4.x) sind referenziert.
@@ -115,3 +116,23 @@ Die regulatorische Einordnung der konkreten öffentlichen Darstellung bleibt von
 | **Aufräumen** | U4, U5, R12, S4 | diverse | kein Beta-Blocker |
 
 **Nicht abgedeckt durch diesen Scan:** Inhalte, die erst zur Laufzeit von der KI erzeugt werden, jenseits der beiden geprüften Live-Ausgaben (Deep-Dive, Options-Desk, Alpha-Desk-Narrative, Digest-Texte). Dafür nach Batch 1b eine Stichprobe echter Ausgaben je Strategie.
+
+---
+
+## Abnahmekriterien (festgelegt 28.09.2026, vor Beginn von Batch 1b)
+
+**AK-1 — ADR-1 Veröffentlichungsschutz, geprüft am tatsächlich Ausgelieferten.** Das interne DCE-Objekt (Confidence, Ampel, Richtung, Positionsgröße, Warnungen mit Handlungsbezug) ist in keiner öffentlichen Payload enthalten: `master_market_data`, sonstige KV-Keys hinter öffentlichen Routen, Digest, Snapshot-Archiv im Repo, API-Antworten der Worker. Auch abgeleitete Texte (Warnungen, Ampeltexte, Prompt-Kontexte) dürfen gesperrte Werte nicht rekonstruierbar machen. Der Test prüft die real ausgelieferte Antwort (Abruf der Endpunkte, Inhalt der Snapshot-Dateien), nicht das Objekt, das der Renderer verwendet.
+
+**AK-2 — Sprachbereinigung erst nach Stichprobe echter KI-Ausgaben abgeschlossen.** Nach Batch 1b wird je Bereich mindestens eine echte Ausgabe geprüft: Morning Briefing (Server- und Client-Weg getrennt), Makroanalyse (auch mit fehlenden oder widersprüchlichen Eingangsdaten), Optionen (CSP, Wheel, Covered Call, KO-bezogene Inhalte), Alpha Desk (Narrative und DCE-Marktdiagnostik). Geprüft wird ausdrücklich auch, ob die KI aus deskriptiven Messwerten selbst wieder Handlungsempfehlungen ableitet. Vorher gilt die Bereinigung als nicht abgeschlossen.
+
+**AK-3 — D1 und D2: beide P0, getrennte Abnahme.**
+- **D1:** Laufzeitursache der Extremwerte belegt (Taxonomie-Ebene benannt), fehlerhafte Eingangswerte ausgeschlossen, und ungültige Scores werden nicht veröffentlicht (`n/v` statt Score).
+- **D2:** Termstruktur-Label stammt aus einer deterministisch getesteten Funktion (positive und negative Testfälle: Contango, Backwardation, Gleichstand, fehlender Wert); das Sprachmodell interpretiert die Rohwerte nicht mehr frei.
+
+**AK-4 — Zusagen gegenüber der Aufsicht erst mit belegtem Deployment erfüllt.** EIC-Sperre, Entfernung der privaten Hilfsrechner und Positionsgrößen-Hinweise gelten erst dann als umgesetzt, wenn sie für einen gewöhnlichen Nutzer ohne Owner-Berechtigung nachweislich nicht erreichbar sind — dokumentiert mit Commit, Deployment-Stand und Testergebnis in der privaten Akte (`uiq-legal`).
+
+---
+
+## Nachträge
+
+*(noch keine)*
