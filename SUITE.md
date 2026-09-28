@@ -1,8 +1,8 @@
 # Investment-Suite — Dachdokument
 
 
-**Version:** 4.40
-**Stand:** 26.09.2026
+**Version:** 4.41
+**Stand:** 28.09.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
 **Fortschreibung:** Claude, versioniert, analog den Modul-Strategiedokumenten.
@@ -2081,6 +2081,37 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     (** nur wo die Unterscheidung fachlich existiert: Earnings → `estimated | confirmed`
     zum checked_at-Zeitpunkt; FOMC/CPI/8-K → `null`)
 
+    **Erweiterungskandidat: Surprise-Detektor „SigmaSpike“ (ergänzt 28.09.2026)**
+    *(Quelle: A. Grimes, „Quantitative Analysis of Market Data: a Primer“, Abschnitt
+    SigmaSpike. Übernahme bei Sprint-Start entscheiden — bleibt deterministisch,
+    ohne LLM/News-API, also im Sprint-1-Rahmen.)*
+    - **Zweck:** Das Kalender-Gate erkennt nur *angekündigte* Events. SigmaSpike
+      erkennt *unangekündigte* Bewegungen, also Kursreaktionen, zu denen es im
+      Kalender kein Event gibt (eigentlicher „Surprise“-Teil des Gates).
+    - **Definition (je Ticker, Tagesschlusskurse):**
+      `ret_t = C_t / C_{t−1} − 1` · `sd20_t = Stdabw(ret_{t−19..t})` ·
+      `BaseVar_t = sd20_t × C_t` · `Spike_t = (C_t − C_{t−1}) / BaseVar_{t−1}`
+      → Bewegung in Einheiten der eigenen jüngsten Vola, strikt PIT (nur Vortageswerte
+      im Nenner).
+      **Druckfehler im Buch:** Schritt 4 steht dort mit „ד statt „÷“; ohne
+      Division ist das Ergebnis kein σ-Maß.
+    - **Neue event_type:** `PRICE_SURPRISE`, `event_subtype` = `UNEXPLAINED`
+      (kein Kalender-Event im Fenster ±1 Handelstag) bzw. `EXPLAINED`
+      (fällt mit Earnings/FOMC/CPI/8-K zusammen), dazu das Zusatzfeld `spike_sigma`
+      (vorzeichenbehaftet). Bei weniger als 21 Schlusskursen → `UNVERIFIED`, nie PASS.
+    - **Schwellen empirisch, nicht normalverteilt:** 5–6σ-Tage kommen auch bei Large Caps
+      mehrmals im Jahr vor. Die WARN-Schwelle (Startwert ±3σ, `would_block` nur
+      hypothetisch) wird aus der Verteilung von `spike_sigma` im Shadow-Ledger
+      kalibriert, bevor sie irgendwo wirkt; Schwelle versioniert über `gate_version`.
+    - **Options-Bezug:** Implizite Vola läuft laut Grimes meist nahe der 20T-HV. Ein
+      Spike ohne vorheriges IV-Ramp-up überrascht daher auch den Optionsmarkt.
+      Später optional (mit IV-Archiv, №70/№15): IV-Anstieg vor dem Event protokollieren,
+      um „angekündigte“ von „echten“ Überraschungen zu trennen.
+    - **Offen / im Code zu verifizieren:** ob der Aggregator ≥21 Schlusskurse je Ticker
+      bereits im veröffentlichten Output bzw. KV mitführt (sonst Lesezugriff auf die
+      vorhandene Kurshistorie, kein neuer Datenabruf); Behandlung von Splits/Dividenden
+      (adjustierte Kurse verwenden).
+
     **Bewusst NICHT in Sprint 1**
     LLM-Abfragen, News-API, Websuche, Competitive Intelligence, Wettbewerbergraph,
     wirksame BLOCK-Entscheidung, Änderung des Public Outputs, LLM-confidence
@@ -2349,6 +2380,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.41 | 28.09.2026 | №71 Event & Surprise Gate (nur Doku, Backlog, Freeze unberührt): Erweiterungskandidat **SigmaSpike** (Grimes) als deterministischer Detektor für unangekündigte Kursbewegungen ergänzt — `Spike = ΔClose / (sd20 × Close)_{t−1}`, neuer event_type `PRICE_SURPRISE` (UNEXPLAINED/EXPLAINED) + Feld `spike_sigma`; Schwelle empirisch aus dem Shadow-Ledger kalibrieren (Startwert ±3σ), nicht normalverteilt interpretieren; Druckfehler im Buch („ד statt „÷“) vermerkt; Übernahme bei Sprint-Start entscheiden. |
 | 4.40 | 27.09.2026 | Regime-Roadmap Phase 3 abgeschlossen (nur Doku): H4 Makro-Achse nicht bestätigt (Claims-Signal schützt stark, DD +8,3 Pp, aber Calmar 0,15 vs. 0,43; Zinskurve ohne Nutzen); Phase-3-Synthese – in allen vier Filterfamilien Trade-off Krisenschutz vs. Investitionsquote, keiner mit mindestens gleichwertigem Gesamtprofil; Informationsmehrwert ≠ wirtschaftlicher Mehrwert. Konsequenz: Baseline unverändert, kein zusätzlicher Ausstiegsfilter; Details `docs/REGIME-BACKTEST-ROADMAP-2026-09-27.md`. |
 | 4.39 | 27.09.2026 | №72 Zusatzbefund PCR quantifiziert (nur Doku, Freeze): H2-Datenaudit 2009–2019 – ρ(echte Total-PCR, UIQ-Proxy) 0,39, Zustandsübereinstimmung mit produktiven Overlay-Schwellen κ 0,08; Skalenproblem (Proxy-„Gier“ 51 % vs. echte PCR 6,5 % der Tage). Proxy als eigenständiger „VIX-Stress-Proxy“ zu führen, nicht als PCR; Overlay-Schwellen separat prüfen. Regime-Roadmap: H1 und H3 nicht bestätigt, H2 Informationshypothese bestätigt / Wirtschaftshypothese nicht getestet. |
 | 4.38 | 27.09.2026 | №72 Zusatzbefund (nur Doku, kein Fix — Freeze): UIQ-„PCR“ ist bei jedem Lauf ein VIX-Proxy (`fetch_pcr_cboe()` → alte Cboe-URL 404, auf GHA zusätzlich 403 → `calc_pcr_proxy()` aus VIX/VIX3M/VVIX) → Doppelzählung der Vol-Struktur im Macro Risk Overlay und in den Makro-Z-Scores, irreführendes Label. Freie Cboe-PCR-Historie endet 04.10.2019. Entscheidung über Umbenennung/Entfernung vs. echte Quelle nach Regime-Backtest H2 (`docs/REGIME-BACKTEST-ROADMAP-2026-09-27.md`); neue Doku `docs/REGIME-DATENQUELLEN.md`. |
