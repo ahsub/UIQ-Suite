@@ -1,6 +1,6 @@
 # Datenquellen – Regime-Detection-Research
 
-Stand: 27.09.2026 · Zweck: Backtests der Marketstate-/Regime-Analysen (Research in `ahsub/regime-test`) · Roadmap: `REGIME-BACKTEST-ROADMAP-2026-09-27.md`
+Stand: 29.09.2026 (Rev. 2: PCR-Anschluss ab 10/2019, Europa/Japan-Kandidaten; Rev. 1: 27.09.2026) · Zweck: Backtests der Marketstate-/Regime-Analysen (Research in `ahsub/regime-test`) · Roadmap: `REGIME-BACKTEST-ROADMAP-2026-09-27.md`
 
 ## 1. Cboe – offizielle Index-Historien (frei, Primärquelle) ✅
 
@@ -51,7 +51,7 @@ Hinweise:
 
 Fundstelle des Katalogs: github.com/Maggyee/Nishiki-Trader → `docs/progress/*data-sources*.json` (Repo selbst enthält keine Daten).
 
-## 2. Cboe – Put/Call-Ratio (frei) ⚠️ nur 2006 – 10/2019
+## 2. Cboe – Put/Call-Ratio (frei) ✅ 2006 – heute (CSV + Daily-Anschluss)
 
 Basis-URL:
 
@@ -73,13 +73,31 @@ Direkt-URLs:
 - https://cdn.cboe.com/resources/options/volume_and_call_put_ratios/totalpcarchive.csv
 
 Hinweise:
-- **Reihen enden am 04.10.2019 (eingefroren).** Covid 2020, 2022 und Aug. 2024 sind **nicht** abgedeckt → Anschlussquelle nötig oder PCR-Tests auf 2006–2019 begrenzen und offen ausweisen.
+- **CSV-Reihen enden am 04.10.2019 (eingefroren)** → Anschluss über Cboe Daily Market Statistics, s. 2a.
 - **Mehrzeiliger Disclaimer-Kopf** vor der Spaltenzeile; Werte mit führenden Leerzeichen (`skipinitialspace`).
 - **Zwei Strukturbrüche laut Datei-Kopf:** (1) bis 31.05.2012 cleared volume (OCC), danach preliminary volume; (2) ab 11.06.2012 Equity/Index ohne exchange-traded products. Niveau-Effekt Equity PCR gering (Mittel 0,66 vor / 0,64 nach), trotzdem keine naiven Z-Scores über die Grenze.
 - **Nur Cboe-Volumen**, nicht Gesamtmarkt → relative Signale (Perzentil, Abweichung vom MA) statt fester Schwellen.
 - **Definition an UIQ-Produktion angleichen** (Equity / Total / Index?).
 
 Fundstelle: github.com/chrmatique/vol-analysis → `src/data/cboe.rs` (Repo-Cache enthält keine PCR-Daten).
+
+### 2a. Anschluss ab 07.10.2019: Cboe Daily Market Statistics ✅
+
+```
+https://www.cboe.com/us/options/market_statistics/daily/?dt=YYYY-MM-DD
+```
+
+- Eine Seite je Handelstag; Tabellen Sum of All Products, Index, Exchange Traded Products, Equity, VIX, SPX+SPXW (je Calls/Puts/Total) plus Ratios.
+- **Gleiche Abgrenzung wie CSV ab 11.06.2012** (Equity ohne ETPs, nur Cboe-Börse); Summe = Index + ETP + Equity exakt.
+- **Erster Datentag 07.10.2019** = Handelstag direkt nach CSV-Ende → lückenlos, aber **keine Überlappung** (04.10.2019: „No data“). Nahtstelle nur statistisch prüfbar.
+- Kein stiller Rückfall: Tage ohne Daten liefern „No data available for the selected date.“
+- Loader: `ahsub/regime-test` → `scripts/fetch_cboe_pcr_daily.py` (Branch `pcr-daily-loader`), Parser `src/datalayer/cboe_daily.py`, Snapshot `data/raw/cboe/<datum>_pcr_daily/` mit SHA-256 jeder Rohseite.
+- **Erstlauf 28./29.09.2026:** 1.752 Datentage 07.10.2019 – 25.09.2026, 0 Lücken, 0 Parserfehler; alle Summen-/Ratio-Prüfungen bestanden.
+- Im Panel: `pcr_total_full`, `pcr_equity_full`, `pcr_index_full` (CSV bis 04.10.2019, danach Daily); Daily-Spalten zusätzlich getrennt, inkl. ETP/VIX/SPX.
+
+### 2b. Verworfen: github.com/TheSnoozer/putcallratio
+
+Scraper auf die Seite „Cboe Exchange Market Statistics“, Daten ab 06.05.2022 (Branch `data`). **Intraday-Stände bis 15:15 CT statt finaler Tageswerte und andere Equity-Abgrenzung** (01.04.2024: Equity 0,77 vs. Cboe final 0,65; Total-Calls 2,28 Mio. vs. 3,37 Mio.) → nicht mit den CSV-Reihen mischbar; nur für Intraday-Verläufe interessant. Keine Lizenz.
 
 ## 3. Makro-Achse (frei) ✅
 
@@ -117,9 +135,22 @@ Einschränkungen:
 ## 6. Offene Lücken
 
 - [x] Enddaten geprüft (27.09.2026): VIX1Y/VIX6M/COR1M bis 25.09.2026; totalpc/equitypc/indexpc nur bis 04.10.2019
-- [ ] **PCR ab 10/2019: Anschlussquelle** (Kandidaten: OCC-Volumenstatistik, Cboe DataShop kostenpflichtig) oder PCR-Tests auf 2006–2019 begrenzen
+- [x] **PCR ab 10/2019: Anschlussquelle** – Cboe Daily Market Statistics (Abschnitt 2a), Erstlauf 29.09.2026 ohne Lücken
 - [ ] `regime-test`: Feature `PUT` (PutWrite-Index) vs. gemeinte PCR klären
 - [ ] **Intraday mit Stressphase** – IBKR/TWS oder Bezahlanbieter (Polygon.io, Databento, Tiingo)
 - [ ] VIX-Futures-Settlements je Kontrakt frei bei Cboe Futures Exchange (CFE)? – ungeprüft
 - [ ] **Nutzungsbedingungen Cboe** für kommerzielle Verwendung in UIQ klären (Research ≠ Produkt)
 - [ ] Einheitlicher Börsenkalender + Feiertagsregel beim Mischen der Quellen
+
+## 7. Europa / Japan – Kandidaten für die externe Replikation (ungeprüft, Stand 29.09.2026)
+
+Erst prüfen und laden, wenn die Europa-Replikation ansteht (nach Phase 4). Grundsatz wie bei Cboe: **Primärquelle mit nachvollziehbarer Herkunft**, Drittportale nur zum Gegenprüfen.
+
+| Index | Primärquelle (Kandidat) | Drittquellen (nur Gegenprüfung) | Offene Punkte |
+|---|---|---|---|
+| VSTOXX (V2TX) | STOXX-Indexseite, Datendownload (https://stoxx.com/index/v2tx/) | Macroption (.txt ab 1999), Investing.com, Yahoo `V2TX.DE` | Reichweite/Format ungeprüft (stoxx.com blockt automatischen Abruf) |
+| V-VSTOXX | STOXX-Indexseite | – | Existenz eines freien Downloads ungeprüft |
+| VDAX-NEW | STOXX (Berechnung heute durch STOXX) | Investing.com (angeblich ab 02.01.1992) | Primärquelle und Reichweite ungeprüft |
+| Nikkei 225 VI | indexes.nikkei.co.jp Download-Center | Investing.com | frei nur **3 Jahre Tagesdaten** (+10 J. Monatsdaten) → ohne Stressphase für Replikation zu kurz; längere Historie vermutlich nur kostenpflichtig (JPX/Nikkei) |
+
+Investing.com: manueller Export, Nutzungsbedingungen untersagen automatisierten Abruf, Herkunft nicht belegbar → nicht als Primärquelle.
