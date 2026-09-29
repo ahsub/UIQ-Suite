@@ -314,6 +314,32 @@ vollständige Sektor-Zuordnung (GICS über die XL*-Zugehörigkeit oder Stammdate
 heutigen thematischen Tags mit 70 % Lücke. Eine fusionierte „Confidence“ je Sektor bleibt
 – wenn überhaupt – intern (ADR-1); öffentlich nur die deskriptiven Maße.
 
+**Vorexposition zum Thema Breite (dokumentiert 29.09.2026 abends).** In `regime-test` liegen
+vier Versuche vom **01.09.2026**: `test_breadth_distribution.py` (`9e500b2`),
+`test_breadth_distribution_aggressive.py` (`23d1af9`), `test_ad_ratio.py` (`4077112`),
+`test_ad_ratio_ma.py` (`333fe0b`) – Ziel: 2022er-Fehlklassifikationen von
+`classify_regime_v2()` beheben, Zeitraum 2011–2026. Als „AD-Linie“/„AD-Ratio“ bezeichnet,
+tatsächlich **`^NYA`-Schlusskurse bzw. deren Tagesrendite** (NYSE Composite,
+kapitalgewichtet) – **kein Breitenmaß**. RSP/IWM kamen nicht vor. **Ergebnisse nicht
+dokumentiert** (weder `results/` noch Roadmap). **Ob und wie diese vier Versuche bei
+n_trials zählen, ist offen (Entscheidung Axel)** – n_trials bleibt bis dahin bei 42.
+
+**Explorationsaudit H12-E1 (eingefroren 29.09.2026, noch keine Daten ausgewertet).**
+Frage: Ist eine vorab definierte Breite-Divergenz vor Regimewechseln ungewöhnlich, und wie
+oft tritt sie ohne Wechsel auf? Protokoll `regime-test/docs/exploration/H12_E1_BREITE_VOR_REGIMEWECHSEL.md`
+Rev. 1, Auswertung `run_h12_exploration.py` 1.0.0 und Abrufskript
+`scripts/fetch_yahoo_breadth_etfs.py` 1.0.0 (Commit `d1fa77c`, **vor** Datenabruf; Auswertung
+nur synthetisch getestet). Festgelegt: D_SPY,RSP(t,h) = R_SPY(t−h,t) − R_RSP(t−h,t) und analog
+IWM, h ∈ {5,10,20} (relative Performance, keine Indexstand-Differenz); P252 nur aus
+D_{t−251}…D_t; Ereignisse BULL_* → STRESS_UNSTABLE/POST_PANIC_REVERSION
+(`classify_regime_v2`, primär ohne GEX); Vorfenster 20 Handelstage; Vorlauf, Fehlalarme mit
+Grundrate; eine feste Schwelle P252 ≥ 0,90 nur für Episoden, dazu volle Dezilverteilung.
+Kein Renditetest, keine Optimierung, keine p-Werte. **Keine neue Hypothesennummer** (H13–H17
+sind Kandidaten aus dem zweiten externen Review, `regime-test/docs/literatur/README.md`).
+Nächster Schritt: Axel ruft SPY/RSP/IWM am Mac ab (Snapshot mit `MANIFEST.json` +
+`SHA256SUMS.txt`), danach ein einziger Lauf und Bericht. Eine spätere Bestätigung wäre nur
+vorwärts (Shadow Mode) oder extern möglich – das US-Fenster ist inhaltlich bekannt.
+
 **Abbruchkriterium je Hypothese:** kein Nutzen im Entwicklungsfenster → nicht ins Bestätigungsfenster (spart Rechen- und Analyseaufwand, schützt das Bestätigungsfenster).
 
 ## Phase 4 – Validierung
