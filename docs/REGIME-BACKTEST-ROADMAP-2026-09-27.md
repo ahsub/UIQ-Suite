@@ -340,6 +340,20 @@ Nächster Schritt: Axel ruft SPY/RSP/IWM am Mac ab (Snapshot mit `MANIFEST.json`
 `SHA256SUMS.txt`), danach ein einziger Lauf und Bericht. Eine spätere Bestätigung wäre nur
 vorwärts (Shadow Mode) oder extern möglich – das US-Fenster ist inhaltlich bekannt.
 
+**H12-E1 · Ergebnis 29.09.2026: negativ (deskriptiv).** Ein Lauf (`regime-test` `6497a00`,
+Code unverändert seit `d1fa77c`, Yahoo-Snapshot `8051f47` mit Manifest/SHA256SUMS geprüft),
+Fenster 18.09.2009 – 25.09.2026, 173 Wechsel (primär) bzw. 53 mit sauberem Beginn. Im
+20-Tage-Vorfenster lag P252 im Median bei 0,49–0,56 (unbedingt 0,50–0,53), Anteil ≥ 0,90 bei
+0,08–0,12 (unbedingt 0,11–0,12); die oberen Dezile sind nicht angereichert. Episodenbeginne
+wurden nicht häufiger von einem Wechsel gefolgt als beliebige Tage (ohne Wechsel in 20T:
+0,47–0,53 bei Grundrate 0,48/0,52; sauberer Beginn 0,73–0,77 bei Grundrate 0,25/0,26).
+Teilfenster ohne gleichgerichtetes Muster. Rahmen: Das Baseline-Regime flackert (Median-Dauer
+nach Wechsel 2 Tage, 34–47 % Ein-Tages-Phasen). Bericht `results/h12_exploration/H12_E1_BEFUND.md`.
+**Konsequenz:** keine präregistrierte Hypothese „Breite-Divergenz kündigt Regimewechsel an“;
+H12 bleibt deskriptive Marktdiagnostik. Eine weitere Breite-Frage nur neu präregistriert in
+Phase 4 (Zielgröße ggü. VIX-Benchmark), Bestätigung nur vorwärts/extern – nicht priorisiert.
+n_trials-Zählung (Exploration + vier NYA-Versuche) weiter offen (Axel).
+
 **Abbruchkriterium je Hypothese:** kein Nutzen im Entwicklungsfenster → nicht ins Bestätigungsfenster (spart Rechen- und Analyseaufwand, schützt das Bestätigungsfenster).
 
 ## Phase 4 – Validierung
