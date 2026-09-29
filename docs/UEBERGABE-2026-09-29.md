@@ -194,3 +194,13 @@ Aus `UEBERGABE-2026-09-26.md`/`-28.md` weiterhin offen und nicht bearbeitet: B1/
 
 * Alle Commits dieser Session in UIQ-Suite, uiq-devtools, uiq-archive sowie Axels Commits in ko-aggregator per Byte-/Blob-Vergleich gegen die gelieferten Dateien geprüft.
 * Nicht geprüft: Zustand von `uiq-legal` (in dieser Session nicht angehängt).
+
+---
+
+## Nachtrag 29.09.2026 abends — Regime-Forschung: Explorationsaudit H12-E1 (laut dieser Session, nicht von dir verifiziert)
+
+* **Warum nicht aus dem Snapshot-Archiv:** 47 Handelstage mit genau einem Regimewechsel (29.07., Ein-Tages-Ausreißer) – N = 1 trägt die Frage nicht. Basis ist daher ETF-Historie + rekonstruiertes Baseline-Regime aus dem Cboe-Snapshot (dort 173 Wechsel BULL_* → STRESS/POST_PANIC im Fenster 18.09.2009 – 25.09.2026, primär ohne GEX).
+* **Vorexposition dokumentiert** (Roadmap H12, `64d60a9`): vier Breite-Versuche vom 01.09.2026 in `regime-test` mit `^NYA` (kapitalgewichteter Index, **kein Breitenmaß**), Ergebnisse nie dokumentiert. **Entscheidung Axel offen:** zählen sie bei n_trials (derzeit 42)?
+* **Eingefroren vor Datenabruf** (`regime-test` `d1fa77c`): Protokoll `docs/exploration/H12_E1_BREITE_VOR_REGIMEWECHSEL.md` Rev. 1, `run_h12_exploration.py` 1.0.0 (Selbsttest: Perzentil-Definition, kein Look-ahead, Formel, Ereignisse, End-to-end – bestanden; Ladeweg mit echtem Cboe/DIX + synthetischem Yahoo-Ordner geprüft), `scripts/fetch_yahoo_breadth_etfs.py` 1.0.0 (Mock-Test: MultiIndex-Spalten, Lückenausweis, `verify_snapshot` ok, Unveränderlichkeit). **Keine neue Hypothesennummer** – H13–H17 sind bereits Kandidaten (`regime-test/docs/literatur/README.md`).
+* **Offen – Axel:** am Mac im Repo-Root von `regime-test` `python3 scripts/fetch_yahoo_breadth_etfs.py` ausführen und den neuen Ordner `data/raw/yahoo/<datum>/` (5 Dateien: SPY/RSP/IWM.csv, MANIFEST.json, SHA256SUMS.txt) unverändert hochladen.
+* **Danach (Claude):** Snapshot prüfen (`verify_snapshot`, Manifest), **ein** Lauf `python3 run_h12_exploration.py --yahoo data/raw/yahoo/<datum>`, Bericht `results/h12_exploration/H12_E1.md` committen, nur deskriptive Aussagen (Protokoll §5), Empfehlung an Axel. Parallel zu Batch 1b möglich; Batch 1b (Zusagen) hat Vorrang.
