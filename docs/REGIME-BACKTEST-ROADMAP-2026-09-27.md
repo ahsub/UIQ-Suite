@@ -90,6 +90,7 @@ Jede Hypothese wird **vor** dem Test mit Definition, Schwellen-Kalibrierungsfens
 | H3 | Implied Correlation (COR1M) als exogene 2. Achse (Zwei-Achsen-Hypothese) | Cboe COR | wie H2 |
 | H4 | Makro-Achse (Kurvensteilheit, Claims, OFR FSI) | ALFRED, OFR | wie H2; nur Vintage-Daten |
 | H5 | VIX-Futures-Kurve (Basis, Slope, Curvature) | Bloomberg-Dump (nur Research) bzw. CFE | wie H2; Ergebnis nicht veröffentlichen, solange Quelle nicht lizenzsauber |
+| H6 | Marktbreite-Divergenz (kapital- vs. gleichgewichtet, Anteil über EMA50/200, Sektorstreuung) | Kurshistorie Index-/Sektor-ETFs; UIQ-Snapshot-Archiv nur beschreibend | Forschungsnotiz 29.09.2026, **nicht präregistriert, nicht getestet**; Einordnung als Phase-4-Kanal (Prognosegüte ggü. VIX-Benchmark) |
 
 **H1 · Stand 27.09.2026: ❌ nicht bestätigt (abgeschlossener negativer Primärtest).**
 Präregistrierung `regime-test/docs/preregistration/H1_laufzeit_gate.md` Rev. 3 (Commit `8e05c0a`,
@@ -260,6 +261,57 @@ kleiner, gut kalibrierter Informationsgewinn für die UIQ-Strategiewahl wertvoll
 Einstieg nächste Sitzung: „weiter mit Phase 4 der Regime-Roadmap“ – beginnt mit der
 Präregistrierung, noch ohne Code.
 
+### Forschungsnotiz H6 – Marktbreite-Divergenz (29.09.2026, nicht präregistriert, nichts getestet)
+
+**Anlass.** Die DCE meldete im Nachtlauf 28.09. (Lauf 29.09. 01:35 UTC) `GREEN` + `SELL` bei
+Regime BULL_QUIET. Nachrechnung über das Snapshot-Archiv (`uiq-devtools/breadth-divergenz/analyze.py`
+1.0.0, 47 Handelstage 21.07.–28.09.2026, Selbsttest: Konsens exakt reproduziert):
+
+- **Die DCE-Richtung ist ein Messartefakt, kein Marktsignal.** An allen 38 Handelstagen mit
+  DCE-Objekt `SELL/GREEN`, Confidence 70–72, Konsens 0,203–0,325 (BUY erst > 0,55, SELL < 0,45).
+  Der Konsens mittelt selektive Filter-Scores (Minervini, Breakout …), die für die meisten Titel
+  immer niedrig sind → strukturell „SELL“. Ursache Transformation (Taxonomie Befundregister), D4.
+- **Die Rohdaten zeigen dagegen eine echte Breite-Divergenz** (Handelstage 13.08. = SPY-Hoch im
+  Archiv → 28.09.): SPY −1,6 %, RSP −5,8 % (Spread +4,3 Pp), QQQ +0,6 %, XLK +2,0 %, SMH +1,8 %;
+  IWM −7,7 %, MDY −7,5 %, XLI −9,2 %, XLU −10,9 %, XLRE −8,4 %, ITA −16,2 %; TLT −4,8 %,
+  GLD −5,3 %. Anteil Universum über EMA50 68 % → 34 %, über EMA200 70 % → 53 %.
+  Sektor-Tags (gemeinsames Universum, Mehrfach-Tags je Tag): Edelmetalle 90 % → 10 %,
+  Verteidigung 78 % → 19 %, Nuklear 69 % → 15 % über EMA50; AI_TECH 50 % → 83 %, SEMIS 62 % → 85 %.
+  (Die Sektorzahlen im Chat vom 29.09. zählten nur den ersten Tag je Titel – maßgeblich sind die
+  Skriptwerte.)
+- **Blinder Fleck:** `regimeUsed` war an 46 von 47 Handelstagen BULL_QUIET. Das VIX-Termstruktur-
+  Modell misst Volatilitätsstress, keine Breite – kein Fehler, aber eine fehlende Achse.
+- **Datenlücke:** 494 von 706 Titeln (70 %) ohne Sektor-Tag → Sektorsicht derzeit nur über die
+  GICS-Sektor-ETFs (XL*) belastbar.
+
+**Hypothese (Entwurf, vor jedem Test präzise zu registrieren).** H6: Eine Marktbreite-Divergenz
+(kapitalgewichteter Index nahe Hoch bei sinkender Breite) liefert über die im VIX enthaltene
+Information hinaus Prognosewert für eine vorab festgelegte Zielvariable (z. B. P(SPY-Drawdown
+≥ 5 % in 20 Tagen) oder Rendite RSP − SPY über 20/60 Tage). **H0:** kein inkrementeller
+Prognosewert gegenüber dem eingefrorenen VIX-Benchmark (Phase-4-Checkliste Punkte 1–8 gelten
+unverändert).
+
+**Einordnung / Vorbehalte.**
+- Schmale Führung kann lange anhalten (2023/24) oder brechen; aus 47 Tagen folgt nichts über
+  Prognosewert. Das UIQ-Archiv (90 Tage, wechselndes Universum) dient nur der Beschreibung.
+- Testbasis muss eine lange, point-in-time rekonstruierbare Historie sein: Kurse der Index- und
+  Sektor-ETFs (RSP ab 2003, XL* ab 1998) – Breite des eigenen Universums ist wegen
+  Survivorship-Bias nicht rückwirkend rekonstruierbar.
+- Kein Handelsfilter „auf Verdacht“ (Phase-3-Konsequenz 4/5 gilt). n_trials unverändert 42.
+
+**Berechnungsebene (Frage Axel 29.09.: DCE sektoral oder Einzelticker → Sektoren?).**
+Auf Einzeltickerebene rechnen, dann nach Sektoren aggregieren – **nicht** die DCE je Sektor
+laufen lassen. Begründung: (1) Der Fehler sitzt in der Aggregation (Mittelwert selektiver
+Scores); eine DCE je Sektor erbte ihn und lieferte pro Sektor dieselbe konstante Richtung.
+(2) Nur die Tickerebene erlaubt, bullische Einzelsignale ihrem Sektor zuzuordnen und
+Mehrfachzugehörigkeit sauber zu behandeln. (3) Geeignete Sektormaße sind Anteile und
+Verteilungen (Anteil über EMA50/200, Anteil mit Strategie-Score über fester Schwelle,
+Streuung, gleich- vs. kapitalgewichtete Rendite) – jeweils relativ zur eigenen Historie
+(Perzentil), weil die Niveaus je Sektor verschieden sind. (4) Voraussetzung ist eine
+vollständige Sektor-Zuordnung (GICS über die XL*-Zugehörigkeit oder Stammdaten) statt der
+heutigen thematischen Tags mit 70 % Lücke. Eine fusionierte „Confidence“ je Sektor bleibt
+– wenn überhaupt – intern (ADR-1); öffentlich nur die deskriptiven Maße.
+
 **Abbruchkriterium je Hypothese:** kein Nutzen im Entwicklungsfenster → nicht ins Bestätigungsfenster (spart Rechen- und Analyseaufwand, schützt das Bestätigungsfenster).
 
 ## Phase 4 – Validierung
@@ -283,8 +335,61 @@ Präregistrierung, noch ohne Code.
 
 Nicht Teil dieser Roadmap. Validierung des 60-Min-Befunds (Sharpe 0,94) braucht Historie mit Stressphase → IBKR/TWS-API (ohnehin für das Options-Modul geplant) oder Bezahlanbieter. Kosten-Nutzen-Entscheidung, sobald Phase 2 steht.
 
+## Separater Track – Signal-Diskrepanzen systematisch suchen und auflösen (ab 29.09.2026)
+
+**Auftrag (Axel, 29.09.):** Scheinbare Widersprüche zwischen UIQ-Signalen gezielt suchen,
+methodisch auflösen und – soweit validierbar – nutzbar machen.
+
+**Grundsatz:** Jede Diskrepanz ist zuerst ein **Befund**, kein Signal. Bisher waren die meisten
+gefundenen Widersprüche Mess- oder Darstellungsfehler (DCE-Richtung, Termstruktur-Label,
+PCR-Proxy, ARM-SEPA). Erst was die Klärung als echte Marktdivergenz übersteht, wird
+Hypothese – und erst eine validierte Hypothese darf eine Handlungsregel werden.
+
+**Dreistufiges Verfahren**
+
+1. **Finden (maschinell, täglich, read-only).** Prüfer in `uiq-devtools`, der vorab definierte
+   Widerspruchspaare je Lauf auswertet und auflistet – ohne Eingriff in Produktion. Startkatalog:
+   Regime vs. Breite · Index vs. gleichgewichteter Index · Strategie-Score vs. Trendlage
+   (z. B. hoher Momentum-Score unter EMA200, SEPA 100 bei großem Abstand zum 52W-Hoch) ·
+   DCE-Ampel vs. DCE-Richtung · Anleihen/Gold/Aktien gleichgerichtet fallend · Sektor-ETF vs.
+   Einzeltitel desselben Sektors · Morning-Briefing-Aussage vs. zugrunde liegender Messwert.
+   Neue Paare werden vor ihrer ersten Auswertung in diesen Katalog eingetragen (nicht nachträglich).
+2. **Klären (Ursache belegen, Grundgesetz #9).** Jede Diskrepanz wird einer Ursache aus der
+   Taxonomie des Befundregisters zugeordnet (Quelle · Transformation · Cache · Prompt-Binding ·
+   Darstellung) **oder** als echte Marktdivergenz belegt. Belegpflicht: Nachrechnung aus
+   Rohdaten, bei Marktdivergenz Gegenprobe mit einer unabhängigen Quelle (z. B. ETF-Kurse statt
+   eigener Scores). Artefakte gehen als D-Befund in №72, nicht in die Forschung.
+3. **Nutzen (nur für echte Marktdivergenzen).** Präregistrierte Hypothese nach der
+   Phase-4-Checkliste (Zielvariable, point-in-time, Benchmark VIX, Brier/Kalibrierung,
+   Entwicklungs- und unberührtes Bestätigungsfenster, externe Replikation). Erst nach bestandenem
+   Gate: Shadow Mode (eingefroren, ohne Anpassung), danach ggf. SUITE-Punkt.
+
+**Handlungsempfehlungen – Grenzen.** Eine validierte Regel darf **intern** (Owner-Modus,
+Alpha Desk) als Entscheidungshilfe erscheinen, mit Kennzeichnung von Methode, Testfenster und
+Prognosegüte. **Öffentlich** bleiben alle Ausgaben deskriptiv (Zusagen gegenüber der Aufsicht,
+Public-UI-Bereinigung, ADR-1): Die Divergenz selbst darf beschrieben werden
+(„Signalbreite x %“, „gleichgewichteter Index −5,8 % vs. kapitalgewichtet −1,6 %“), eine daraus
+abgeleitete Kauf-/Verkaufs- oder Gewichtungsaussage nicht.
+
+**Stand 29.09.2026:**
+
+| Diskrepanz | Klärung | Ergebnis |
+|---|---|---|
+| DCE `SELL` bei `GREEN`/BULL_QUIET | Transformation (Konsens-Aggregation) | Artefakt → D4 (Befundregister) |
+| Index nahe Hoch, Breite halbiert | Marktdivergenz, Gegenprobe ETF-Kurse | echt → H6 (Forschungsnotiz) |
+| Regime 46/47 Tage BULL_QUIET trotz Breitenverfall | Modellumfang (keine Breitenachse) | kein Fehler, fehlende Achse → H6 |
+| PCR-Proxy „Gier“ vs. echte PCR | Transformation/Skala | Artefakt → №72, H2/H2-Ext |
+| Termstruktur „invers“ bei Contango | Prompt-Binding (nur Rohwerte, kein berechnetes Label) | Artefakt → D2 |
+| ARM SEPA 100 bei −30 % zum 52W-Hoch | offen | №72 A1 |
+| Zweig 0 % / EMA50 100 % / Markov 0 | offen | D1 |
+
+**Nächster Schritt:** Prüfer-Skelett für Stufe 1 in `uiq-devtools` (Paare aus dem Startkatalog,
+Ausgabe als Liste je Handelstag) – nach Batch 1b, weil dessen Zusagen Vorrang haben.
+
 ## Offene Entscheidungen für Axel
 
 - [ ] Ergebnis Phase 0.3: maßgebliche PCR-Definition
 - [ ] Plan B, falls PCR ab ~2019 fehlt
 - [ ] Wann Intraday-Track budgetieren?
+- [ ] H6: Zielvariable und Testbasis (ETF-Historie) festlegen, bevor präregistriert wird
+- [ ] Sektor-Zuordnung: GICS-Stammdaten ergänzen oder XL*-Zugehörigkeit als Ersatz
