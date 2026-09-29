@@ -144,6 +144,29 @@ daher bewusst **nicht** durchgeführt. **Konsequenz:** kein PCR-Filter in UIQ; k
 **VIX-Stress-Proxy** zu dokumentieren und darf nicht als Put/Call-Ratio bezeichnet oder
 interpretiert werden (→ SUITE.md №72); echte PCR bleibt Daten-/Forschungsoption.
 
+**H2-Ext · Stand 29.09.2026: Replikation des H2-Informationsaudits auf 07.10.2019 – 25.09.2026.**
+Präregistrierung `regime-test/docs/preregistration/H2_EXTENSION_2020_2026.md` Rev. 3 (Commit
+`d9fe86f`, vor Auswertung; zwei externe Reviews), Skript `run_h2_extension.py` 1.1.0 (`b804a0e`,
+Selbsttest reproduziert `H2_audit.json` exakt), ein Lauf, Bericht `results/h2_extension/H2_ext.md`.
+Datenquelle neu: Cboe Daily Market Statistics (PCR-Anschluss ab 07.10.2019), 1.752 Tage, 0 Ausschlüsse.
+Deskriptiv, kein Renditetest; **keine Gesamtbewertung von H2** (§7b) – Einzelaussagen:
+- **Aussage 1 Rangassoziation mit dem VIX: repliziert** – |ρ(Total-PCR, VIX)| 0,21 (Original 0,31);
+  alle bestimmbaren Teilbefunde < 0,50 (Bärenmarkt 2022: 0,48). Zulässig nur: die geringe
+  Rangassoziation bleibt bestehen – **kein** Nachweis eigenständiger Information (§7c).
+- **Aussage 2a Proxy bildet PCR nicht ab: repliziert** – κ Overlay 0,036 (Original 0,08);
+  eine Abweichung (Bärenmarkt 2022: κ 0,26 = abgeschwächt).
+- **Aussage 2b Skalenproblem: repliziert, aber uneinheitlich** – Δ „Gier“ Proxy − echt 21,7 Pp
+  (Proxy 31,0 % vs. echt 9,3 %; Original 51 % vs. 6,5 %), knapp über der Schwelle 20 Pp.
+  Drei Abweichungen: Teilfenster 2019–2022 Δ 2,0 Pp, Bärenmarkt 2022 Δ 1,5 Pp, Equity-PCR
+  −57,4 Pp; Teilfenster 2023–2026 dagegen Δ 38,9 Pp → das Skalenproblem ist **phasenabhängig**
+  (in Stress-/Hochvola-Phasen kaum vorhanden, in ruhigen Phasen ausgeprägt).
+- Zusatz (§4): skalenbereinigt mit den Original-Schwellen 0,93/1,16 κ 0,11 (Original im eigenen
+  Fenster 0,24) – die damalige Kalibrierung überträgt schlecht.
+**Konsequenz:** keine automatische (§7b). Die Umbenennung des UIQ-Proxys in „VIX-Stress-Proxy“
+(№72) wird durch 1 und 2a gestützt. Für die offene Frage „Overlay-Schwellen separat prüfen“ ist
+2b relevant: Die „Gier“-Überzeichnung des Proxys ist nicht stabil, sondern regimeabhängig.
+n_trials unverändert 42.
+
 **H4 · Stand 27.09.2026: ❌ nicht bestätigt (Calmar verfehlt) · sehr eigenständige Information.**
 Phase 0: Point-in-time-Audit ALFRED (Commit `a18778f`): Zinskurve aus Erstveröffentlichungen
 der H.15-Bausteine DGS10/DGS3MO/DGS2 (Vintages ab 06/2005) rekonstruiert (Abgleich mit FRED
