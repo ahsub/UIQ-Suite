@@ -205,3 +205,16 @@ Aus `UEBERGABE-2026-09-26.md`/`-28.md` weiterhin offen und nicht bearbeitet: B1/
 * **Erledigt 18:10:** Axel hat den Snapshot abgerufen und gepusht (`regime-test` `8051f47`, 5 Dateien, SHA256SUMS + Manifest geprüft; letzte Zeile 29.09. = Intraday, außerhalb des Fensters). Ein Lauf mit unverändertem Code → `6497a00`.
 * **Ergebnis: negativ.** Breite-Divergenz vor Regimewechseln nicht ungewöhnlich; Episoden ohne Wechsel so häufig wie die Grundrate. Keine präregistrierte Hypothese; H12 bleibt deskriptiv. Details Roadmap H12 (Abschnitt „H12-E1 · Ergebnis“) und `regime-test/results/h12_exploration/H12_E1_BEFUND.md`.
 * **Offen (Axel):** n_trials-Zählung der Exploration und der vier NYA-Versuche vom 01.09.
+
+---
+
+## Nachtrag 29.09.2026, 18:25 — Backlog: CSP-Regression / Options-Risikomodellierung (nicht bearbeitet)
+
+Aus der Durchsicht einer externen CSP-Analyse zu einer **realen Owner-Position** (Details bewusst **nicht** im öffentlichen Repo; im Chat vom 29.09. abends, Suche „CSP Regression Break-even“). Keine Produktionsänderung daraus ableiten; Reihenfolge morgen unverändert (erst v1.6-Verifikation, dann Batch 1b).
+
+1. **σ-/ATR-normierter Break-even-Puffer** statt fester Prozent-Schwellen (gleicher %-Puffer bedeutet je nach IV und Restlaufzeit etwas völlig anderes).
+2. **Event-Status UNKNOWN/CONFLICT als Gate-Zustand:** fehlender *nächster* Earnings-Termin (Feld enthält nur den vergangenen) = UNKNOWN, nicht „kein Event“ – zweites Beispiel zu №72 A2 neben ASML.
+3. **Korrekte CSP-Risikodarstellung:** maximaler Verlust = (Strike − Prämie) × 100, begrenzt – nicht „nahezu unbegrenzt“.
+4. **Owner-only Positionszustände** (z. B. Halten/Rollen/Schließen, Assignment-Nähe) sind eine eigene Funktionsebene neben der Pre-Trade-Kandidatenbewertung – nur im Owner-Modus denkbar, **nie** öffentlich (individuelle Beratung; Zusagen/ADR-1). Noch keine Implementierung.
+
+Regressionstest: den Einzelfall mit Snapshot `uiq-archive` `2026-09-29_01` einfrieren – **nur privat**; für öffentliche Tests später ausschließlich synthetische/anonymisierte Fälle.
