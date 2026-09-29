@@ -90,7 +90,7 @@ Jede Hypothese wird **vor** dem Test mit Definition, Schwellen-Kalibrierungsfens
 | H3 | Implied Correlation (COR1M) als exogene 2. Achse (Zwei-Achsen-Hypothese) | Cboe COR | wie H2 |
 | H4 | Makro-Achse (Kurvensteilheit, Claims, OFR FSI) | ALFRED, OFR | wie H2; nur Vintage-Daten |
 | H5 | VIX-Futures-Kurve (Basis, Slope, Curvature) | Bloomberg-Dump (nur Research) bzw. CFE | wie H2; Ergebnis nicht veröffentlichen, solange Quelle nicht lizenzsauber |
-| H6 | Marktbreite-Divergenz (kapital- vs. gleichgewichtet, Anteil über EMA50/200, Sektorstreuung) | Kurshistorie Index-/Sektor-ETFs; UIQ-Snapshot-Archiv nur beschreibend | Forschungsnotiz 29.09.2026, **nicht präregistriert, nicht getestet**; Einordnung als Phase-4-Kanal (Prognosegüte ggü. VIX-Benchmark) |
+| H12 | Marktbreite-Divergenz (kapital- vs. gleichgewichtet, Anteil über EMA50/200, Sektorstreuung) | Kurshistorie Index-/Sektor-ETFs; UIQ-Snapshot-Archiv nur beschreibend | Forschungsnotiz 29.09.2026, **nicht präregistriert, nicht getestet**; Einordnung als Phase-4-Kanal (Prognosegüte ggü. VIX-Benchmark) |
 
 **H1 · Stand 27.09.2026: ❌ nicht bestätigt (abgeschlossener negativer Primärtest).**
 Präregistrierung `regime-test/docs/preregistration/H1_laufzeit_gate.md` Rev. 3 (Commit `8e05c0a`,
@@ -261,7 +261,9 @@ kleiner, gut kalibrierter Informationsgewinn für die UIQ-Strategiewahl wertvoll
 Einstieg nächste Sitzung: „weiter mit Phase 4 der Regime-Roadmap“ – beginnt mit der
 Präregistrierung, noch ohne Code.
 
-### Forschungsnotiz H6 – Marktbreite-Divergenz (29.09.2026, nicht präregistriert, nichts getestet)
+### Forschungsnotiz H12 – Marktbreite-Divergenz (29.09.2026, nicht präregistriert, nichts getestet)
+
+*Nummerierung: am 29.09.2026 zunächst als H6 notiert, umbenannt in H12, weil H6 bereits für den geparkten Präregistrierungsentwurf „TIP-Canary“ vergeben ist (`regime-test`, Branch `h5-saisonalitaet-entwurf`, `H6_tip_canary_ENTWURF.md`). H7–H11 sind in `regime-test/docs/literatur/README.md` belegt.*
 
 **Anlass.** Die DCE meldete im Nachtlauf 28.09. (Lauf 29.09. 01:35 UTC) `GREEN` + `SELL` bei
 Regime BULL_QUIET. Nachrechnung über das Snapshot-Archiv (`uiq-devtools/breadth-divergenz/analyze.py`
@@ -284,7 +286,7 @@ Regime BULL_QUIET. Nachrechnung über das Snapshot-Archiv (`uiq-devtools/breadth
 - **Datenlücke:** 494 von 706 Titeln (70 %) ohne Sektor-Tag → Sektorsicht derzeit nur über die
   GICS-Sektor-ETFs (XL*) belastbar.
 
-**Hypothese (Entwurf, vor jedem Test präzise zu registrieren).** H6: Eine Marktbreite-Divergenz
+**Hypothese (Entwurf, vor jedem Test präzise zu registrieren).** H12: Eine Marktbreite-Divergenz
 (kapitalgewichteter Index nahe Hoch bei sinkender Breite) liefert über die im VIX enthaltene
 Information hinaus Prognosewert für eine vorab festgelegte Zielvariable (z. B. P(SPY-Drawdown
 ≥ 5 % in 20 Tagen) oder Rendite RSP − SPY über 20/60 Tage). **H0:** kein inkrementeller
@@ -376,8 +378,8 @@ abgeleitete Kauf-/Verkaufs- oder Gewichtungsaussage nicht.
 | Diskrepanz | Klärung | Ergebnis |
 |---|---|---|
 | DCE `SELL` bei `GREEN`/BULL_QUIET | Transformation (Konsens-Aggregation) | Artefakt → D4 (Befundregister) |
-| Index nahe Hoch, Breite halbiert | Marktdivergenz, Gegenprobe ETF-Kurse | echt → H6 (Forschungsnotiz) |
-| Regime 46/47 Tage BULL_QUIET trotz Breitenverfall | Modellumfang (keine Breitenachse) | kein Fehler, fehlende Achse → H6 |
+| Index nahe Hoch, Breite halbiert | Marktdivergenz, Gegenprobe ETF-Kurse | echt → H12 (Forschungsnotiz) |
+| Regime 46/47 Tage BULL_QUIET trotz Breitenverfall | Modellumfang (keine Breitenachse) | kein Fehler, fehlende Achse → H12 |
 | PCR-Proxy „Gier“ vs. echte PCR | Transformation/Skala | Artefakt → №72, H2/H2-Ext |
 | Termstruktur „invers“ bei Contango | Prompt-Binding (nur Rohwerte, kein berechnetes Label) | Artefakt → D2 |
 | ARM SEPA 100 bei −30 % zum 52W-Hoch | offen | №72 A1 |
@@ -391,5 +393,5 @@ Ausgabe als Liste je Handelstag) – nach Batch 1b, weil dessen Zusagen Vorrang 
 - [ ] Ergebnis Phase 0.3: maßgebliche PCR-Definition
 - [ ] Plan B, falls PCR ab ~2019 fehlt
 - [ ] Wann Intraday-Track budgetieren?
-- [ ] H6: Zielvariable und Testbasis (ETF-Historie) festlegen, bevor präregistriert wird
+- [ ] H12: Zielvariable und Testbasis (ETF-Historie) festlegen, bevor präregistriert wird
 - [ ] Sektor-Zuordnung: GICS-Stammdaten ergänzen oder XL*-Zugehörigkeit als Ersatz
