@@ -18,9 +18,37 @@
  * um den Diff auf den Trading-Day-Skip-Check zu beschränken.]
  * ====================================================================
  *
- * Skript-Version: v1.25
+ * Skript-Version: v1.26
  *
  * CHANGELOG (neueste zuerst):
+ * v1.26 (29.09.2026, Claude + Axel, SUITE №72 Folgeaudit Teil 2, Befund G1):
+ *      strategy_score: kein stiller Fallback auf den Composite-Score mehr.
+ *      Befund (verifiziert, nicht vermutet — Grundgesetz #9):
+ *        buildDecisionSnapshot() und leanCandidateEntry() lasen
+ *        candidate[scoreField] ?? candidate.score. Fuer die fuenf Options-
+ *        Strategien fehlte scoreField (sCsp/sAtmna/sCc) in JEDER Leaderboard-
+ *        Zeile (market_aggregator.py top20(), _core), der Fallback griff also
+ *        in allen Laeufen seit 16.09.2026 still auf den Composite-Score
+ *        (Snapshot 29.09.: ATMNA MRK 59, TJX 95, MURGY 65 bei Ranking-Score 100).
+ *        Betroffen: Decision-Snapshot/Ledger, strategy_score im Public Digest,
+ *        Kandidaten-Pool-Archiv (leanCandidateEntry).
+ *      Fix: neue Funktion resolveStrategyScore(). Liefert { value, basis }:
+ *        basis 'RANKING_SCORE' (Feld vorhanden, value = dessen Wert) oder
+ *        'UNAVAILABLE' (Feld fehlt, value = null). Kein Ersatzwert.
+ *        Neue Felder: strategy_score_basis (Decision-Snapshot, Digest),
+ *        scoreBasis (Kandidaten-Pool-Archiv).
+ *      Historische Werte werden NICHT veraendert. Lesart fuer Auswertungen:
+ *        Eintraege OHNE strategy_score_basis sind Altbestand; fuer die fuenf
+ *        Options-Strategien (csp_wheel, atmna, weekly_income, cc, collar) vom
+ *        16.09. bis zum Fix gilt strategy_score = LEGACY_COMPOSITE (Composite-
+ *        Score, nicht der Ranking-Score). Eine Rebuild-Serie aus den
+ *        gespeicherten Snapshots waere getrennt zu erzeugen.
+ *      Reihenfolge beim Ausrollen: ZUERST market_aggregator.py v5.44.1
+ *        (additive Felder sCsp/sAtmna/sCc), DANN dieses Skript — sonst liefern
+ *        die Options-Strategien bis zum naechsten Aggregator-Lauf
+ *        strategy_score = null / UNAVAILABLE.
+ *      Regressionstest: scripts/test_strategy_score_integrity.js.
+ *      Kein Prompt-, Validierungs-, Retry-, Caching-, Token- oder Batch-Eingriff.
  * v1.25 (26.09.2026, Claude + Axel, FELDPFAD-FIX mcm_regime):
  *      Einzige Aenderung: Lesepfad von snapshot.mcm_regime in
  *      buildDailyMarketSnapshot() (plus dieser Changelog, Versionszeile und
@@ -2741,20 +2769,32 @@ function buildSignals(strategy, candidate) {
   return signals;
 }
 
+// NEU (v1.26, 29.09.2026): strategieeigener Ranking-Score OHNE stillen Fallback.
+// Vorher: candidate[scoreField] ?? candidate.score — bei fehlendem Feld (Options-
+// Leaderboard-Zeilen trugen sCsp/sAtmna/sCc nicht) wurde still der Composite-
+// Score eingesetzt, sodass derselbe Feldname je nach Datenzustand zwei
+// verschiedene Bedeutungen hatte. Jetzt: vorhanden -> RANKING_SCORE, sonst
+// null + UNAVAILABLE. Options-Strategien nutzen OPTIONS_STRAT_SCORE_FIELD
+// (sCsp/sAtmna/sCc), Equity-Strategien STRAT_SCORE_FIELD.
+function resolveStrategyScore(strategy, candidate) {
+  const scoreField = STRAT_SCORE_FIELD[strategy] ?? OPTIONS_STRAT_SCORE_FIELD[strategy] ?? null;
+  const v = scoreField && candidate ? candidate[scoreField] : undefined;
+  if (typeof v === 'number' && Number.isFinite(v)) {
+    return { value: v, basis: 'RANKING_SCORE', field: scoreField };
+  }
+  return { value: null, basis: 'UNAVAILABLE', field: scoreField };
+}
+
 function buildDecisionSnapshot(strategy, candidate, rank, snapshot) {
   candidate._snapshotRegime = snapshot.mcm_regime; // fürs meanrev-Signal, s.o.
-  // NEU (16.09.2026): Options-Strategien nutzen OPTIONS_STRAT_SCORE_FIELD
-  // (sCsp/sAtmna/sCc) statt STRAT_SCORE_FIELD — ohne diesen Fallback wäre
-  // strategy_score fälschlich auf den equity-generischen candidate.score
-  // zurückgefallen (STRAT_SCORE_FIELD[strategy] wäre für Options-IDs
-  // undefined), nicht auf den tatsächlich fürs Ranking genutzten Score.
-  const scoreField = STRAT_SCORE_FIELD[strategy] ?? OPTIONS_STRAT_SCORE_FIELD[strategy];
+  const resolvedScore = resolveStrategyScore(strategy, candidate);
   return {
     date: snapshot.date,
     strategy,
     sym: candidate.sym,
     rank,
-    strategy_score: candidate[scoreField] ?? candidate.score ?? null,
+    strategy_score: resolvedScore.value,
+    strategy_score_basis: resolvedScore.basis,
     grade: candidate.grade ?? null,
     regime: snapshot.mcm_regime,
     signals: buildSignals(strategy, candidate),
@@ -2916,6 +2956,7 @@ function buildPublicDigest(snapshot, strategyResults) {
         rank,
         sym,
         strategy_score: decisionSnapshot.strategy_score,
+        strategy_score_basis: decisionSnapshot.strategy_score_basis, // v1.26: RANKING_SCORE | UNAVAILABLE
         status: 'active',
         rationale: buildRationale(strategy, decisionSnapshot),
         ledger_id: buildLedgerId(snapshot.date, strategy, rank),
@@ -3466,10 +3507,11 @@ async function finalizeStrategyResult(req, apiResult, snapshot, promptVersion) {
 // das, was fuer Backtests/Backlooks/Audit tatsaechlich gebraucht wird:
 // Symbol, strategieeigener Score, Grade, urspruenglicher Primaerlisten-Rang.
 function leanCandidateEntry(strategy, candidate, fallbackRank) {
-  const scoreField = STRAT_SCORE_FIELD[strategy] ?? OPTIONS_STRAT_SCORE_FIELD[strategy];
+  const resolvedScore = resolveStrategyScore(strategy, candidate); // v1.26: kein Composite-Fallback
   return {
     sym: candidate.sym,
-    score: candidate[scoreField] ?? candidate.score ?? null,
+    score: resolvedScore.value,
+    scoreBasis: resolvedScore.basis,
     grade: candidate.grade ?? null,
     primaryRank: candidate._primaryRank ?? fallbackRank ?? null,
   };
@@ -3935,6 +3977,7 @@ module.exports = {
   STRATEGY_SIGNAL_MAP,
   buildSignals,
   buildDecisionSnapshot,
+  resolveStrategyScore, // NEU v1.26
   readPromptVersion,
   buildAiOutputId,
   buildAiOutput,
