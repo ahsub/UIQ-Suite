@@ -37,7 +37,7 @@ const FIELD = (s) => G.STRAT_SCORE_FIELD[s] ?? G.OPTIONS_STRAT_SCORE_FIELD[s];
 let fails = 0;
 const ok = (c, m) => { if (!c) { fails++; console.log('  FAIL', m); } };
 const snap = { date: '2026-09-29', snapshot_id: 'SNAP-TEST', mcm_regime: 'BULL_QUIET', vix: 15.0,
-               qqq_markov_regime: null, sector_rotation: null, dce: null };
+               qqq_markov_regime: null, sector_rotation: null, dce_public: null };
 
 console.log('T1 Feld vorhanden -> RANKING_SCORE');
 for (const s of ALL) {

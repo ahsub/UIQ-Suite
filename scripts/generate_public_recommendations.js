@@ -18,9 +18,21 @@
  * um den Diff auf den Trading-Day-Skip-Check zu beschränken.]
  * ====================================================================
  *
- * Skript-Version: v1.26
+ * Skript-Version: v1.28
  *
  * CHANGELOG (neueste zuerst):
+ * v1.28 (30.09.2026, Claude + Axel, SUITE №72 / Runmap 2 Nacht A, ADR-1):
+ *      DCE-Trennung im Digest. Das interne DCE-Objekt (confidence, mode/Ampel,
+ *      direction, position_size, warnings) wird NICHT mehr gelesen und nicht mehr
+ *      in den oeffentlichen Digest geschrieben (bisher digest.market_regime.dce).
+ *      Stattdessen digest.market_regime.dce_public = Whitelist-Kopie des vom
+ *      Aggregator v5.46.0 erzeugten dce_public (schema, as_of, generated,
+ *      signal_breadth, cusum, var). Fehlt dce_public: null (kein Ersatzwert).
+ *      Keine Aenderung an Scores, Filtern, Ranglisten oder Prompts.
+ *      Test: scripts/test_dce_digest.js
+ *      Hinweis Versionsfolge: v1.27 (Spitzengruppe, Branch p1-2-tie-group) ist
+ *      reserviert und wird ggf. vorher eingespielt; dieser Stand wird dann
+ *      rebased, die Nummer bleibt v1.28.
  * v1.26 (29.09.2026, Claude + Axel, SUITE №72 Folgeaudit Teil 2, Befund G1):
  *      strategy_score: kein stiller Fallback auf den Composite-Score mehr.
  *      Befund (verifiziert, nicht vermutet — Grundgesetz #9):
@@ -1300,6 +1312,15 @@ function buildSnapshotId(now) {
   return `SNAP-${y}${m}${d}-${hh}${mm}${ss}Z`;
 }
 
+// v1.28 (ADR-1): Whitelist — nur diese Schluessel gelangen in den oeffentlichen Digest.
+const DCE_PUBLIC_KEYS = ['schema', 'as_of', 'generated', 'signal_breadth', 'cusum', 'var'];
+function pickDcePublic(src) {
+  if (!src || typeof src !== 'object' || Array.isArray(src)) return null;
+  const out = {};
+  for (const k of DCE_PUBLIC_KEYS) out[k] = src[k] ?? null;
+  return out;
+}
+
 async function buildDailyMarketSnapshot(masterData) {
   const now = new Date();
 
@@ -1351,18 +1372,9 @@ async function buildDailyMarketSnapshot(masterData) {
     snapshot._sector_rotation_error = sectorRotation.reason;
   }
 
-  // DCE (ERGÄNZT 09.09.2026, Zusatzfund) — markt-weiter Wert, bereits von
-  // market_aggregator.py berechnet (dce_layer.run_dce()), ohne
-  // Zusatzkosten übernommen.
-  if (masterData.dce) {
-    snapshot.dce = {
-      confidence: masterData.dce.confidence ?? null,
-      mode: masterData.dce.mode ?? null,
-      direction: masterData.dce.direction ?? null,
-    };
-  } else {
-    snapshot.dce = null;
-  }
+  // DCE-Marktdiagnostik (v1.28, 30.09.2026, ADR-1): NUR das vom Aggregator erzeugte
+  // Whitelist-Objekt dce_public. masterData.dce (intern) wird bewusst nicht gelesen.
+  snapshot.dce_public = pickDcePublic(masterData.dce_public);
 
   return snapshot;
 }
@@ -2935,7 +2947,7 @@ function buildPublicDigest(snapshot, strategyResults) {
       qqq_markov_regime: snapshot.qqq_markov_regime ? snapshot.qqq_markov_regime.regime : null,
       vix: snapshot.vix,
       sector_rotation_signal: snapshot.sector_rotation ? snapshot.sector_rotation.signal : null,
-      dce: snapshot.dce,
+      dce_public: snapshot.dce_public ?? null, // v1.28: ersetzt dce (ADR-1)
     },
     strategies: [],
     data_quality: {
@@ -3978,6 +3990,7 @@ module.exports = {
   buildSignals,
   buildDecisionSnapshot,
   resolveStrategyScore, // NEU v1.26
+  pickDcePublic, // NEU v1.28
   readPromptVersion,
   buildAiOutputId,
   buildAiOutput,
