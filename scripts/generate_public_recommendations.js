@@ -18,9 +18,21 @@
  * um den Diff auf den Trading-Day-Skip-Check zu beschränken.]
  * ====================================================================
  *
- * Skript-Version: v1.28
+ * Skript-Version: v1.29
  *
  * CHANGELOG (neueste zuerst):
+ * v1.29 (30.09.2026, Claude + Axel, SUITE №72 P1 #2 "Spitzengruppe"):
+ *      Gleichstand sichtbar machen statt kuenstlicher Rangpraezision (Entscheidung
+ *      29.09.2026). Voraussetzung: Aggregator >= v5.45.0 (hier v5.46.0) (masterData.leaderboardMeta,
+ *      Gleichstandsgroesse VOR der 20er-Kuerzung). Neu: resolveTieGroup(); Feld
+ *      `tie_group` {basis, in_top_group, size, score, rank_semantics, tie_check} im
+ *      Decision Snapshot und je Chance im Digest (nur Options-Strategien, sonst null);
+ *      Digest-Rationale der Spitzengruppen-Kandidaten nennt Gruppengroesse und Score
+ *      und stellt klar, dass die Reihenfolge die Listenposition ist. Meta fehlt ->
+ *      basis 'UNAVAILABLE' (kein Raten). `rank`, Scores, Filter und Auswahl (eligible/
+ *      secondary/reserve) sind UNVERAENDERT; kein Tie-Breaker (eigene Entscheidung).
+ *      Grenze: gemessen wird nur die Spitzengruppe (tie_check 'TOP_GROUP_ONLY').
+ *      Test: scripts/test_tie_group.js
  * v1.28 (30.09.2026, Claude + Axel, SUITE №72 / Runmap 2 Nacht A, ADR-1):
  *      DCE-Trennung im Digest. Das interne DCE-Objekt (confidence, mode/Ampel,
  *      direction, position_size, warnings) wird NICHT mehr gelesen und nicht mehr
@@ -30,9 +42,8 @@
  *      signal_breadth, cusum, var). Fehlt dce_public: null (kein Ersatzwert).
  *      Keine Aenderung an Scores, Filtern, Ranglisten oder Prompts.
  *      Test: scripts/test_dce_digest.js
- *      Hinweis Versionsfolge: v1.27 (Spitzengruppe, Branch p1-2-tie-group) ist
- *      reserviert und wird ggf. vorher eingespielt; dieser Stand wird dann
- *      rebased, die Nummer bleibt v1.28.
+ *      (Versionsfolge: v1.27 war fuer die Spitzengruppe reserviert; sie erscheint
+ *      nach v1.28 als v1.29.)
  * v1.26 (29.09.2026, Claude + Axel, SUITE №72 Folgeaudit Teil 2, Befund G1):
  *      strategy_score: kein stiller Fallback auf den Composite-Score mehr.
  *      Befund (verifiziert, nicht vermutet — Grundgesetz #9):
@@ -2797,7 +2808,37 @@ function resolveStrategyScore(strategy, candidate) {
   return { value: null, basis: 'UNAVAILABLE', field: scoreField };
 }
 
-function buildDecisionSnapshot(strategy, candidate, rank, snapshot) {
+// NEU (v1.27, 30.09.2026, SUITE №72 P1 #2 "Spitzengruppe"): Gleichstandsangabe je
+// Kandidat aus masterData.leaderboardMeta (Aggregator >= v5.45.0; gezaehlt VOR der
+// 20er-Kuerzung). Nur fuer Options-Strategien; Equity -> null (unveraendert).
+//   in_top_group=true : Kandidat hat den Spitzenscore UND die Spitzengruppe hat > 1 Titel;
+//                       rank_semantics 'LIST_POSITION' = Rang ist Listenposition, kein
+//                       Qualitaetsunterschied.
+//   in_top_group=false: eindeutiger Spitzenreiter oder Score unterhalb der Spitzengruppe;
+//                       rank_semantics 'RANK'. Gleichstaende UNTERHALB der Spitzengruppe
+//                       werden nicht gemessen (tie_check 'TOP_GROUP_ONLY').
+//   Meta oder Score fehlen -> basis 'UNAVAILABLE' (kein Raten, kein Default).
+// Aendert weder Score, Reihenfolge noch Filter.
+function resolveTieGroup(strategy, strategyScore, tieMeta) {
+  if (!OPTIONS_STRATEGIES.includes(strategy)) return null;
+  const valid = tieMeta && typeof tieMeta.topScore === 'number' && Number.isFinite(tieMeta.topScore)
+    && Number.isInteger(tieMeta.topTieCount) && tieMeta.topTieCount >= 1
+    && typeof strategyScore === 'number' && Number.isFinite(strategyScore);
+  if (!valid) {
+    return { basis: 'UNAVAILABLE', in_top_group: null, size: null, score: null, rank_semantics: null, tie_check: 'TOP_GROUP_ONLY' };
+  }
+  const inTop = strategyScore === tieMeta.topScore && tieMeta.topTieCount > 1;
+  return {
+    basis: 'LEADERBOARD_META',
+    in_top_group: inTop,
+    size: tieMeta.topTieCount,
+    score: tieMeta.topScore,
+    rank_semantics: inTop ? 'LIST_POSITION' : 'RANK',
+    tie_check: 'TOP_GROUP_ONLY',
+  };
+}
+
+function buildDecisionSnapshot(strategy, candidate, rank, snapshot, tieMeta) {
   candidate._snapshotRegime = snapshot.mcm_regime; // fürs meanrev-Signal, s.o.
   const resolvedScore = resolveStrategyScore(strategy, candidate);
   return {
@@ -2807,6 +2848,7 @@ function buildDecisionSnapshot(strategy, candidate, rank, snapshot) {
     rank,
     strategy_score: resolvedScore.value,
     strategy_score_basis: resolvedScore.basis,
+    tie_group: resolveTieGroup(strategy, resolvedScore.value, tieMeta), // v1.27; null bei Equity
     grade: candidate.grade ?? null,
     regime: snapshot.mcm_regime,
     signals: buildSignals(strategy, candidate),
@@ -2919,7 +2961,12 @@ const SIGNAL_LABELS = {
 
 function buildRationale(strategy, decisionSnapshot) {
   const strategyLabel = strategy.charAt(0).toUpperCase() + strategy.slice(1);
-  const summary = `Hohe Übereinstimmung mit den UIQ-Kriterien für ${strategyLabel}.`;
+  // v1.27 (P1 #2): Kandidaten der Spitzengruppe werden nicht als Rangfolge
+  // dargestellt, sondern als gleichrangig — die Reihenfolge ist die Listenposition.
+  const tg = decisionSnapshot.tie_group;
+  const summary = tg && tg.in_top_group
+    ? `Spitzengruppe (${tg.size} Titel, Score ${tg.score}): gleichrangig nach dem UIQ-Ranking-Score für ${strategyLabel}; die Reihenfolge entspricht der Listenposition, nicht einem Qualitätsunterschied.`
+    : `Hohe Übereinstimmung mit den UIQ-Kriterien für ${strategyLabel}.`;
   const signals = [];
   for (const [key, val] of Object.entries(decisionSnapshot.signals || {})) {
     const fmt = SIGNAL_LABELS[key];
@@ -2969,6 +3016,7 @@ function buildPublicDigest(snapshot, strategyResults) {
         sym,
         strategy_score: decisionSnapshot.strategy_score,
         strategy_score_basis: decisionSnapshot.strategy_score_basis, // v1.26: RANKING_SCORE | UNAVAILABLE
+        tie_group: decisionSnapshot.tie_group ?? null,               // v1.27: Spitzengruppe (nur Options)
         status: 'active',
         rationale: buildRationale(strategy, decisionSnapshot),
         ledger_id: buildLedgerId(snapshot.date, strategy, rank),
@@ -3299,6 +3347,8 @@ function buildStrategyRequest(strategy, masterData, snapshot, promptVersion, ear
     const { primary, eligible, secondary, reserve, exclusions, selectionMethod } = isOptions
       ? selectOptionsCandidates(strategy, masterData, earningsLookup)
       : selectCandidates(strategy, masterData, earningsLookup);
+    // v1.27: Spitzengruppen-Meta (nur Options; Aggregator >= v5.45.0)
+    const tieMeta = isOptions ? (masterData.leaderboardMeta?.[OPTIONS_LEADERBOARD_KEY[strategy]] ?? null) : null;
 
     if (secondary.length === 0) {
       return {
@@ -3352,6 +3402,7 @@ function buildStrategyRequest(strategy, masterData, snapshot, promptVersion, ear
     return {
       ok: true, strategy, isOptions,
       primary, eligible, secondary, reserve, exclusions, selectionMethod,
+      tieMeta,
       top3Syms, prompt, abschnitt7, abschnitt8,
     };
   } catch (err) {
@@ -3367,7 +3418,7 @@ function buildStrategyRequest(strategy, masterData, snapshot, promptVersion, ear
 // (synchron ODER aus einem Batch-Ergebnis rekonstruiert — beide haben
 // dieselbe Form { ok, text, usage, stop_reason, truncated }).
 async function finalizeStrategyResult(req, apiResult, snapshot, promptVersion) {
-  const { strategy, isOptions, primary, eligible, secondary, reserve, exclusions, selectionMethod, top3Syms } = req;
+  const { strategy, isOptions, primary, eligible, secondary, reserve, exclusions, selectionMethod, top3Syms, tieMeta } = req;
   try {
     // ── REPAIR-LOOP (v1.7, 20.09.2026, ATMNA-Explainability-Gap-Fix Teil 3) ──
     // Nur fuer die fuenf Options-Strategien relevant (KoPrompts.
@@ -3493,7 +3544,7 @@ async function finalizeStrategyResult(req, apiResult, snapshot, promptVersion) {
     }
 
     const decisionSnapshots = secondary.map((candidate, i) =>
-      buildDecisionSnapshot(strategy, candidate, i + 1, snapshot)
+      buildDecisionSnapshot(strategy, candidate, i + 1, snapshot, tieMeta)
     );
     const aiOutput = buildAiOutput(strategy, snapshot, apiResult, top3Syms, promptVersion, repairStatus);
     const ledgerEntries = decisionSnapshots.map((ds, i) =>
@@ -3991,6 +4042,7 @@ module.exports = {
   buildDecisionSnapshot,
   resolveStrategyScore, // NEU v1.26
   pickDcePublic, // NEU v1.28
+  resolveTieGroup,      // NEU v1.29
   readPromptVersion,
   buildAiOutputId,
   buildAiOutput,
