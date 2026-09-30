@@ -1,13 +1,14 @@
 # Investment-Suite — Dachdokument
 
 
-**Version:** 4.41
-**Stand:** 28.09.2026
+**Version:** 4.42
+**Stand:** 29.09.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
 **Fortschreibung:** Claude, versioniert, analog den Modul-Strategiedokumenten.
 
-> **⛔ AKTIVER CODEFREEZE UIQ (seit 26.09.2026, Axel-Entscheidung) — bis Abschluss Audit №72 A1.**
+> **✅ CODEFREEZE UIQ AUFGEHOBEN (Axel, 28.09.2026; bestätigt 29.09.2026).** Der folgende Text ist der historische Wortlaut (Freeze 26.09.–28.09.2026);
+> ~~**AKTIVER CODEFREEZE UIQ (seit 26.09.2026, Axel-Entscheidung) — bis Abschluss Audit №72 A1.**~~
 > Eingefroren: jede verhaltensändernde Änderung am **Scoring-, Prompt- und Output-Pfad** (Strategie-Scores im Aggregator, `ko-prompts.js`, Public-Ausgaben in `index.html`, KI-Worker, Digest-Generierung) — u. a. STRATEGIEPRINZIP-Fix, B1, B2, B2b aus `UEBERGABE-2026-09-26.md` — sowie der Baubeginn von №69 und №71.
 > Ausgenommen (Axel, 26.09.2026): reine Infrastruktur ohne Bezug zur Scoring-Frage — FIN-Shard/Merge-Entkopplung, Runner-Pin `ubuntu-24.04` (Frist vor 19.10.2026), Watchdog-/cron-trigger-Zeitsteuerung. Dafür gelten weiter „eine Produktionsänderung pro Nacht“ und der separate Freeze bis nach dem Telefonat am 28.09.
 > Erlaubt: rein lesende Audit-/Diagnose-Skripte ohne Wirkung auf Produktivpfade (Grundgesetz #9), Dokumentation, Recherche; kritische Produktionsbugs nur als dokumentierte Ausnahme.
@@ -2373,13 +2374,93 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     öffentlich dokumentierte Methodik, privater Code, Prompts ausschließlich
     serverseitig.
 
+    **Entscheidung 29.09.2026 (Axel):** Die öffentliche Git-Historie, in der
+    `ki_eic` in 47 Snapshots enthalten ist, **bleibt unverändert** (keine
+    History-Umschreibung). Offen bleibt die Sichtbarkeitsfrage insgesamt (s. o.).
+
     *Verwandt mit: BACKLOG v2.0 zentrale Datenabrufe/Key-Leaks, №72
     (Anlass), BaFin-Voranfrage.*
+
+74. **Historische `strategy_score`-Semantik der Optionsstrategien (neu 29.09.2026 — Nummer von Axel bestätigt)**
+
+    **Status:** ENTWURF · nur Dokumentation und Leseregel, **nichts eingespielt**, Rollout des Fixes separat (s. Abhängigkeiten)
+    **Anlass:** №72 Folgeaudit Teil 2, Befund G1: Bei den fünf Optionsstrategien war
+    `strategy_score` in Decision-Snapshot/Ledger, Public Digest und
+    Kandidaten-Pool-Archiv der **Composite-Score**, nicht der Ranking-Score
+    (Options-Leaderboard-Zeilen trugen `sCsp`/`sAtmna`/`sCc` nicht; der Generator
+    fiel still auf `candidate.score` zurück).
+
+    **Entscheidung (Entwurf):**
+    - **Zeitraum:** 16.09.2026 bis einschließlich letztem Lauf vor dem P0-Rollout.
+      Beginn = Einführung der Options-Strategien im Generator (v1.4); der erste
+      tatsächliche Options-Archiveintrag ist vor dem Einspielen gegen die
+      Archivschlüssel zu prüfen (nicht verifiziert).
+    - **CSP/Wheel, Weekly, Collar, CC:** `LEGACY_COMPOSITE`.
+    - **ATMNA:** ebenfalls `LEGACY_COMPOSITE`, mit dokumentierter Sonderregel: bis
+      Aggregator **5.42.3** (Leaderboard `options_atmna` seit 08.09.2026, v5.41.0)
+      sortierte das Leaderboard noch über `sCsp`; ab **5.43.0** existiert der
+      eigenständige `sAtmna`-Rankingpfad (Backlog #64). Eine Rekonstruktion darf
+      daher nicht dieselbe Funktion rückwirkend auf alle Snapshots anwenden.
+    - **Ab Rollout:** `strategy_score_basis = RANKING_SCORE` (bzw. `UNAVAILABLE`
+      mit `strategy_score = null`, kein Ersatzwert).
+    - **Keine Änderung bestehender Archive/Digests.** Kein Überschreiben, keine
+      nachträgliche Feldergänzung in Altbeständen.
+    - **Manifest als historische Leseregel** (`UIQ-Suite/docs/strategy_score_basis_manifest.json`,
+      Ablageort von Axel bestätigt 29.09.2026): Trägt ein Eintrag `strategy_score_basis`, gilt es
+      unverändert; fehlt es, ist die Manifest-Regel anzuwenden (Strategie +
+      Eintragsdatum). Ein fehlendes Feld im Altbestand heißt **nicht**, dass der
+      Datensatz verändert wird. Kein Treffer ⇒ `UNCLASSIFIED`.
+    - **`RECONSTRUCTED_RANKING`:** technisch möglich, **nicht beschlossen**;
+      reservierte Basis für einen späteren, getrennten Datensatz, ersetzt nie
+      Ledger-Werte.
+    - **Kein Options-Track-Record, keine Renditeinterpretation:** Es gibt keine
+      historischen Optionsketten; auch ein rekonstruierter Score wäre ein Score,
+      keine Rendite.
+
+    **Drei getrennte Zeitreihen (Definition):**
+
+    | Basis | Bedeutung |
+    |---|---|
+    | `LEGACY_COMPOSITE` | historisch gespeicherter, aber falsch benannter Composite-Score |
+    | `RANKING_SCORE` | ab Fix tatsächlich verwendeter Ranking-Score |
+    | `RECONSTRUCTED_RANKING` | später eventuell aus alten Snapshots rekonstruiert (getrennt) |
+
+    **Ausdrücklich nicht Gegenstand:** Der P0-Fix bedeutet **nicht**, dass das
+    CSP-/ATMNA-Ranking korrekt ist. Offen bleiben Score-Sättigung (Deckel 100),
+    Gleichstandsgruppen, fehlender Tie-Breaker, EMA200-Rolle bei ATM/NA,
+    Earnings-Datenlücke, ETF-/Optionsliquidität (P1/P2, eigene Entscheidungen).
+
+    **Abhängigkeiten:**
+    - **Codefreeze:** aufgehoben (Axel, 28.09.2026; am 29.09.2026 bestätigt).
+      Der Rollout des Fixes (`market_aggregator.py` v5.44.1,
+      `generate_public_recommendations.js` v1.26) ist damit nicht durch den Freeze
+      blockiert, erfolgt aber erst **nach der Entscheidungsrunde** (Axel).
+    - **Rollout-Reihenfolge:** Aggregator → neuer Snapshot (T5 grün) → Generator.
+    - Abgrenzung zu №73: №73 behandelt Repo-Sichtbarkeit und Git-Historie (S5/S6),
+      nicht die Score-Semantik.
+
+    **Technische Befundnotiz (Nachweis, nicht Teil der Datenlogik):**
+    - Stand 29.09.2026, 26 Snapshots (16.–29.09.): CSP-Top-20 aus
+      `tickers[].scoreCsp` und CC-Top-20 aus `tickers[].scoreCc` stimmen in 26 von
+      26 Fällen mit den Leaderboards überein; ATMNA-Top-20 mit der heutigen
+      `score_options_atmna()` in 25 von 26 (Ausnahme: `2026-09-16_00`, Aggregator
+      5.42.3, damals Ranking über `sCsp`; vor 5.43.0 stimmt `options_atmna` in den
+      geprüften Snapshots ab 08.09. mit `top20(scoreCsp)` überein).
+    - Verglichen wurden Top-20-Listen (Symbole, Reihenfolge), nicht jeder
+      Einzelwert; die Leaderboards trugen keine Scorewerte.
+    - Equity-Leaderboards: in den 26 Snapshots trugen alle Zeilen ihr
+      Ranking-Feld (0 fehlend/`null`); für frühere Zeiträume nicht geprüft.
+    - Die Rekonstruktionsprüfung belegt Machbarkeit, ist aber für die
+      Datenintegrität (Kennzeichnung per Manifest) nicht erforderlich.
+
+    *Verwandt mit: №72 (Folgeaudit Teil 2, Befund G1), №73 (Abgrenzung),
+    TRACK_RECORD_SPEC, Grundgesetz #9 (Debug-Protokoll).*
 
 ## Fortschreibungshistorie
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.42 | 29.09.2026 | №74 Historische `strategy_score`-Semantik der Optionsstrategien (nur Doku, ENTWURF, Freeze aufgehoben): Altbestand 16.09.–Rollout als `LEGACY_COMPOSITE`, ATMNA-Sonderregel (Ranking bis Aggregator 5.42.3 über `sCsp`, ab 5.43.0 `sAtmna`), ab Rollout `RANKING_SCORE`/`UNAVAILABLE`; Manifest als historische Leseregel, keine Änderung an Archiven/Digests; `RECONSTRUCTED_RANKING` technisch möglich, nicht beschlossen; kein Options-Track-Record. Codefreeze aufgehoben (Banner angepasst); Nummer №74 bestätigt; №73 Entscheidung: Git-Historie bleibt unverändert. |
 | 4.41 | 28.09.2026 | №71 Event & Surprise Gate (nur Doku, Backlog, Freeze unberührt): Erweiterungskandidat **SigmaSpike** (Grimes) als deterministischer Detektor für unangekündigte Kursbewegungen ergänzt — `Spike = ΔClose / (sd20 × Close)_{t−1}`, neuer event_type `PRICE_SURPRISE` (UNEXPLAINED/EXPLAINED) + Feld `spike_sigma`; Schwelle empirisch aus dem Shadow-Ledger kalibrieren (Startwert ±3σ), nicht normalverteilt interpretieren; Druckfehler im Buch („ד statt „÷“) vermerkt; Übernahme bei Sprint-Start entscheiden. |
 | 4.40 | 27.09.2026 | Regime-Roadmap Phase 3 abgeschlossen (nur Doku): H4 Makro-Achse nicht bestätigt (Claims-Signal schützt stark, DD +8,3 Pp, aber Calmar 0,15 vs. 0,43; Zinskurve ohne Nutzen); Phase-3-Synthese – in allen vier Filterfamilien Trade-off Krisenschutz vs. Investitionsquote, keiner mit mindestens gleichwertigem Gesamtprofil; Informationsmehrwert ≠ wirtschaftlicher Mehrwert. Konsequenz: Baseline unverändert, kein zusätzlicher Ausstiegsfilter; Details `docs/REGIME-BACKTEST-ROADMAP-2026-09-27.md`. |
 | 4.39 | 27.09.2026 | №72 Zusatzbefund PCR quantifiziert (nur Doku, Freeze): H2-Datenaudit 2009–2019 – ρ(echte Total-PCR, UIQ-Proxy) 0,39, Zustandsübereinstimmung mit produktiven Overlay-Schwellen κ 0,08; Skalenproblem (Proxy-„Gier“ 51 % vs. echte PCR 6,5 % der Tage). Proxy als eigenständiger „VIX-Stress-Proxy“ zu führen, nicht als PCR; Overlay-Schwellen separat prüfen. Regime-Roadmap: H1 und H3 nicht bestätigt, H2 Informationshypothese bestätigt / Wirtschaftshypothese nicht getestet. |

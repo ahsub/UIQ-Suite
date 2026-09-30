@@ -1,0 +1,80 @@
+{
+  "manifest_id": "strategy_score_basis",
+  "manifest_version": "1.0.0",
+  "status": "ENTWURF — nicht eingespielt, nicht beschlossen",
+  "created": "2026-09-29",
+  "purpose": "Historische Leseregel für das Feld strategy_score der fünf Optionsstrategien. Archive, Ledger-Einträge und Digests werden NIE verändert; die Semantik alter Einträge ergibt sich deterministisch aus diesem Manifest.",
+  "field": "strategy_score",
+  "basis_field": "strategy_score_basis",
+  "archives_immutable": true,
+
+  "basis_values": {
+    "RANKING_SCORE": "Wert ist der tatsächlich zur Rangbildung verwendete Score der Strategie (sCsp, sAtmna, sCc bzw. Equity-Pendant). Gültig für Einträge ab Generator v1.26, die das Feld strategy_score_basis selbst tragen.",
+    "UNAVAILABLE": "Ranking-Score lag nicht vor; strategy_score ist null. Es wird kein Ersatzwert eingesetzt.",
+    "LEGACY_COMPOSITE": "Historisch gespeicherter Wert ist der Composite-Score (score) der Leaderboard-Zeile, nicht der Ranking-Score. Der Wert wurde tatsächlich so gespeichert, ist aber mit RANKING_SCORE nicht vergleichbar.",
+    "RECONSTRUCTED_RANKING": "RESERVIERT. Ein später möglicher, getrennter Datensatz mit aus alten Snapshots rekonstruiertem Ranking-Score. Nicht beschlossen; es existiert kein Eintrag dieser Basis; ersetzt niemals Ledger-Werte.",
+    "UNCLASSIFIED": "Vom Manifest nicht abgedeckt (z. B. Equity-Strategien, Einträge vor dem ersten Zeitraum). Es wird keine Basis angenommen."
+  },
+
+  "reading_rule": [
+    "1. Trägt der Eintrag strategy_score_basis, gilt dieser Wert unverändert; das Manifest wird nicht angewendet.",
+    "2. Fehlt das Feld: Strategie und Eintragsdatum (Feld date) gegen ranges prüfen; der erste Treffer bestimmt die Basis. Von-Datum inklusive.",
+    "3. Kein Treffer: Basis = UNCLASSIFIED. Es wird nichts angenommen.",
+    "4. Ein fehlendes strategy_score_basis in einem Altbestand bedeutet ausdrücklich NICHT, dass der Datensatz nachträglich verändert wird, sondern dass Regel 2 anzuwenden ist."
+  ],
+
+  "ranges": [
+    {
+      "id": "OPT-LEGACY-COMPOSITE-1",
+      "strategies": ["csp_wheel", "weekly_income", "collar", "cc", "atmna"],
+      "from": "2026-09-16",
+      "to": null,
+      "to_rule": "Offen bis zum Rollout des Fixes. Das Ende ergibt sich implizit: der erste Eintrag mit strategy_score_basis (Generator >= v1.26) fällt unter Regel 1. Nach dem Rollout ist hier das letzte Datum ohne Feld nur zur Dokumentation einzutragen.",
+      "from_rule": "Datum der Einführung der Options-Strategien im Generator (v1.4, 16.09.2026, laut Changelog). Der erste tatsächliche Options-Archiveintrag ist NICHT verifiziert und vor dem Einspielen gegen die Archivschlüssel archive/recommendations/<Datum>/<Strategie>.json zu prüfen.",
+      "basis": "LEGACY_COMPOSITE",
+      "applies_to": [
+        "strategy_score in Decision-Snapshot und Ledger-Eintrag",
+        "strategy_score je Chance im Public Digest",
+        "score im Kandidaten-Pool-Archiv (leanCandidateEntry)"
+      ],
+      "cause": "Die Options-Leaderboard-Zeilen trugen das Sortierfeld (sCsp/sAtmna/sCc) nicht; der Generator fiel auf den Composite-Score zurück (Befund G1, SUITE №72 Folgeaudit Teil 2)."
+    }
+  ],
+
+  "strategy_notes": {
+    "atmna": {
+      "note": "Sonderregel: Die ATMNA-Historie hat zwei Ranking-Pfade. Für die Basis des gespeicherten strategy_score gilt trotzdem LEGACY_COMPOSITE (siehe ranges); die Unterscheidung betrifft die Frage, welcher Score das Leaderboard tatsächlich sortiert hat, und ist Voraussetzung jeder späteren Rekonstruktion.",
+      "ranking_score_history": [
+        {
+          "aggregator_version": "5.41.0 bis 5.42.3",
+          "first_seen_in_snapshots": "2026-09-08",
+          "leaderboard": "options_atmna",
+          "ranking_field": "sCsp",
+          "description": "Das Leaderboard options_atmna war eine Kopie der CSP-Kandidatenmenge und wurde über sCsp sortiert (top20('sCsp'))."
+        },
+        {
+          "aggregator_version": ">= 5.43.0",
+          "first_seen_in_snapshots": "2026-09-16 (Aggregator 5.43.0)",
+          "leaderboard": "options_atmna",
+          "ranking_field": "sAtmna",
+          "description": "Eigenständiger Score score_options_atmna() (Backlog #64)."
+        }
+      ],
+      "consequence": "Eine Rekonstruktion der ATMNA-Historie darf nicht dieselbe Funktion rückwirkend auf alle Snapshots anwenden. Bis 5.42.3 ist sCsp der Ranking-Score; ab 5.43.0 sAtmna in der Fassung der jeweiligen Aggregator-Version."
+    }
+  },
+
+  "reconstruction": {
+    "status": "TECHNISCH_MÖGLICH_NICHT_BESCHLOSSEN",
+    "reserved_basis": "RECONSTRUCTED_RANKING",
+    "constraints": [
+      "Getrennter Datensatz; ersetzt niemals ursprüngliche Ledger-/Digest-Werte.",
+      "Keine Performance-Interpretation; kein Options-Track-Record (keine historischen Optionsketten vorhanden)."
+    ]
+  },
+
+  "out_of_scope": [
+    "Equity-Strategien (ko, momentum, breakout, vcp, swing, meanrev, breakdown, fading_short, dividend, value): von diesem Manifest nicht klassifiziert (Ergebnis: UNCLASSIFIED für Einträge ohne strategy_score_basis).",
+    "Bewertung der Rangfolge, Sättigung, Gleichstandsgruppen, EMA200-Regel, Earnings-Gate, ETF-Behandlung."
+  ]
+}
