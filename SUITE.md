@@ -1,8 +1,8 @@
 # Investment-Suite — Dachdokument
 
 
-**Version:** 4.42
-**Stand:** 29.09.2026
+**Version:** 4.43
+**Stand:** 30.09.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
 **Fortschreibung:** Claude, versioniert, analog den Modul-Strategiedokumenten.
@@ -2456,10 +2456,74 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     *Verwandt mit: №72 (Folgeaudit Teil 2, Befund G1), №73 (Abgrenzung),
     TRACK_RECORD_SPEC, Grundgesetz #9 (Debug-Protokoll).*
 
+75. **Alpha-Discovery-Framework — Forschungsauftrag (neu 30.09.2026)**
+
+    **Status:** ENTWURF · nur Dokumentation, **Forschungs-Backlog, kein Bau** · Einspielung erst nach Review und Freigabe durch Axel
+    **Anlass:** Externe Brainstorming-Sammlung zu Marketstate und Alpha-Quellen (29.09.2026),
+    vom Reviewer als Forschungs-Backlog eingeordnet, nicht als Roadmap.
+
+    **Leitregel (methodische Schutzplanke, wörtlich):**
+    **Keine Zahl aus einem externen Papier wird zu einer UIQ-Schwelle, Gewichtung oder
+    Score-Komponente ohne eigene Präregistrierung und Validierung.**
+
+    **Operationalisierung der Leitregel (gilt für №75 und alle daraus folgenden Arbeiten):**
+    - **Geltungsbereich:** externe Literatur, Blogs, Modell-/KI-Vorschläge und
+      Brainstorming-Sammlungen sowie Parameter, Ergebnisse und Designentscheidungen
+      aus H6 oder anderen Regime-Tests. Aus keiner dieser Quellen darf ein
+      **Schwellenwert, eine Gewichtung, eine Feature-Auswahl, eine Score-Komponente
+      oder eine Prompt-Formulierung** direkt in ein UIQ-Produktivfeld übernommen werden.
+    - **Zulässig:** Quellen als Hypothesengeber. Eine Hypothese wird zu einer
+      präregistrierten Testfamilie (Hypothese, Messgröße, Variantenzahl, Testfenster,
+      Korrekturverfahren, Abbruchkriterium) und erst nach Validierung und
+      **eigener, dokumentierter Entscheidung von Axel** zur UIQ-Regel.
+    - **H6-Abgrenzung:** H6-Methodik (Isolation, Einfrieren) darf als Muster dienen;
+      H6-Parameter und -Ergebnisse dürfen nicht als Vorgabe, Startwert oder
+      Auswahlkriterium für №75 verwendet werden, solange H6 nicht abgeschlossen ist.
+    - **Prüfstelle:** Jede Änderung mit Bezug zu №75 nennt im Commit/Review die
+      Präregistrierung und die Entscheidung, auf die sie sich stützt. Fehlt beides,
+      wird sie nicht eingespielt.
+    - **Kennzeichnung:** Ein Wert ohne eigene Validierung trägt im Bestand die
+      Herkunft `UNVERIFIED` (bzw. `INHERITED`/`CITED`, falls Quelle belegt), nie `DECISION`.
+
+    **Grundgedanke:** Marketstate beantwortet „In welcher Umgebung befinden wir uns?“;
+    ein Alpha-Layer würde fragen, welche beobachtbare Eigenschaft nach Kontrolle für
+    Markt und Marketstate zusätzliche Rendite-/Risikoinformation liefert. Kein Composite
+    als Ausgangspunkt.
+
+    **Scope (Reihenfolge verbindlich):**
+    1. **Bestandsaufnahme vor Neuentwicklung („Alpha Audit of Existing Assumptions“):**
+       alle produktiven Equity- und Optionskriterien mit den bestehenden Herkunftstags
+       `CITED / INHERITED / DECISION / UNVERIFIED` erfassen (keine neue Taxonomie).
+       Grundlage sind die Inventur aus №72 (Optionen) und der Equity-Audit (folgt).
+    2. **H6 als methodisches Vorbild:** Isolation, Einfrieren und Verzicht auf
+       nachträgliche Erweiterung. Das Framework wird nicht in den laufenden Test
+       hineingemischt. Zu Inhalt und Stand von H6 trifft dieser Eintrag keine Aussage.
+    3. **Multiple-Testing-Regel:** Testfamilien und Variantenzahl werden vor der
+       Auswertung festgelegt; DSR bzw. eine geeignete Korrektur ist Teil des Designs,
+       nicht Nachbesserung nach einem interessanten Ergebnis.
+    4. **Datenverfügbarkeit explizit:** Equity-Alpha und Options-Alpha getrennt.
+       Keine Options-Alpha-Aussage, solange echte Optionsketten-Daten fehlen
+       (`ki_eic` ist Modellschätzung, siehe №72).
+    5. **Alpha Map ausschließlich hypothetisch:** keine Pfeile, Farben, Scores oder
+       Prompt-Semantik im Produkt, solange kein OOS-Nachweis vorliegt.
+    6. **Kein Composite im ersten Schritt:** ein möglicher „Alpha Evidence Score“ ist
+       Ergebnis der Forschung, nicht ihr Ausgangspunkt.
+
+    **Ausdrücklich nicht Teil dieses Eintrags:** Feldnamen, Testfamilien und
+    Schwellen (werden erst nach Sichtung der Regime-Test-Dokumente festgelegt);
+    Änderungen an `regime-test`; Gewichte, Schwellen, Feature-Auswahl oder Score-Komponenten;
+    Options-Backtest als Strategie-Rendite.
+
+    **Abhängigkeiten:** №72 (Equity-Audit vor Punkt 1 abschließen), №74 (Datenbasis
+    der historischen Scores), Abschluss von H6.
+
+    *Verwandt mit: №72, №74, Regime-Forschung (separates Repo).*
+
 ## Fortschreibungshistorie
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.43 | 30.09.2026 | №75 Alpha-Discovery-Framework als Forschungs-Backlog (nur Doku, ENTWURF): Leitregel „keine externe Zahl ohne eigene Präregistrierung und Validierung“; operationalisierte Leitregel (Geltungsbereich inkl. Feature-Auswahl und H6-Abgrenzung, Prüfstelle); Scope 1–6 (Bestandsaufnahme mit CITED/INHERITED/DECISION/UNVERIFIED, H6 als Vorbild, Multiple-Testing-Regel, Equity/Options getrennt, Alpha Map hypothetisch, kein Composite zuerst); kein Bau. |
 | 4.42 | 29.09.2026 | №74 Historische `strategy_score`-Semantik der Optionsstrategien (nur Doku, ENTWURF, Freeze aufgehoben): Altbestand 16.09.–Rollout als `LEGACY_COMPOSITE`, ATMNA-Sonderregel (Ranking bis Aggregator 5.42.3 über `sCsp`, ab 5.43.0 `sAtmna`), ab Rollout `RANKING_SCORE`/`UNAVAILABLE`; Manifest als historische Leseregel, keine Änderung an Archiven/Digests; `RECONSTRUCTED_RANKING` technisch möglich, nicht beschlossen; kein Options-Track-Record. Codefreeze aufgehoben (Banner angepasst); Nummer №74 bestätigt; №73 Entscheidung: Git-Historie bleibt unverändert. |
 | 4.41 | 28.09.2026 | №71 Event & Surprise Gate (nur Doku, Backlog, Freeze unberührt): Erweiterungskandidat **SigmaSpike** (Grimes) als deterministischer Detektor für unangekündigte Kursbewegungen ergänzt — `Spike = ΔClose / (sd20 × Close)_{t−1}`, neuer event_type `PRICE_SURPRISE` (UNEXPLAINED/EXPLAINED) + Feld `spike_sigma`; Schwelle empirisch aus dem Shadow-Ledger kalibrieren (Startwert ±3σ), nicht normalverteilt interpretieren; Druckfehler im Buch („ד statt „÷“) vermerkt; Übernahme bei Sprint-Start entscheiden. |
 | 4.40 | 27.09.2026 | Regime-Roadmap Phase 3 abgeschlossen (nur Doku): H4 Makro-Achse nicht bestätigt (Claims-Signal schützt stark, DD +8,3 Pp, aber Calmar 0,15 vs. 0,43; Zinskurve ohne Nutzen); Phase-3-Synthese – in allen vier Filterfamilien Trade-off Krisenschutz vs. Investitionsquote, keiner mit mindestens gleichwertigem Gesamtprofil; Informationsmehrwert ≠ wirtschaftlicher Mehrwert. Konsequenz: Baseline unverändert, kein zusätzlicher Ausstiegsfilter; Details `docs/REGIME-BACKTEST-ROADMAP-2026-09-27.md`. |
