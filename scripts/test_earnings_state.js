@@ -70,6 +70,16 @@ t('T4 Gate/Auswahl unveraendert: mit vs. ohne earningsStatus identisch (Lookup, 
   assert.deepStrictEqual(x.exclusions, y.exclusions);
   assert.ok(x.exclusions.length > 0, 'Gate muss weiterhin ausschliessen (DTE<7)');
 });
+t('T7 Ledger: earnings_state wird mit dem Decision Snapshot unveraenderlich ins Ledger geschrieben', () => {
+  const cand = { sym: 'MCO', sCsp: 100, score: 65, grade: 'A' };
+  const ds = g.buildDecisionSnapshot('csp_wheel', cand, 1, snap, null, mk([{ sym: 'MCO', earningsStatus: 'STALE_PAST', earningsDTE: -3 }]));
+  const le = g.buildLedgerEntry('csp_wheel', 1, ds, snap, 'A');
+  assert.strictEqual(le.immutable, true);
+  // Ledger traegt beides: oeffentlichen Zustand UND den internen Grund (source_status)
+  assert.deepStrictEqual(le.decision.earnings_state, { state: 'UNKNOWN', dte: null, window_days: 14, source_status: 'STALE_PAST' });
+  // JSON-Rundreise (so landet es im Archiv): Feld bleibt erhalten
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(le)).decision.earnings_state, le.decision.earnings_state);
+});
 if (process.env.UIQ_SNAPSHOT) {
   const raw = fs.readFileSync(process.env.UIQ_SNAPSHOT);
   const d = JSON.parse((process.env.UIQ_SNAPSHOT.endsWith('.gz') ? zlib.gunzipSync(raw) : raw).toString('utf8'));
