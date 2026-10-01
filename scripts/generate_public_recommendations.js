@@ -18,18 +18,9 @@
  * um den Diff auf den Trading-Day-Skip-Check zu beschränken.]
  * ====================================================================
  *
- * Skript-Version: v1.30
+ * Skript-Version: v1.29
  *
  * CHANGELOG (neueste zuerst):
- * v1.30 (01.10.2026, Claude + Axel, SUITE №72 P1 #3 Schritt 1 "Earnings: UNKNOWN != NONE_IN_WINDOW"):
- *      Voraussetzung: Aggregator >= v5.47.0 (Feld earningsStatus je Ticker). Neu, rein ADDITIV:
- *      Feld `earnings_state` {state, dte, window_days, source_status} im Decision Snapshot und je
- *      Chance im Digest. state: BLOCKED (DTE 1-7) | IN_WINDOW_SOFT (8-14) | NONE_IN_WINDOW (Termin
- *      bekannt, DTE > 14) | UNKNOWN (kein belastbarer Termin: nicht abgefragt, kein Datum, Abfrage-
- *      fehler, Datum vergangen/heute, oder Statusfeld fehlt). UNKNOWN und NONE_IN_WINDOW fallen
- *      nie zusammen (Axel-Entscheidung 01.10.). UNVERAENDERT: buildEarningsLookup(),
- *      applyEligibilityGate() (Generator-Gate, 68 Ausschluesse -> eigener Eingriff), Scores,
- *      Rang, Auswahl, Rationale-Text, Frontend. Test: scripts/test_earnings_state.js
  * v1.29 (30.09.2026, Claude + Axel, SUITE №72 P1 #2 "Spitzengruppe"):
  *      Gleichstand sichtbar machen statt kuenstlicher Rangpraezision (Entscheidung
  *      29.09.2026). Voraussetzung: Aggregator >= v5.45.0 (hier v5.46.0) (masterData.leaderboardMeta,
@@ -2847,35 +2838,7 @@ function resolveTieGroup(strategy, strategyScore, tieMeta) {
   };
 }
 
-// NEU (v1.30, 01.10.2026, SUITE №72 P1 #3 Schritt 1): oeffentlicher Earnings-Zustand je Kandidat.
-// Rein additiv; liest NUR das vom Aggregator (>= v5.47.0) gesetzte Feld earningsStatus + earningsDTE.
-// Fenster 14 Tage = wirksames Fenster der Aggregator-Options-Leaderboards (_earnings_gate). Kein neuer
-// Schwellenwert: 7 und 14 sind die bestehenden Grenzen des Aggregator-Gates.
-//   UNKNOWN        = kein belastbarer Termin (Status != KNOWN_FUTURE oder Statusfeld fehlt)
-//   NONE_IN_WINDOW = belastbarer Termin vorhanden, aber ausserhalb des Fensters (DTE > 14)
-const EARNINGS_WINDOW_DAYS = 14;
-const EARNINGS_HARD_DAYS = 7;
-function buildEarningsInfo(masterData) {
-  const map = new Map();
-  for (const t of (masterData && masterData.tickers) || []) {
-    if (t && t.sym) map.set(t.sym, { status: t.earningsStatus ?? null, dte: t.earningsDTE ?? null });
-  }
-  return map;
-}
-function resolveEarningsState(sym, earningsInfo) {
-  const info = earningsInfo && earningsInfo.get ? earningsInfo.get(sym) : null;
-  const status = info ? info.status : null;
-  const dte = info ? info.dte : null;
-  const base = { dte: null, window_days: EARNINGS_WINDOW_DAYS, source_status: status ?? 'NO_STATUS_FIELD' };
-  if (status !== 'KNOWN_FUTURE' || !Number.isInteger(dte) || dte < 1) {
-    return { state: 'UNKNOWN', ...base };
-  }
-  const state = dte <= EARNINGS_HARD_DAYS ? 'BLOCKED'
-    : dte <= EARNINGS_WINDOW_DAYS ? 'IN_WINDOW_SOFT' : 'NONE_IN_WINDOW';
-  return { state, ...base, dte };
-}
-
-function buildDecisionSnapshot(strategy, candidate, rank, snapshot, tieMeta, earningsInfo) {
+function buildDecisionSnapshot(strategy, candidate, rank, snapshot, tieMeta) {
   candidate._snapshotRegime = snapshot.mcm_regime; // fürs meanrev-Signal, s.o.
   const resolvedScore = resolveStrategyScore(strategy, candidate);
   return {
@@ -2886,7 +2849,6 @@ function buildDecisionSnapshot(strategy, candidate, rank, snapshot, tieMeta, ear
     strategy_score: resolvedScore.value,
     strategy_score_basis: resolvedScore.basis,
     tie_group: resolveTieGroup(strategy, resolvedScore.value, tieMeta), // v1.27; null bei Equity
-    earnings_state: resolveEarningsState(candidate.sym, earningsInfo),   // v1.30
     grade: candidate.grade ?? null,
     regime: snapshot.mcm_regime,
     signals: buildSignals(strategy, candidate),
@@ -3055,7 +3017,6 @@ function buildPublicDigest(snapshot, strategyResults) {
         strategy_score: decisionSnapshot.strategy_score,
         strategy_score_basis: decisionSnapshot.strategy_score_basis, // v1.26: RANKING_SCORE | UNAVAILABLE
         tie_group: decisionSnapshot.tie_group ?? null,               // v1.27: Spitzengruppe (nur Options)
-        earnings_state: decisionSnapshot.earnings_state ?? null,     // v1.30: UNKNOWN != NONE_IN_WINDOW
         status: 'active',
         rationale: buildRationale(strategy, decisionSnapshot),
         ledger_id: buildLedgerId(snapshot.date, strategy, rank),
@@ -3387,7 +3348,6 @@ function buildStrategyRequest(strategy, masterData, snapshot, promptVersion, ear
       ? selectOptionsCandidates(strategy, masterData, earningsLookup)
       : selectCandidates(strategy, masterData, earningsLookup);
     // v1.27: Spitzengruppen-Meta (nur Options; Aggregator >= v5.45.0)
-    const earningsInfo = buildEarningsInfo(masterData); // v1.30
     const tieMeta = isOptions ? (masterData.leaderboardMeta?.[OPTIONS_LEADERBOARD_KEY[strategy]] ?? null) : null;
 
     if (secondary.length === 0) {
@@ -3442,7 +3402,7 @@ function buildStrategyRequest(strategy, masterData, snapshot, promptVersion, ear
     return {
       ok: true, strategy, isOptions,
       primary, eligible, secondary, reserve, exclusions, selectionMethod,
-      tieMeta, earningsInfo,
+      tieMeta,
       top3Syms, prompt, abschnitt7, abschnitt8,
     };
   } catch (err) {
@@ -3458,7 +3418,7 @@ function buildStrategyRequest(strategy, masterData, snapshot, promptVersion, ear
 // (synchron ODER aus einem Batch-Ergebnis rekonstruiert — beide haben
 // dieselbe Form { ok, text, usage, stop_reason, truncated }).
 async function finalizeStrategyResult(req, apiResult, snapshot, promptVersion) {
-  const { strategy, isOptions, primary, eligible, secondary, reserve, exclusions, selectionMethod, top3Syms, tieMeta, earningsInfo } = req;
+  const { strategy, isOptions, primary, eligible, secondary, reserve, exclusions, selectionMethod, top3Syms, tieMeta } = req;
   try {
     // ── REPAIR-LOOP (v1.7, 20.09.2026, ATMNA-Explainability-Gap-Fix Teil 3) ──
     // Nur fuer die fuenf Options-Strategien relevant (KoPrompts.
@@ -3584,7 +3544,7 @@ async function finalizeStrategyResult(req, apiResult, snapshot, promptVersion) {
     }
 
     const decisionSnapshots = secondary.map((candidate, i) =>
-      buildDecisionSnapshot(strategy, candidate, i + 1, snapshot, tieMeta, earningsInfo)
+      buildDecisionSnapshot(strategy, candidate, i + 1, snapshot, tieMeta)
     );
     const aiOutput = buildAiOutput(strategy, snapshot, apiResult, top3Syms, promptVersion, repairStatus);
     const ledgerEntries = decisionSnapshots.map((ds, i) =>
@@ -4083,8 +4043,6 @@ module.exports = {
   resolveStrategyScore, // NEU v1.26
   pickDcePublic, // NEU v1.28
   resolveTieGroup,      // NEU v1.29
-  resolveEarningsState, // NEU v1.30
-  buildEarningsInfo,    // NEU v1.30
   readPromptVersion,
   buildAiOutputId,
   buildAiOutput,
