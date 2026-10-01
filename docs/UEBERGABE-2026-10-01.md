@@ -154,6 +154,15 @@ Nach sauberem v1.29-Check: P1 #3 Schritt 1 wieder einspielen (Abschnitt 2), Nach
 6. Grundgesetz-8-Konflikt: erkannt am 01.10. vor dem Produktionslauf, P1 #3 per Revert um eine Nacht verschoben (Abschnitt 1). Keine Ausnahme.
 7. Erste Fassung dieses Protokolls (`docs/UEBERGABE-2026-10-02.md`, falscher Dateiname, ohne Pflicht-Header) durch diese Fassung ersetzt.
 
+**Aus dem Vergleich der EIC-Ausgaben CSP ATM/NA v514 / v515 (01.10., je ein KI-Lauf):**
+Kein belastbarer Versionsunterschied ableitbar (n = 1 je Version; Struktur/Formulierung schwankt schon zwischen Läufen derselben Version). Datenbasis geprüft: Strikes AIVAF 8,49 / ZM 87,52 / COP 110,14 / CME 259,11 = exakt EMA200 − 1,5×ATR laut Snapshot 01.10.; RSI/IVP/Dist200 korrekt übernommen. Jeder Punkt unten: Diagnose vor Fix (Grundgesetz 9), nicht vor dem v1.29-Check.
+
+8. **Regime im EIC-Kontext „NEUTRAL“ (beide Versionen), Desk zeigt BULL_QUIET.** Möglicherweise zwei Systeme (MSE vs. MCM) — nicht verifiziert. Quelle des Regime-Werts im EIC-Prompt-Kontext diagnostizieren.
+9. **Prompt-Regel wörtlich im EIC-Output (v515-Lauf):** „Regel § Bull-Regeln: ‚Wenn kein Bull-Score: ABSOLUTES SCHWEIGEN‘“ = `scripts/vendor/ko-prompts.js` Z. 3153 (v2.55.0). Muster aus Pflicht-Header Punkt 7 (Anweisung ≠ Output). Ob versionsbedingt oder Sampling: offen.
+10. **„Strategie-Gates n/v — MCM noch nicht geladen“ im EIC-Output (v515-Lauf).** Offen, ob nur internes Vokabular im Text oder Gates tatsächlich nicht im EIC-Kontext (v514-Lauf erwähnt Gates nicht). Kontextaufbau im Frontend prüfen (Datenpfad, nicht nur Existenz — Header Punkt 2).
+11. **Eingang P1 #3 (Folgeschritt):** Earnings im EIC-Kontext nur pauschal. CME `earningsDTE` 20 liegt in der empfohlenen 30–40-DTE-Spanne, von keinem Text benannt; Favorit ZM `earningsDTE` −37 → `STALE_PAST`, nächster Termin unbekannt. Kandidat: `earnings_state` auch in den EIC-Kontext (eigenes Paket nach P1 #3 Schritt 1).
+12. **AIVAF-Datenplausibilität:** RSI 8,96 bei Dist200 +7,4 % und ATR 0,0664 (≈ 0,7 % des Kurses), `ivpPercentile` leer — Verdacht auf dünnen OTC-Handel/stale Kurse statt echtem Extremsignal. Datenquelle prüfen; v514-Lauf hatte es als mögliche „Listenanomalie“ hinterfragt, v515-Lauf nicht.
+
 ## 6. Danach (einzeln, je eigener Test, je eine Nacht)
 - **P1 #3 Schritt 1 Rollout** — nach bestätigtem v1.29 (Abschnitt 2).
 - **P1 #5 `ki_eic`** — nach bestätigtem P1-#3-Lauf. Eingang: EIC-Zeile im Owner-EIC-Modus sichtbar, in Tester-Sicht nicht.
