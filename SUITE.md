@@ -1,8 +1,8 @@
 # Investment-Suite — Dachdokument
 
 
-**Version:** 4.43
-**Stand:** 30.09.2026
+**Version:** 4.44
+**Stand:** 03.10.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
 **Fortschreibung:** Claude, versioniert, analog den Modul-Strategiedokumenten.
@@ -2519,10 +2519,68 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
     *Verwandt mit: №72, №74, Regime-Forschung (separates Repo).*
 
+76. **Externe Value-/DCF-Listen: Discovery-Universum und Value × Momentum-Crossover — Forschungsauftrag (neu 03.10.2026)**
+
+    **Status:** ENTWURF · nur Dokumentation, **Research / Vorstudie, kein Bau** · Einspielung erst nach Review und Freigabe durch Axel
+    **Priorität:** nach P1 #5 (`ki_eic`) · **Produktionsstatus:** unverändert
+    **Anlass:** Externe Scanner-Listen (Simply Wall St: „Valuation Pearls“, „Undervalued Stocks Based On Cash Flows“, Dividendenliste) aus einem parallelen Brainstorming wurden am 03.10.2026 gegen das UIQ-Equity-Universum (738 Ticker, Snapshot `2026-10-03_01`) gespiegelt; vom Reviewer als Forschungs-Backlog eingeordnet, nicht als Roadmap. Dach: №75.
+
+    **Leitregel (wörtlich, erbt №75):**
+    **Externe Listen dienen ausschließlich als Discovery-Universum. Ihr Urteil über „Unterbewertung“ wird nicht als UIQ-Urteil übernommen.** Externe Schwellen, Gewichte oder Rankings werden nicht ohne eigene Präregistrierung und Validierung zu UIQ-Komponenten.
+
+    **Bisherige Befunde (Vorprüfung 03.10.2026, nicht als vollständige Stichprobe zu lesen):**
+    - Die maschinell eingelesene Schnittmenge mit den 738 Tickern ist klein: Valuation Pearls 2 Treffer (ACAD, RIO), DCF-/Cashflow-Liste 19 Treffer. Eingelesen werden konnten nur 144 von 235 bzw. 250 von 451 Zeilen (Ursache offen); die Overlaps sind daher **Untergrenzen**. Die Listen sind damit **kein Filter des bestehenden Universums, sondern überwiegend eine externe Universumserweiterung**.
+    - Von den 19 DCF-Treffern haben nur NVDA, SU und SHEL `sMinervini ≥ 94`; ADSK, ORCL, GD, PAYX und TXT haben `sMinervini = 0` (RS 12–33).
+    - Earnings-Daten der 19 Treffer: 10 `NOT_QUERIED`, 4 `STALE_PAST`, 5 `KNOWN_FUTURE` (Bezug: D16, 200er-Abfragegrenze).
+    - Die Bedeutung der Spalte **„Valuation“** ist in den drei Tabellen nicht geklärt (P/E oder DCF-Unterbewertung); ein Stichprobenvergleich (NVDA: Liste 29,3 gegen `peForward` 14,9 im Snapshot) löst das nicht auf. Eine Übernahme als P/E oder DCF-Unterbewertung ist unzulässig, bis die Definition der Quelle geklärt ist.
+    - Duplikate in den Ausgangslisten (OPHC, 3611, AUB) sind vor jeder Auswertung zu bereinigen.
+    - Beobachtung zu bestehenden Strategien (ohne Bewertung, ungeprüft gegen die Score-Logik): Im Digest 03.10.2026 führt `dividend` Rang 1 mit TER (FCF-Rendite 0,62 %), `value` Rang 1 mit NVDA (KBV 24,67, FCF-Rendite 0,74 %). Einordnung gehört in Phase C.
+
+    **Untersuchungsfragen:**
+    1. Welche Spalten und Kennzahlen liefern die externen Listen tatsächlich, und welche Definition hat `Valuation` je Quelle?
+    2. Welche Titel sind nach Bereinigung tatsächlich im UIQ-Universum?
+    3. Welche Crossover entstehen zwischen Value-/FCF-/DCF-Merkmalen und UIQ-Momentum-/SEPA-Merkmalen?
+    4. Wie häufig entsteht ein Zustand `VALUE_TRAP_RISK` (konzeptioneller Zustand, **keine** Score-Komponente)?
+    5. Welche Rolle spielen Handelbarkeit, Datenqualität und Earnings-Datenverfügbarkeit?
+    6. Wie unterscheiden sich die externen Listen von den bestehenden UIQ-Strategien Value und Dividend?
+
+    **Drei Verwendungsarten (Trennung verbindlich):**
+    - **A — Beobachten:** Ausgewählte Kandidaten über den bestehenden Listen-Import (`importListCSV`, `leWLImportToActive` im Scanner) manuell ansehen. Keine Erweiterung des Produktionsuniversums. Zu beachten (laut Code, nicht jeder Pfad geprüft): importierte Titel laufen im Live-Scan, nicht im Snapshot; D18/D19 gelten, Bewertungen daher nur außerhalb des US-Fensters oder im Tageschart; kein `earnings_state`, kein Digest-Ranking, kein Track-Record; bei Nicht-US-Titeln ist eine eindeutige Börsen-/Yahoo-Symbolzuordnung nötig (Zuordnung durch `getExchange()` ungeprüft). A dient der Exploration und ersetzt keine Studie.
+    - **B — Einmalige Research-Auswertung:** Ein separates Offline-Skript (z. B. in `uiq-devtools`) wertet eine datiert archivierte Kandidatenliste gegen historische Tagesdaten aus; Ticker normalisiert, Datenqualität und Fehler gezählt, Ergebnisse außerhalb des Produktionspfads. Verändert weder Aggregator, Worker, KV, Digest noch das öffentliche Universum.
+    - **C — Reproduzierbarer Research-Run im separaten Research-Repository (nur Option, kein Beschluss):** Der Run läuft **nicht** in der UIQ-Infrastruktur, sondern im eigenständigen privaten Repository `uiq-research` (siehe „Architekturvorschlag“). Ausdrücklich **kein zweiter Produktions-Aggregator und kein „Aggregator light“.** Zweck: reproduzierbare, datierte Snapshots für **vorab definierte** Research-Fragen, insbesondere zur Forward-Analyse von Value × Momentum. Grundprinzip: **nur Daten speichern, die nicht zuverlässig rekonstruierbar sind** (datierte Listenmitgliedschaft, Quelle und Abrufdatum, Ticker-/Börsen-Zuordnung, Fundamentaldaten-Schnappschüsse mit Datenstand, Datenqualitätsstatus, Fehler/unauflösbare Titel); Kurs- und daraus ableitbare Momentumkennzahlen werden aus reproduzierbarer Historie neu gerechnet. Der Run erzeugt **keine** UIQ-Scores, Composite Scores, Rankings, Signale, Position Sizing, Produktionsschwellen oder öffentlichen Digest-Felder. Jeder Snapshot trägt die Version des Research-Skripts. **Metrikdefinitionen:** Eine Research-Metrik darf bewusst anders berechnet werden als in UIQ, sofern das dokumentiert ist; erst wenn beide Definitionen identisch sein sollen, ist ein dokumentierter Referenzvergleich nötig. Die Produktionsimplementierung gilt nicht automatisch als „Wahrheit“ des Research-Projekts. **Nicht-US-Titel:** Mapping `Research-Ticker → Börse → Datenanbieter-Symbol`; Zustände `resolved` / `unresolved` / `ambiguous` / `stale` / `errors` werden gezählt, nicht stillschweigend ausgeschlossen.
+
+    **Architekturvorschlag (Review 03.10.2026; Entscheidung durch Axel ausstehend):**
+    - **Governance:** Research darf UIQ beobachten und Ergebnisse liefern; UIQ konsumiert Research **nie automatisch**. Einbahnstraße: *externe Daten → Research → Befund → menschliche Entscheidung → ggf. später UIQ*; niemals *Research → UIQ-KV / Aggregator / Digest / UI*.
+    - **Maximale Isolation:** kein gemeinsamer Laufzeitpfad mit UIQ; keine Imports, die Produktionscode des Aggregators ausführen; keine Schreibrechte auf `uiq-archive`, KV oder Worker; keine Research-Daten im UIQ-Digest oder UI. Eine Übernahme von Ergebnissen in UIQ ist ausschließlich über einen dokumentierten Befund und eine nachgelagerte, explizite Entscheidung möglich (№75).
+    - **Zielstruktur (Skizze, nicht festgelegt):** `uiq-research/` mit `README.md`, `GOVERNANCE.md`, `projects/076-value-momentum/` (`preregistration/`, `input/`, `scripts/`, `snapshots/`, `results/`, `findings.md`), `schemas/`, `mappings/`, `docs/`. `regime-test` wird nicht mitbenutzt (H6 bleibt eingefroren, №75).
+    - **Keine Plattform auf Vorrat:** Stufe 1: einfaches privates Repo mit №76 als erstem Projekt. Stufe 2: zweites unabhängiges Projekt; erst dann prüfen, welche Infrastruktur tatsächlich wiederverwendet wird. Stufe 3: erst danach gemeinsame Komponenten abstrahieren. Das Repo wird erst angelegt, wenn Phase A/B Bedarf zeigt oder Axel es ausdrücklich beschließt.
+
+    **Methodik (Reihenfolge verbindlich):**
+    - **Phase A — Datenhygiene:** Originallisten unverändert und datiert archivieren (Quelle, Abrufdatum, Spaltensemantik); Duplikate und nicht eindeutig identifizierbare Titel markieren; unvollständigen Import nicht als vollständige Stichprobe behandeln.
+    - **Phase B — deskriptive Crossover-Analyse:** Join gegen den Snapshot; Overlap und Coverage dokumentieren; Value-/FCF-Merkmale nur deskriptiv mit `sMinervini`, RS, Earnings-Daten und Handelbarkeitsmerkmalen kreuzen; `VALUE_TRAP_RISK` nur als Zustandshypothese prüfen.
+    - **Phase C — Einordnung bestehender Strategien:** `value` und `dividend` gegen die Equity-Inventur (`AUDIT-72-EQUITY-INVENTUR-2026-09-30.md`) einordnen; prüfen, ob die externe Discovery nur Vorhandenes dupliziert oder eine neue Informationsdimension liefert.
+    - **Entscheidung über Option C** erst nach Phase A–C.
+    - **Phase D — Präregistrierung** (nur danach): Hypothese, eindeutige Datenquellen, Filterdefinitionen, Haltedauer, Benchmark, Kostenannahmen, Ausschlussregeln, Umgang mit fehlenden/stale Earnings-Daten, Metriken, Forward-Tracking im Shadow-Modus.
+
+    **Validierungsprinzip:** Die heutigen Listen sind **nicht point-in-time**; eine rückwirkende Performanceauswertung enthielte Selektions- und Look-ahead-Bias. Ein belastbarer Test ist erst nach Präregistrierung durch Forward-Tracking im Shadow-Modus möglich.
+
+    **Quellen und Rechte:** Es werden Quelle und Abrufdatum dokumentiert. Eine dauerhafte Speicherung kompletter externer Tabellen oder deren Dateninhalte erfolgt erst nach separater Prüfung der zulässigen Nutzung (von Claude nicht geprüft). Aussagen zur Handelbarkeit bei CapTrader/IBKR, Quellensteuer und Währung bedürfen separater Verifikation.
+
+    **Abbruchregel:** Option C wird nur umgesetzt, wenn die deskriptive Vorstudie zeigt, dass das externe Universum eine eigenständige, reproduzierbar untersuchbare Informationsdimension liefert, die nicht bereits durch die bestehenden UIQ-Value-/Dividend-/Momentum-Strategien abgedeckt ist. Der Run kann jederzeit eingestellt, das Repository archiviert werden, ohne einen Produktionspfad zu verändern.
+
+    **Ausdrücklich nicht Teil dieses Eintrags:** Änderung von Produktionsscores, neue Gewichte oder Schwellen, Backtest auf Basis heutiger Listen als historisches Signal, Übernahme externer Rankings, Änderung der bestehenden Value-/Dividend-Strategien, Erweiterung des 738er-Produktionsuniversums, Aussage zur Handelsfähigkeit bei CapTrader ohne Verifikation.
+
+    **Reihenfolge:** P1 #5 → №76 Phase A–C → Entscheidung über Option C und über die Anlage von `uiq-research` → ggf. Phase D → ggf. Research-Run → erst danach Forward-Tracking.
+
+    **Abhängigkeiten:** №75 (Dach), P1 #5, №72 (Equity-Inventur), D16 (200er-Abfragegrenze, Earnings-Abdeckung), D18/D19 (Live-Scan, nur für Verwendung A).
+
+    *Verwandt mit: №72, №75, Befundregister (Nachträge 01.10. und 03.10.2026).*
+
 ## Fortschreibungshistorie
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.44 | 03.10.2026 | №76 Externe Value-/DCF-Listen: Discovery-Universum und Value × Momentum-Crossover als Forschungs-Backlog (nur Doku, ENTWURF): Leitregel „externe Listen nur als Discovery-Universum“ (erbt №75); Vorprüfungsbefunde (kleine Schnittmenge, Spalte „Valuation“ ungeklärt, Earnings-Abdeckung); Verwendungsarten A Beobachten / B einmalige Auswertung / C Research-Run im separaten Repository `uiq-research` (nur Option, kein „Aggregator light“; Architekturvorschlag: Einbahnstraße, maximale Isolation, keine Plattform auf Vorrat; Entscheidung durch Axel ausstehend); Phasen A–D, Abbruchregel, Reihenfolge nach P1 #5; kein Bau. |
 | 4.43 | 30.09.2026 | №75 Alpha-Discovery-Framework als Forschungs-Backlog (nur Doku, ENTWURF): Leitregel „keine externe Zahl ohne eigene Präregistrierung und Validierung“; operationalisierte Leitregel (Geltungsbereich inkl. Feature-Auswahl und H6-Abgrenzung, Prüfstelle); Scope 1–6 (Bestandsaufnahme mit CITED/INHERITED/DECISION/UNVERIFIED, H6 als Vorbild, Multiple-Testing-Regel, Equity/Options getrennt, Alpha Map hypothetisch, kein Composite zuerst); kein Bau. |
 | 4.42 | 29.09.2026 | №74 Historische `strategy_score`-Semantik der Optionsstrategien (nur Doku, ENTWURF, Freeze aufgehoben): Altbestand 16.09.–Rollout als `LEGACY_COMPOSITE`, ATMNA-Sonderregel (Ranking bis Aggregator 5.42.3 über `sCsp`, ab 5.43.0 `sAtmna`), ab Rollout `RANKING_SCORE`/`UNAVAILABLE`; Manifest als historische Leseregel, keine Änderung an Archiven/Digests; `RECONSTRUCTED_RANKING` technisch möglich, nicht beschlossen; kein Options-Track-Record. Codefreeze aufgehoben (Banner angepasst); Nummer №74 bestätigt; №73 Entscheidung: Git-Historie bleibt unverändert. |
 | 4.41 | 28.09.2026 | №71 Event & Surprise Gate (nur Doku, Backlog, Freeze unberührt): Erweiterungskandidat **SigmaSpike** (Grimes) als deterministischer Detektor für unangekündigte Kursbewegungen ergänzt — `Spike = ΔClose / (sd20 × Close)_{t−1}`, neuer event_type `PRICE_SURPRISE` (UNEXPLAINED/EXPLAINED) + Feld `spike_sigma`; Schwelle empirisch aus dem Shadow-Ledger kalibrieren (Startwert ±3σ), nicht normalverteilt interpretieren; Druckfehler im Buch („ד statt „÷“) vermerkt; Übernahme bei Sprint-Start entscheiden. |
