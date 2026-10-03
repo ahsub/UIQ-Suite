@@ -247,3 +247,45 @@ Anlass: Axel bemerkt im Scanner-Tab (EIC-Modus) bei den Top-Ranglisten durchgehe
 | ELF | A+ 91 · 52W-H −1,3 % · EMA200 +3,7 % · Vol 10/10 | A+ 91 · 52W-H −5,1 % · EMA200 +33,6 % · Vol 6/10 |
 
 **Redaktionelle Festlegung (Axel + Review, 01.10.2026):** In D18 wird bewusst keine Reparaturlösung festgelegt. Der Befund lautet: Die UI bezeichnet Kennzahlen als 52W, 10W, EMA200 und SEPA, obwohl sie im Live-Modus aus einer wesentlich kürzeren Intraday-Kerzenreihe berechnet werden. Ob z. B. Kurs-/Intraday-Signale live bleiben dürfen, während 52W-, MA-, SEPA- und Langfristtrendkennzahlen ausschließlich aus Daily Data kommen, ist eine eigene Designentscheidung. Keine Änderung an Score, Schwellen oder Gewichten; das Volumenkriterium wird nicht entfernt (Mess-/Semantikproblem im Live-Modus, nicht der Komponente). **Nicht geprüft:** ob der EIC-Modus des Scanner-Tabs diese Live-Werte als Prompt-Kontext verwendet (der EIC-Lauf vom 01.10. mit zehn Titeln kam aus dem Snapshot, s. EIC-Audit oben).
+
+### 03.10.2026 — Echtdatenprüfung P1 #3 Schritt 1 (Nachtlauf 02./03.10., Lauf 342) · v1.29 · neue Beobachtungen D20–D23
+
+Anlass: Morgencheck nach dem ersten Produktionslauf mit Generator v1.30 und Aggregator v5.47.0 (`earningsStatus` / `earnings_state`). **Änderungstyp: ausschließlich Dokumentation; keine Produktionsänderung.** Quellen: GitHub Actions (Lauf 342, Schritte), privates Snapshot-Archiv (`2026-10-03_01`), öffentliche Payloads (Axel, `payload_nachher_20261003T1313Z`), Lauf-Log (Axel). D-Nummern und Prioritäten sind Vorschläge.
+
+**1. P1 #3 Schritt 1 — Ergebnis: Echtdaten-verifiziert, kein Rollback.**
+
+Lauf 342 `success` (Start 00:59Z, Ende 01:25Z; Stand enthält `161cf9c`). Grün waren u. a. „Unit Tests (DCE + Regime)“ (enthält `test_earnings_status.py`), „Unit Tests Generator (earnings_state)“ und „Generate Public Recommendations“. Aggregator-Version im Snapshot 5.47.0, 738 Ticker, `errors: 22` (wie an den beiden Vortagen).
+
+| Interner Status | Anzahl |
+|---|---:|
+| `KNOWN_FUTURE` | 102 |
+| `STALE_PAST` | 98 |
+| `NOT_QUERIED` | 538 |
+| `NO_DATE` | 0 |
+| `LOOKUP_ERROR` | 0 |
+| **Summe** | **738** |
+
+Im Lauf-Log bestätigt: `[Earnings] Status: {'KNOWN_FUTURE': 102, 'STALE_PAST': 98, 'NOT_QUERIED': 538}` sowie `[Earnings] ✅ 200 Dates gefunden, 0 ohne Datum`. Damit wurden alle 200 abgefragten Ticker mit einem Datum beantwortet; `NO_DATE` und `LOOKUP_ERROR` sind im Echtlauf **nicht aufgetreten**, ihre getrennte Behandlung ist für diese beiden Zustände weiter nur durch die Unit-Tests belegt. Zuordnung zu `earningsDTE`: `KNOWN_FUTURE` ausschließlich DTE > 0, `STALE_PAST` ausschließlich DTE ≤ 0, `NOT_QUERIED` ohne DTE, keine Überschneidung. (Zum Vergleich Simulation am Snapshot 01.10.: `KNOWN_FUTURE` 84 / `STALE_PAST` 116 / `NOT_QUERIED` 538 — Größenordnung wie erwartet, kein Sollwert.)
+
+**2. Öffentlicher `earnings_state` im Digest** (`DIGEST-20261002`, 45 Chancen):
+- `NONE_IN_WINDOW` 19 (DTE 18–59) · `UNKNOWN` 26 (alle aus `NOT_QUERIED`) · `BLOCKED` 0 · `IN_WINDOW_SOFT` 0. Alle 45 Chancen tragen das Feld.
+- Status, DTE und öffentlicher Zustand stimmen bei allen 45 mit den Snapshot-Tickern überein (0 Abweichungen); `NONE_IN_WINDOW` entsteht ausschließlich aus `KNOWN_FUTURE`, `UNKNOWN` nie daraus.
+- `tie_group` je Optionsstrategie unverändert vorhanden.
+- **Gate:** Die im Digest fehlenden, hoch bewerteten Titel sind alle `STALE_PAST` mit DTE ≤ 0 (AME −60, S −37, HPE −31, DDOG −58, PLTR −61, XOM −64, CVS −59, SRE −58, FUTU −44, NET −58); `NOT_QUERIED`-Titel (z. B. GM, F) passieren. Das entspricht dem Gate-Verhalten aus D17 (Ausschluss über `earningsDTE`, nicht über `earningsStatus`).
+- **Einordnung:** Der Echtdatenvergleich ist ein **Plausibilitätsbeleg, kein Invarianzbeweis** (für dieselbe Marktdatenlage liegt kein Lauf ohne Änderung vor). Die formale Invarianz gegenüber Vorhandensein/Fehlen von `earningsStatus` belegt Test T4 auf identischen Eingangsdaten.
+
+**3. DCE-Trennung:** `dce_public` im Digest vorhanden; kein `"dce":`; `/owner/dce` mit Static-Token → 403 (`{"error":"Forbidden"}`); Suche nach internen DCE-Feldern in den Nicht-Owner-Payloads ohne Treffer. Kein erneuter Leak.
+
+**4. v1.29 `tie_group` (Nachtrag zur Prüfung 02.10.):** Gruppengrößen in der Nacht 02./03.10. 47 / 13 / 47 / 47 / 19 (CSP / ATM-NA / Weekly / Collar / CC), identisch mit `leaderboardMeta` des Snapshots. Die Werte aus dem Übergabeprotokoll 01.10. (53 / 25 / 53 / 53 / 27) stammen aus Snapshot `2026-10-01_01`, am 02.10. waren es 48 / 19 / 48 / 48 / 19. Schwankende Gruppengrößen zwischen Nächten sind erwartbar und kein Befund.
+
+**5. Beobachtungen (außerhalb P1 #3; keine Änderung beschlossen):**
+
+| # | P | Fundstelle | Beobachtung | Status |
+|---|---|---|---|---|
+| — | P1 | Folge von D16 / Entscheidung (b) | **Hoher `UNKNOWN`-Anteil im Digest:** 26 von 45 Chancen, Ursache die 200er-Abfragegrenze (538 von 738 `NOT_QUERIED`); sichtbar z. B. bei GM und F (CSP-Spitzengruppe, 47 Titel). Das neue Feld macht die bekannte Lücke aus D16 erstmals sichtbar; **kein P1-#3-Fehler.** | Folgescope: Paket zur 200er-Grenze (D16 (b)); keine Änderung |
+| D20 | P2 | Worker-Payload `daily_market_snapshot_us.json` | **Veralteter Zeitstempel:** `generated` = 2026-09-22T16:07:14Z (`last_trading_day` 2026-09-22), zum Prüfzeitpunkt elf Tage alt; der Payload-Check bestätigt nur HTTP 200. Ob das durch einen separaten Workflow / eine vorgesehene Funktion so gewollt ist, wurde **nicht geprüft**. | offene Frage |
+| D21 | P2 | Workflow „TR-Backup (Samstag)“ (Run 3, 03.10.2026 03:34Z) | **Run mit `failure`.** Der Backup-Schritt im Aggregator-Lauf 342 war erfolgreich (`archive: tr-Backup/FIN-Archiv 2026-10-03` auf `main`). Ursache und Auswirkung **nicht geprüft**; separater Workflow. | offen, Ursache zu prüfen |
+| D22 | P2 | Digest 01.10. (`ko` Rang 1, `momentum` Rang 1) / Snapshot | **KLAC (Score 100 in Ko und Momentum):** „Abstand zum 52W-Hoch −35,32 %“ bei EMA200 +11,37 % und RS 85 — möglicherweise echt, möglicherweise Datenfehler bei `high52w`. Separater Daten-/Snapshot-Check, **ohne vorweggenommene Bewertung**. | offen |
+| D23 | P2 | Digest, Strategien `ko`, `momentum`, `vcp` (zusätzlich Gleichstände Swing 95/95, Breakout 90/90, Breakdown 95/95) | **Gleichstände ohne Kennzeichnung:** `leaderboardMeta`/`tie_group` gibt es nur für die Optionsstrategien; Ko, Momentum und VCP zeigen drei Chancen mit Score 100 ohne Spitzengruppe. Eigener Scope, nicht Teil von v1.29. | offen (Equity-`tie_group`) |
+
+**Rollback:** keiner ausgelöst; die vorbereiteten Reverts (`161cf9c` ko-aggregator, `9d17500` UIQ-Suite) werden nicht benötigt. **Nächster Scope:** P1 #5 `ki_eic` (zuerst Diagnose), nächster planmäßiger Produktionslauf Mo 05.10.2026 22:00 UTC. D20–D23, die 200er-Grenze, Equity-Audits und die Frontend-Rangansicht bleiben getrennte Pakete und werden nicht in P1 #3 hineingezogen.
