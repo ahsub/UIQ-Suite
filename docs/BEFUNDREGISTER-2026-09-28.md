@@ -402,7 +402,7 @@ Snapshot-Werte der drei Titel (Auszug, nur Archiv):
 
 | # | P | Fundstelle | Beobachtung | Status |
 |---|---|---|---|---|
-| D26 | P1 (Diagnose zuerst) | `uiq-archive` `data/snapshots/` (nur Archivvergleich); Ursprung im Aggregator nicht untersucht | Fünf Paare aus einem frühen Nachtlauf (Stunde 00–01 UTC) und einem späteren Lauf mit **identischem `_dataAsOf`** zeigen bei fast allen Tickern verschiedene Preise (Ticker mit gleichem `_dataAsOf` / davon mit verschiedenem Preis): 22.09. 00 → 13 Uhr: 722 / 710 · 24.09. 00 → 05: 737 / 676 · 25.09. 00 → 04: 735 / 671 · 26.09. 00 → 27.09. 04: 720 / 700 · 03.10. 01 → 04.10. 13: 723 / 705. Beispiel NTAP: 215,05 (03.10. 01 Uhr) gegen 226,27 (04.10. 13 Uhr), beide `_dataAsOf` 2026-10-02. Der Nachtlauf 03.10. unterscheidet sich zugleich vom Lauf 02.10. (nur 6 von 738 Preisen gleich), ist also nicht schlicht dasselbe Datenpaket. | offen — Diagnose |
+| D26 | **P0** (angehoben 04.10. abends, s. Teil 3; zuerst P1 notiert) | `uiq-archive` `data/snapshots/` (nur Archivvergleich); Ursprung im Aggregator nicht untersucht | Fünf Paare aus einem frühen Nachtlauf (Stunde 00–01 UTC) und einem späteren Lauf mit **identischem `_dataAsOf`** zeigen bei fast allen Tickern verschiedene Preise (Ticker mit gleichem `_dataAsOf` / davon mit verschiedenem Preis): 22.09. 00 → 13 Uhr: 722 / 710 · 24.09. 00 → 05: 737 / 676 · 25.09. 00 → 04: 735 / 671 · 26.09. 00 → 27.09. 04: 720 / 700 · 03.10. 01 → 04.10. 13: 723 / 705. Beispiel NTAP: 215,05 (03.10. 01 Uhr) gegen 226,27 (04.10. 13 Uhr), beide `_dataAsOf` 2026-10-02. Der Nachtlauf 03.10. unterscheidet sich zugleich vom Lauf 02.10. (nur 6 von 738 Preisen gleich), ist also nicht schlicht dasselbe Datenpaket. | offen — Diagnose |
 
 **Nicht belegt:** ob der frühe Nachtlauf Vortagesschlusskurse, einen Zwischenstand oder etwas anderes enthält (der Zeitpunkt der Datenabfrage, der Datenquellenstand und die Bedeutung von `_dataAsOf` sind nicht geprüft), welcher der beiden Preise der Marktschluss ist (Annahme „später = richtig“ stützt sich nur auf den ungeprüften externen Freitagsschluss), und welche Ausgaben davon betroffen sind (Digest, öffentliche Empfehlungen, EIC; nicht geprüft, ob der Generator denselben Nachtsnapshot nutzt). Wichtig für die Einordnung von EIC7–EIC9: Die EIC-Werte stammen laut Abgleich aus dem früheren Stand (`2026-10-03_01`), während die externe Analyse „Freitagsdaten“ verwendete. **Kein Änderungsauftrag.** Nächster Schritt (nur lesend): Lauf Mo 05.10./Di 06.10. gegen einen späteren Lauf desselben Tages vergleichen und den Datenabruf im Aggregator ansehen.
 
@@ -411,3 +411,40 @@ Snapshot-Werte der drei Titel (Auszug, nur Archiv):
 **5. D22 (KLAC) — Archivlage.** `high52` 301,71 (frühester Archivstand 22.07.) wechselt zwischen dem 17. und 19.08. (Stichproben) auf 301,3694 (`low52` ebenfalls geringfügig anders); der Kurs lief laut Archiv von 217,56 (22.07.) über 168,02 (16.09.) auf 206,89 (04.10.13 Uhr); `pctFromHigh52` ist in der gesamten Reihe rechnerisch konsistent mit Kurs und `high52` (z. B. 04.10.: −31,35 %). Die Datenreihe ist damit **in sich konsistent und kein einzelner Ausreißer**. Ob Kurs und 52W-Hoch dem Markt entsprechen, wurde nicht gegen eine externe Quelle geprüft. Bei `pctFromHigh52` −35,32 % (Snapshot 02.10. 01 Uhr) steht `sMinervini` 100; die Bewertung dieser Kombination ist nicht Teil dieses Eintrags.
 
 **Offen:** D20-Worker-Payload; Ursache D26; Marktabgleich KLAC; Lauf Mo 05.10. 22:00 UTC.
+
+### 04.10.2026 abends (Teil 3) — D20 abgeschlossen · D26 auf P0 angehoben: asynchroner Preis-/Volumenstand in Nachtsnapshots · nur Dokumentation, kein Änderungsauftrag
+
+**Änderungstyp:** ausschließlich Dokumentation. Quellen: Archiv `uiq-archive` (nur lesend), Code `ko-aggregator/market_aggregator.py` (nur lesend), Yahoo-Abfrage von Axel (NTAP, 04.10.2026, `yf.download`, Tagesdaten), Worker-Abruf von Axel. Es wurde nichts geändert.
+
+**1. D20 — abgeschlossen.** Axel hat `GET /public/daily_market_snapshot_us` mit dem Static-Token abgerufen: `ok` True, `generated` 2026-10-04T13:48:00Z, `last_trading_day` 2026-10-02. Der Zeitstempel stimmt mit `meta.generated` des Archiv-Snapshots `2026-10-04_13` überein. Der Key wurde von Lauf #344 geschrieben (Startstunde ≥ 12 UTC, `market_aggregator.py` Z. 11803). Kein Handlungsbedarf aus D20.
+
+**2. D26 — Befund (P0; Datenintegrität).**
+
+| # | P | Fundstelle | Befund | Status |
+|---|---|---|---|---|
+| D26 | **P0** | `market_aggregator.py` `process_ticker()` (`closes` aus `get_col(…, "Close")` mit `dropna()` Z. ~6745–6778; `volumes` mit `fillna(0)`; `_dataAsOf` aus `hist_df.index[-1]` Z. 6971); `fetch_batch()` Z. 7135 ff.; Snapshots in `uiq-archive` | **In Nachtsnapshots (Start 00–01 UTC) steht der Schlusskurs des Vortages unter dem `_dataAsOf`-Label des Folgetages; das Volumen (`volRatio`) entspricht näherungsweise dem Label-Tag. Preis und Volumen sind damit zeitlich nicht synchron.** | offen — Ursache, Ausmaß und Folgen nicht abgeschlossen |
+
+**Belegt (NTAP, direkt gegen Yahoo-Tagesdaten von Axel):** Yahoo-Schlusskurse 29.09. 209,18 · 30.09. 210,08 · 01.10. 215,05 · 02.10. 226,27.
+
+| Archiv-Snapshot (`_dataAsOf`) | `price` | entspricht Yahoo-Schluss vom | `volRatio` | Näherung Volumen/`avgVol20` |
+|---|---|---|---|---|
+| `2026-10-01_01` (30.09.) | 209,18 | 29.09. | – | – |
+| `2026-10-02_01` (01.10.) | 210,08 | 30.09. | 0,91 | Do 01.10. (2.348.700): 0,92 |
+| `2026-10-03_01` (02.10.) | 215,05 | 01.10. | 1,90 | Fr 02.10. (5.062.600): 2,03; Do: 0,94 |
+| `2026-10-04_13` (02.10.) | 226,27 | 02.10. | 2,02 | Fr: 2,02 |
+
+Näherungsrechnung (die Definition von `avgVol20` und des `volRatio`-Nenners wurde nicht geprüft; die Abweichung 1,90 gegen 2,03 ist nicht erklärt), die Zuordnung zum Label-Tag ist aber deutlich.
+
+**Einordnung NTAP/EIC:** Der im EIC-Lauf genannte Zustand „Kurs 215,05 am 52W-Hoch, VolRatio 1,90×“ besteht nach diesem Abgleich aus dem **Donnerstagsschluss (01.10.)** und einer **Kennzahl, die näherungsweise zum Freitagsvolumen (02.10.) passt**. Die Eingabedaten waren zeitlich inkonsistent. **Das bedeutet nicht, dass die inhaltliche Schlussfolgerung des EIC zu NTAP falsch war**; es ist ein Datenintegritätsbefund und keine Bewertung der EIC-Aussage.
+
+**Archivhinweis zum Ausmaß (starker Hinweis, kein Ticker-für-Ticker-Nachweis):** Die Differenz `_bars_raw − bars` (Rohzeilen minus Zeilen nach `dropna`) beträgt in den Nachtläufen um 00–01 UTC bei etwa 92 % der Ticker mindestens 1 (z. B. 03.10. 01 Uhr: 681 von 738), in den späteren Läufen meist 0 %. Bei den Tickern mit Extra-Zeile änderte sich der Preis gegenüber dem späteren Lauf mit gleichem `_dataAsOf` in 677 von 681 Fällen (03.10. gegen 04.10.); bei den Tickern ohne Extra-Zeile (überwiegend ADRs, 8 %) in 42 von 57. Ähnlich bei den Läufen 22.09. und 24.09. Seit dem 29.09. zeigt jeder Nachtlauf das Muster. After-Market scheidet nach Codelage aus (Tagesdaten ohne Vor-/Nachbörse, kein Live-Preis). Der Median der Preisabweichung früh gegen spät liegt bei 0,7–1,3 %.
+
+**Noch offen / nicht bewiesen:**
+- **Technische Ursache:** Die Hypothese, dass die letzte Rohdatenzeile (Tag D) im Nachtlauf kein Close, aber ein Volumen enthält, passt zu allen Beobachtungen, ist aber **nicht direkt gesehen**. Dass die Extra-Zeile die letzte Zeile ist, geht aus dem Archiv nicht hervor. Die Beobachtung der Rohdaten wäre in einer Werktagsnacht (00:10–01:30 UTC) möglich, oder über das Archiv vom Lauf Mo 05.10.
+- **Ausmaß:** Direkt gegen Yahoo abgeglichen ist nur NTAP (zwei Snapshots). Die Quote 92 % ist ein Archivhinweis.
+- **Betroffene Ausgaben:** Digest, öffentliche Empfehlungen, Leaderboards, Scores und andere Kennzahlen aus dem Nachtsnapshot sind **nicht geprüft** (auch nicht, ob andere Kennzahlen mit `closes` und `volumes` ungleicher Länge zusammen gerechnet werden).
+- **Frische-Prüfung:** `validate_data_freshness()` vergleicht `_dataAsOf` mit dem letzten Handelstag; bei dieser Konstellation würde sie „aktuell“ melden. Das ist aus dem Code abgeleitet, nicht am Lauf-Log geprüft.
+
+**Nicht beschlossen:** Keine Codeänderung, keine Änderung von Schwellen, Scores oder der EIC-Logik, keine Änderung der Laufzeiten oder des Watchdogs. Nächster Schritt (nur lesend): Archiv vom Lauf Mo 05.10. (Dienstagmorgen) auf `_bars_raw − bars` und Preis gegen den späteren Lauf prüfen; Prüfung der Downstream-Ausgaben (welche Ausgaben nutzen den Nachtsnapshot).
+
+**Rückwirkung auf EIC7–EIC9:** Die Eingabedaten des EIC-Laufs stammen laut Abgleich aus `2026-10-03_01`. Die in EIC8/EIC9 genannten Beobachtungen zu Volumen und Ausbruchsfrische sind vor dem Hintergrund von D26 zu lesen; das Register trifft dazu keine weitere Aussage.
