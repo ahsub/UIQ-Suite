@@ -343,3 +343,41 @@ Lauf #343 war ein `workflow_dispatch` (Actor `ahsub`, 04.10. 04:15:48 UTC), von 
 **7. D22 (KLAC) — nur Codepfad geklärt.** `pctFromHigh52` = `price / max(closes[-252:]) − 1` (`market_aggregator.py` Z. 6850–6852), also auf **Schlusskursbasis**, nicht auf Tageshochs. Ein Wert von −35,32 % bei EMA200 +11,37 % ist damit nur bei einem Ausreißer im Schlusskursfenster oder einem echten Kursrückgang erklärbar. Die Rohdaten des Snapshots (`uiq-archive`) wurden nicht gesehen; Bewertung steht aus. D23 und D20-Ursache siehe oben bzw. unverändert offen.
 
 **Stand Läufe:** #342 (03.10.) `success`, #343 (04.10.) `failure` (D24). Nächster planmäßiger Lauf: Mo 05.10. 22:00 UTC (Start real ca. 00:00–01:30 UTC am 06.10.). Zu D24/D21 wurde nichts angewendet.
+
+### 04.10.2026 nachmittags — Kontrolllauf #344 · EIC-Breakout-Lauf: neue Beobachtungen EIC7–EIC9 (nur Dokumentation, keine Produktionsänderung)
+
+**Änderungstyp:** ausschließlich Dokumentation. Kein Eingriff in Repo, Worker, Workflow oder Prompt. Beobachtungsfenster ab 13:50 UTC wie vereinbart.
+
+**1. Kontrolllauf #344 (Beobachtung zu D24/D25).**
+- Lauf #344 war ein `workflow_dispatch` (Start 13:45:52 UTC), ausgeführt auf Stand `740a285`, der `ac356e9` (Test-Seed) enthält. Alle Schritte `success`, einschließlich „Unit Tests (DCE + Regime)“; Dauer ca. 8 min; Archiv-Commit `2554322`.
+- Der erwartete Watchdog-Dispatch um 13:45 UTC ist damit belegt (konsistent mit D25: deployte Trigger 13:45 / 04:15; der genaue Codepfad ist nicht bewiesen, die Zeitstempel passen).
+- **Einordnung:** Ein grüner Lauf beweist die Wirkung des Seeds nicht (Basisrate vor dem Seed ca. 0,28 % je Lauf). Belegt ist nur: Seed ist im ausgeführten Stand enthalten, Test grün.
+- Beobachtung (ungeprüft): Schritt „Generate Public Recommendations“ dauerte in #344 ca. 1 s; vermutlich Handelstag-Überspringen, nicht verifiziert.
+- D20 (optional, ausstehend): Bestätigung über `daily_market_snapshot_us` mit `generated` 2026-10-04T13:5x. Ergebnis von Axel steht aus.
+
+**2. EIC-Breakout-Lauf (Axel, 04.10.) — Befunde EIC7–EIC9.** Grundlage: von Axel bereitgestellter EIC-Text mit Kommentaren. **Snapshot-Stand und Laufzeitpunkt des EIC sind nicht belegt;** ein Rohdatenabgleich ist erst nach Lesezugriff auf `uiq-archive` möglich. Werte zu NTAP, CRWD und OKTA sowie die Freitagsdaten: **aus externer Analyse, nicht geprüft.** Es wird keine Aussage „kein Datenfehler“ getroffen.
+
+| # | P | Fundstelle | Befund | Status |
+|---|---|---|---|---|
+| EIC7 | P1 | Ausgabe des EIC-Laufs; `axel-scanner` `index.html` (`koAiCall('ki_briefing', …)` ~L19849, L25942, L26169); `workers/ko-ai.js` (`effectiveMaxTokens`: `ki_briefing` + `expert_mode` → 7000, sonst `cfg.max_tokens`) | **Der von Axel bereitgestellte EIC-Text endet mitten im Wort („Alternativ: R“)** (Beobachtung am bereitgestellten Text; Originalausgabe nicht gesehen). Der Repo-Kommentar nennt die „klassische max_tokens-Abbruchsignatur“. **Ursache unverifiziert:** Token-Limit erreicht oder Text beim Einfügen abgeschnitten. `stop_reason` wurde nicht gesehen; im Frontend wurde keine Auswertung von `stop_reason` gefunden. Welche Action/Grenze der Lauf tatsächlich nutzte (vermutlich `ki_briefing` + Expert-Modus = 7000), ist nicht belegt. | offen — Diagnose |
+| EIC8 | P2 | `ko-modules/ko-prompts.js` (HEAD `e82508a`), Breakout-Block L6038–6100; Changelog L963–967; Public-Zweig L6072 | **Schwellen und Prompt-Anweisungen erscheinen laut Beobachtung von Axel im Ausgabetext; nicht gegen den Rohtext geprüft.** Prompt-Seite belegt, siehe Detailtabelle unten. Zusätzlich laut bereitgestelltem Text und Kommentar (nicht gegen Rohtext/Snapshot geprüft): Widerspruch im Text (Volumen 1,9× einmal „zu wenig“, einmal als 1,5–2× „erfüllt“); CRWD „Accumulation durch weniger Käufer“ als nicht belegte Hypothese. Leitformel: **Externe Fachregel ≠ UIQ-Schwelle ≠ EIC-Erklärungsheuristik.** | offen — Diagnose |
+| EIC9 | P2 (Designkandidat) | Prompt-Logik Breakout | **Setup-Reife vs. Ausbruchsfrische:** Laut externer Analyse/Beobachtung von Axel (nicht geprüft) unterscheidet das EIC nicht zuverlässig zwischen Pre-Breakout, frisch ausgebrochen und längst ausgebrochen. Erst ein Maß definieren (z. B. Tage seit Ausbruch), dann Prompt-Logik. Nur Folgefrage, keine Änderung. Hinweis: Der Prompt enthält bereits „Breakout ist ein EREIGNIS, kein Zustand“ (focus[0], ergänzt 09.09.2026); ob der Ausgabetext dem folgt, ist nicht geprüft. | offen — Designkandidat |
+
+**EIC8 — Fundstellen in `ko-prompts.js` (read-only; Klassen: (a) ausdrückliche Prompt-Anweisung, (b) fachliche Erklärung/Heuristik, (c) harte Zahlenschwelle; keine Bewertung):**
+
+| Suchbegriff | Fundstelle | Klasse | Beleg |
+|---|---|---|---|
+| „300-400 %“ | `principleText` L6060 (Breakout); Kommentar L607, L965–967, L6093 | (b) Heuristik mit Quellenangabe | Text: „am Ausbruchstag idealerweise 300-400% (3-4x) des durchschnittlichen Tagesvolumens oder mehr — spürbar höher als die zuvor genannten 1,2-2,0x“. Changelog nennt als Quelle „beide Minervini-Buecher“. **Quelle nicht von mir geprüft.** `principleText` wird im EIC-Prompt unter „STRATEGIEPRINZIP:“ übergeben (`_eicMasterPrompt`, L4989–4990), ist also modellseitiger Text. |
+| „85er“ | focus[3] L6048; `principleText` L6060 | (a) Korrekturhinweis im Prompttext („KORRIGIERT 09.09.2026 / 08.09.2026 … kein starrer 85er-Cutoff“); zusätzlich (c) „mindestens 70, idealerweise 80er/90er“ | Prompt belegt. **Ob die Korrekturformulierung im konkreten EIC-Ausgabetext wiedergegeben wurde, wurde nicht gegen den Rohtext geprüft.** Keine Interpretation. |
+| `vcpBreakoutVol ≥ 2.0` | Public-`risikenText` L6072 | (c) harte Zahlenschwelle; steht in Widerspruch zu L6060 (300–400 %) im selben Block — nur festgestellt, nicht bewertet | |
+| „Grundprinzip“ | L5201 und L5288 (Abschnittsüberschriften „## Grundprinzip“ in Regelabschnitten zu Public-Sprache bzw. Kandidatenpool-Kontext), Value-Prinzip | Abschnittsüberschriften, nicht Breakout | **Wortlaut „Grundprinzip Punkt 1“ nicht gefunden.** Im Breakout-Block heißt es „Grundsatz:“. Vermutung, „Punkt 1“ beziehe sich auf Kriterium 1 der nummerierten Liste (`_publicKriterienBlock`, „1. …“), ist **nicht bewiesen**. |
+
+**Rücknahme:** Meine frühere, aus dem Gedächtnis genannte Angabe zum Breakout-Volumen („etwa 40–50 % über dem Durchschnitt“) ist **ungeprüft** und widerspricht der im Repo zitierten Buchquelle (300–400 %). Sie gilt nicht als Beleg. Welche Zahl Minervini selbst nennt, ist nicht geprüft; erforderlich wäre Provenienzprüfung gegen die Bücher.
+
+**Nicht geprüft / offen:**
+- ob die „KORRIGIERT“-Passagen im Public-Ausgabetext erscheinen;
+- Token-Grenze und `stop_reason` des betroffenen Laufs (EIC7);
+- Snapshot-Rohdaten zu NTAP/CRWD/OKTA (nach Lesezugriff auf `uiq-archive`, getrennt von EIC8);
+- D22 (KLAC) ebenfalls erst mit `uiq-archive`.
+
+**Konsequenz:** Keine Prompt-, Code-, Score- oder Strategieänderung. EIC7–EIC9 sind Diagnose/Dokumentation, kein Änderungsauftrag. Nächster Produktionslauf: Mo 05.10. 22:00 UTC.
