@@ -381,3 +381,33 @@ Lauf #343 war ein `workflow_dispatch` (Actor `ahsub`, 04.10. 04:15:48 UTC), von 
 - D22 (KLAC) ebenfalls erst mit `uiq-archive`.
 
 **Konsequenz:** Keine Prompt-, Code-, Score- oder Strategieänderung. EIC7–EIC9 sind Diagnose/Dokumentation, kein Änderungsauftrag. Nächster Produktionslauf: Mo 05.10. 22:00 UTC.
+
+### 04.10.2026 nachmittags (Teil 2) — Erste Archivprüfung (`uiq-archive`, nur lesend): D20-Beleg, Snapshot-Zuordnung EIC, neu D26, D22 · nur Dokumentation
+
+**Änderungstyp:** ausschließlich Dokumentation; nur lesender Zugriff auf `uiq-archive` (Stand `352a55a`, Snapshot des Laufs #344). Der als Textanhang eingefügte Snapshot war beim Einfügen beschädigt (gzip-Binärdaten als Text, nicht lesbar) und wurde nicht verwendet.
+
+**1. D20 — Teilbeleg.** Das Archiv enthält `2026-10-04_13.json.gz` (`meta.generated` 2026-10-04T13:48:00Z, Archiv-Commit `352a55a` „run 344“). Der Dateiname mit Stunde 13 passt zur Logik `_lauf_hour >= 12`. **Offen bleibt**, ob der Worker-Payload `daily_market_snapshot_us` mit diesem Zeitstempel geschrieben wurde (Test von Axel steht aus).
+
+**2. Snapshot-Zuordnung zum EIC-Lauf (Breakout).** Die im bereitgestellten EIC-Text genannten Werte stimmen mit dem Snapshot `2026-10-03_01` (`generated` 2026-10-03T01:01:35Z, `_dataAsOf` 2026-10-02) überein: NTAP Kurs 215,05, `volRatio` 1,9, Dist200 41,86 %, RS 96; CRWD RSI 80,15, `volRatio` 0,55; OKTA Dist200 69,22 %, RSI 75,92, `volRatio` 0,53. **Übereinstimmung der Werte, kein Beweis für den Laufzeitpunkt des EIC.** Die externe Angabe „NTAP Freitagsschluss 226,27 (+5,22 %)“ steht im späteren Snapshot `2026-10-04_13` (Kurs 226,27); 226,27 / 215,05 − 1 = +5,22 % ist rechnerisch konsistent. Der Freitagsschlusskurs selbst wurde **nicht unabhängig am Markt geprüft**.
+
+Snapshot-Werte der drei Titel (Auszug, nur Archiv):
+
+| Titel | Snapshot `2026-10-03_01` | Snapshot `2026-10-04_13` |
+|---|---|---|
+| NTAP | 215,05 · RSI 66,34 · `volRatio` 1,90 · `sBreakout` 100 · `vcpDetected` false | 226,27 · RSI 89,19 · `volRatio` 2,02 · `sBreakout` 100 · `vcpDetected` false |
+| CRWD | 266,09 · RSI 80,15 · `volRatio` 0,55 | 270,04 · RSI 73,50 · `volRatio` 0,55 |
+| OKTA | 212,63 · RSI 75,92 · `volRatio` 0,53 | 211,49 (−0,54 % vom 52W-Hoch) · RSI 67,84 · `volRatio` 0,53 |
+
+**3. Neu: D26 — gleicher `_dataAsOf`, deutlich verschiedene Preise zwischen Nachtlauf und späterem Lauf (Beobachtung, Ursache offen).**
+
+| # | P | Fundstelle | Beobachtung | Status |
+|---|---|---|---|---|
+| D26 | P1 (Diagnose zuerst) | `uiq-archive` `data/snapshots/` (nur Archivvergleich); Ursprung im Aggregator nicht untersucht | Fünf Paare aus einem frühen Nachtlauf (Stunde 00–01 UTC) und einem späteren Lauf mit **identischem `_dataAsOf`** zeigen bei fast allen Tickern verschiedene Preise (Ticker mit gleichem `_dataAsOf` / davon mit verschiedenem Preis): 22.09. 00 → 13 Uhr: 722 / 710 · 24.09. 00 → 05: 737 / 676 · 25.09. 00 → 04: 735 / 671 · 26.09. 00 → 27.09. 04: 720 / 700 · 03.10. 01 → 04.10. 13: 723 / 705. Beispiel NTAP: 215,05 (03.10. 01 Uhr) gegen 226,27 (04.10. 13 Uhr), beide `_dataAsOf` 2026-10-02. Der Nachtlauf 03.10. unterscheidet sich zugleich vom Lauf 02.10. (nur 6 von 738 Preisen gleich), ist also nicht schlicht dasselbe Datenpaket. | offen — Diagnose |
+
+**Nicht belegt:** ob der frühe Nachtlauf Vortagesschlusskurse, einen Zwischenstand oder etwas anderes enthält (der Zeitpunkt der Datenabfrage, der Datenquellenstand und die Bedeutung von `_dataAsOf` sind nicht geprüft), welcher der beiden Preise der Marktschluss ist (Annahme „später = richtig“ stützt sich nur auf den ungeprüften externen Freitagsschluss), und welche Ausgaben davon betroffen sind (Digest, öffentliche Empfehlungen, EIC; nicht geprüft, ob der Generator denselben Nachtsnapshot nutzt). Wichtig für die Einordnung von EIC7–EIC9: Die EIC-Werte stammen laut Abgleich aus dem früheren Stand (`2026-10-03_01`), während die externe Analyse „Freitagsdaten“ verwendete. **Kein Änderungsauftrag.** Nächster Schritt (nur lesend): Lauf Mo 05.10./Di 06.10. gegen einen späteren Lauf desselben Tages vergleichen und den Datenabruf im Aggregator ansehen.
+
+**4. EIC9 — Befund zur Datengrundlage (nur Schlüsselliste geprüft).** Unter den Ticker-Feldern im Snapshot gibt es kein Feld „Tage seit Ausbruch“ oder Ausbruchsdatum; vorhanden sind u. a. `sBreakout`, `vcpBreakoutVol`, `icsBoState`, `patternEntry`, `rsNewHigh`. Deren Semantik wurde hier **nicht** geprüft. Die Spannung zwischen Prompt-Anweisung („Breakout ist ein EREIGNIS, kein Zustand“) und verfügbarer Datengrundlage bleibt damit eine Beobachtung, kein Promptfehler.
+
+**5. D22 (KLAC) — Archivlage.** `high52` 301,71 (frühester Archivstand 22.07.) wechselt zwischen dem 17. und 19.08. (Stichproben) auf 301,3694 (`low52` ebenfalls geringfügig anders); der Kurs lief laut Archiv von 217,56 (22.07.) über 168,02 (16.09.) auf 206,89 (04.10.13 Uhr); `pctFromHigh52` ist in der gesamten Reihe rechnerisch konsistent mit Kurs und `high52` (z. B. 04.10.: −31,35 %). Die Datenreihe ist damit **in sich konsistent und kein einzelner Ausreißer**. Ob Kurs und 52W-Hoch dem Markt entsprechen, wurde nicht gegen eine externe Quelle geprüft. Bei `pctFromHigh52` −35,32 % (Snapshot 02.10. 01 Uhr) steht `sMinervini` 100; die Bewertung dieser Kombination ist nicht Teil dieses Eintrags.
+
+**Offen:** D20-Worker-Payload; Ursache D26; Marktabgleich KLAC; Lauf Mo 05.10. 22:00 UTC.
