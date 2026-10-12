@@ -360,3 +360,27 @@
 * **Beschlossen:** `TIPS` bleibt unverändert; keine automatische Umbenennung und keine stillschweigende Ersetzung durch `TIP`. Zu klären sind erst: Instrument bei Yahoo (Name, Börse, Typ, Währung; teilweise belegt in 9.7), ursprünglich vorgesehenes Instrument im UIQ-Universum, bewusste Aufnahme oder Verwechslung mit `TIP`, nachgelagerte Berechnungen und Strategien mit dem Symbol. Erst danach Entscheidung über eine Korrektur.
 * [belegt] Abgrenzung: Die Hypothese „Label überholt Datenstand“ wird an einem Handelstag bereits während der US-Sitzung sichtbar (so am Freitag 09.10., 18:27Z, +1); die Dienstagsauswertung betrifft den vollständigen Tagesbalken, nicht die Frage, ob das Label an einem Handelstag voraus ist. [offen] Ob die beiden Fragen am Montag trennbar sind, zeigen die Messpunkte.
 * Unverändert: Freeze, C1-Sperre, `SUITE.md`, `e005f52`; keine Änderung an `market_aggregator.py`. A-2/C werden nach beiden Auswertungen gemeinsam entschieden.
+
+## 12. Ergebnis D27-Handelstagslauf Montag 12.10.2026 (Teilauswertung; nur angehängt)
+
+**Kennzeichnung:** [belegt] / [Hypothese] / [offen]. **Datenbasis:** Serie `20261011T165542Z` (Mac, `yfinance` 1.5.2), 11 Messpunkte 12:30Z bis 15:00Z im 15-Minuten-Takt, 15 Ticker (13 Krypto, `TIPS`, `SPY`), 165 Zeilen, 0 Abruffehler, keine übersprungenen Messpunkte. Der Dienstag-Teil (Beurteilung des vollständigen Montag-Tagesbalkens nach dem US-Schluss) steht aus und wird getrennt angehängt. Freeze, C1-Sperre, `SUITE.md`, `e005f52` unverändert; keine Änderung am Produktionscode; keine Entscheidung zu A-2/C.
+
+### 12.1 SPY — Label gegen Datenstand an einem Handelstag
+* [belegt] `SPY` mit `period="5d"` (Weg von `get_last_trading_day()`): letztes Datum 09.10. in den Messpunkten 12:30–13:15Z; **ab 13:30Z (US-Handelsbeginn, 9:30 ET) bis 15:00Z das Datum 12.10.** (7 von 7 Messpunkten, Fenster 06.10.–12.10.). Der Wechsel liegt im Intervall 13:15–13:30Z.
+* [belegt] `SPY` per `start`/`end` (Weg der Produktionsabrufe): letzte Zeile in allen 11 Messpunkten 09.10. (499 Zeilen, unverändert), auch nach Handelsbeginn.
+* [belegt] `label_minus_spy_startend` (Kalendertage): 0 bis 13:15Z, ab 13:30Z 3 (= ein Handelstag Vorsprung über das Wochenende). Die am Freitag 09.10. gemessene +1 und der Samstags-Nullwert (10.10.) passen dazu. Die 5d-Zeile für 12.10. hat gesetzte Kurswerte (`spy5d_last_row_close_nan = False`); sie ist die laufende Handelstageszeile.
+* [Hypothese] Mechanismus: `period="5d"` enthält ab Handelsbeginn die laufende Tageszeile, `start`/`end` mit exklusivem `end` (heutiges Datum) nicht. Für SPY an drei Handelsbeobachtungen (09.10. abends, 12.10. ab 13:30Z) gestützt; Ursache bei Yahoo/`yfinance` selbst nicht geprüft.
+
+### 12.2 Archivprüfung (rein lesend, `uiq-archive` HEAD nach `git pull`)
+* [belegt] Tagläufe: Snapshot `2026-10-07_17`: `meta.last_trading_day` = 2026-10-07, `_dataAsOf` bei allen 1.632 Vorkommen = 2026-10-06. Snapshot `2026-09-15_17`: Label 2026-09-15, `_dataAsOf` 1.655 Vorkommen = 2026-09-14 (6 weitere = 2026-07-17). Der Label-Vorsprung von einem Handelstag ist damit in beiden auswertbaren Tagläufen vorhanden. (`2026-09-10_17` und `2026-09-11_17` enthalten noch kein `_dataAsOf`; nicht auswertbar.) Gezählt werden Vorkommen des Feldes im Snapshot, nicht Ticker.
+* [belegt] Nachtläufe: Label und `_dataAsOf` stimmen für die Mehrheit überein (`2026-10-07_01`, `-08_01`, `-09_01`, `-10_01`, `-11_04`, `-12_04`); Ausnahmen jeweils eine kleine Gruppe (z. B. `2026-10-09_01`: 28 Vorkommen mit 07.10. bei Label 08.10.).
+* [belegt] Snapshot `2026-10-12_04`: Label 2026-10-09; alle 13 Krypto-Ticker mit `_dataAsOf` 2026-10-10, obwohl am Montag um 12:30Z die Zeile 11.10. vorliegt (12.3).
+* [Hypothese] Die Label-Differenz ist ein **Tagslauf-Phänomen** (nach US-Handelsbeginn), das D27-Muster der Nachtläufe (Krypto-Zeile fehlt morgens) ist davon zu trennen. [offen] Welche Folgen der Label-Vorsprung im Tagslauf in der Pipeline hat (z. B. `validate_data_freshness`, Anzeige von `last_trading_day`, Verbraucher des Feldes); nicht geprüft, keine Bewertung.
+
+### 12.3 Krypto und TIPS
+* [belegt] Alle 13 Krypto-Ticker hatten bereits im ersten Messpunkt (12:30Z) die Sonntag-Zeile 11.10. (730 Zeilen) und blieben bis 15:00Z in Close/Volume/Zeilenzahl unverändert; kein `NaN`, keine Rückfälle. Die laufende Tageszeile 12.10. ist wegen exklusivem `end` nicht enthalten. Der Zeitpunkt, zu dem die Zeile 11.10. erschien, ist am Montag nicht gemessen (nur: vor 12:30Z). Zusammen mit Abschnitt 10.2 (09.10.-Zeile erschien Samstag zwischen 07:00 und 07:30Z) und dem Snapshot vom 12.10. 04Z (Stand 10.10.) passt das zu einer täglichen Verzögerung bis morgens; [offen] ob sie an Wochentagen und Montag gleich liegt.
+* [belegt] `TIPS`: letzte Zeile 09.10. in allen 11 Messpunkten (499 Zeilen), unverändert; keine Zeile für 12.10. (erwartungsgemäß, siehe `end` exklusiv) und für `TIPS` auch keine neuere als 09.10. (Wochenende). Keine Aussage zu `TIPS` über die Symbolfrage (9.7) hinaus.
+
+### 12.4 Grenzen und Stand
+* [offen] Vollständigkeit der Montagszeilen nach dem US-Schluss (Dienstag-Teil). [offen] Verhalten des GitHub-Runners; Mac-Messung, 15 Ticker. [offen] Wann die Krypto-Tageszeile an Wochentagen erscheint (nicht gemessen).
+* Nächste Schritte (Entscheidung Axel): Dienstag-Auswertung; danach Entscheidung über die Wochentagsmessung (Nacht Di→Mi); `TIPS`-Identität; danach gemeinsame Entscheidung A-2/C. Freeze besteht.
