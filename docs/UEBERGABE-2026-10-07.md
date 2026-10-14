@@ -605,3 +605,43 @@ Quellenhinweis: Alle Zahlen dieses Abschnitts hat Claude am 14.10.2026 selbst au
 ### 18.4 Entscheidungsstatus
 * Keine Änderung an Aggregator, Workflow, Worker, Secrets, Cron-Triggern, KV, Archiv oder `SUITE.md` vorgenommen oder freigegeben. Freeze und C1-Sperre unverändert. Keine Empfehlung von Claude zu Startzeit, Cron, Watchdog-Logik oder Teilläufen.
 * Offen für Axel (jeweils Produktionsänderung, Punkt 8, und nicht Teil dieses Protokolls): wie mit der Abweichung zwischen Repo (`45 22`) und Cloudflare (`15 04`, `45 13`) umgegangen wird; ob und wann die Startzeit des Aggregators ein Thema für A-2/C wird; ob für Nicht-US-Titel und Krypto (Zeilen erst 07:00–09:00Z vollständig) eine eigene Behandlung gebraucht wird. Lesende Vorarbeiten, nur auf Axels Go: Abhängigkeitsliste zur Laufzeit 22:00Z (Watchdog, Digest-Skript, Konsumenten, Datumslogik); Lesen von `fetch_one` und `_lastRowIncomplete` für die Tageszeile offener Märkte; Git-Historie zu `GOLD`.
+
+## 19. Nachtrag 14.10.2026 abends: Startzeiten der geplanten Läufe, Commit-Stand, Folge für den Digest (nur angehängt; keine Empfehlung zu A-2/C)
+
+### 19.1 Commit-Stand
+* [belegt] Axel hat das Protokoll mit Commit `b411b2a` (`ahsub/UIQ-Suite`, Mi 14.10.2026 22:50:43 +0200, „Add files via upload“, `docs/UEBERGABE-2026-10-07.md`, +221 Zeilen) eingecheckt. Der committete Stand (607 Zeilen, sha256-Anfang d7c6b58178256eba) ist byteweise identisch mit der Fassung nach Abschnitt 18; er enthält also die Abschnitte 15 bis 18. Abschnitt 19 folgt erst im nächsten Commit.
+
+### 19.2 Geplante Läufe laut Actions-Liste (Filter `event:schedule`, von Axel gemeldet; Anzeige GMT+2, hier in UTC; Soll jeweils 22:00Z des Vortags)
+| Lauf | Start (Z) | Verspätung | Dauer | Snapshot `generated` (Z) |
+|---|---|---|---|---|
+| (Nr. nicht lesbar) 26.09. | 00:25 | 2 h 25 min | nicht lesbar | 00:27:56 |
+| #338 29.09. | 01:35 | 3 h 35 min | 25 m 48 s | 01:37:45 |
+| #339 30.09. | 01:09 | 3 h 09 min | 27 m 48 s | 01:12:43 |
+| #340 01.10. | 01:08 | 3 h 08 min | 24 m 42 s | 01:10:51 |
+| #341 02.10. | 01:24 | 3 h 24 min | 25 m 27 s | 01:27:17 |
+| #342 03.10. | 00:59 | 2 h 59 min | 25 m 30 s | 01:01:35 |
+| #346 06.10. | 02:07 | 4 h 07 min | 25 m 48 s | 02:09:40 |
+| #347 07.10. | 01:15 | 3 h 15 min | 24 m 34 s | 01:17:53 |
+| #349 08.10. | 01:37 | 3 h 37 min | **8 m 13 s** | 01:39:05 |
+| #350 09.10. | 01:49 | 3 h 49 min | 26 m 18 s | 01:52:43 |
+| #351 10.10. | 01:34 | 3 h 34 min | 25 m 38 s | 01:36:29 |
+| #354 13.10. | 02:54 | 4 h 54 min | 26 m 21 s | 02:56:42 |
+| #355 14.10. (früher gemeldet) | 00:57 | 2 h 57 min | 24 m 36 s | 00:59:44 |
+
+* [belegt] Alle 13 sichtbaren geplanten Läufe starteten zwischen 2 h 25 min und 4 h 54 min nach dem Soll (Median 3 h 24 min). Die Verspätung ist in diesem Zeitraum also keine Ausnahme, sondern der Normalfall. Die `generated`-Zeiten liegen jeweils 2 bis 3 Minuten nach dem Start. [Hypothese] Ursache ist die Last bei GitHub um 22:00 UTC (`docs/RUNBOOK.md:30`: „best effort“); nicht geprüft.
+* [belegt] In der gefilterten Liste fehlen die Nummern #343 bis #345, #348, #352 und #353: Das sind Läufe anderer Auslöser. #352 und #353 sind in 18.2 behandelt; zu #343 bis #345 und #348 liegt keine Angabe vor [offen]. Für #348 passt der Snapshot `07.10_17` (Tageslauf 17:25Z) [Hypothese].
+
+### 19.3 Startzeit und Datenvollständigkeit (Ergänzung zu 17.3)
+* [belegt] Weitere Preisgleichheitsprüfung wie in 17.3 (US-Aktien, Frühlauf gegen den späteren Snapshot mit vollständigem Freitagsschluss): `19.09_00` (generated 00:02:38Z) gegen `20.09_04`: 6 von 687 gleich (1 %); `26.09_00` (00:27:56Z) gegen `27.09_04`: 21 von 690 gleich (3 %). Zusammen mit `03.10_01` (3 %) und `14.10_01` (100 % veraltet nach Feld) lieferten alle vier getesteten Läufe mit Abruf vor etwa 01:03Z fast durchgehend den Vortagesschluss, Abruf um 01:16–01:18Z (`07.10_01`) 27 % veraltet, Abruf ab 01:35Z etwa 0 % (17.3).
+* [belegt] Unter den 13 geplanten Läufen der Tabelle lag der Abruf bei fünf Läufen (26.09., 30.09., 01.10., 03.10., 14.10.) vor etwa 01:12Z. Davon sind 26.09., 03.10. und 14.10. als veraltet belegt; `30.09` und `01.10` sind nicht prüfbar (kein Feld, kein Freitagsvergleich). Wie oft der Zeitplanlauf zu früh abruft, schwankt also mit der GitHub-Verzögerung.
+* [Hypothese] Die Grenze, ab der Yahoo die US-Tageszeilen liefert, liegt zwischen etwa 01:02Z und 01:35Z. Genauer ist sie nicht bestimmt.
+
+### 19.4 Folge für den öffentlichen Digest (Code gelesen, `uiq-suite` `scripts/generate_public_recommendations.js` @ `89010c4`, Zeilen 3876–3896)
+* [belegt] Trading-Day-Skip-Check: Ist `date` im zuletzt veröffentlichten KV-`public/digest/latest` gleich `snapshot.date` (= `meta.last_trading_day`), werden alle Anthropic-Aufrufe übersprungen und das Skript beendet sich (außer `FORCE_REGENERATE=true`; bei KV-Lesefehler „fail-open“, also normaler Lauf).
+* [belegt, aus Code und 17.2] Der Digest vom 14.10. trägt `date` 13.10., stammt aus dem frühen Lauf `_01` mit überwiegend veralteten US-Zeilen. Ein späterer Lauf mit demselben `last_trading_day` (13.10.) würde ihn **nicht** neu erzeugen. Der Digest bliebe bis zum nächsten Handelstag auf diesem Stand, sofern niemand `FORCE_REGENERATE` setzt.
+* [Hypothese, eng] Die Dispatch-Läufe #352 und #353 (7 m 55 s / 7 m 56 s, Wochenende und Montag, gleicher `last_trading_day` 09.10.) und der geplante Lauf #349 (8 m 13 s) wurden durch diesen Skip verkürzt. Bei #349 passt, dass der Snapshot `07.10_17` (Tageslauf, `last_trading_day` 07.10.) denselben Handelstag trug wie `08.10_01`; dann stammte der Digest zum 07.10. aus dem Tageslauf vom 07.10. um 17:25Z, also aus Daten mitten im Handelstag. Nicht belegt: Weder der Digest zum 07.10. noch die Läufe #343 bis #345 und #348 wurden eingesehen. [offen]
+* Hinweis: Die Skip-Regel ist als Kostenschutz dokumentiert (Dateikopf v1.1, 10.09.2026). Dass sie bei zu frühem Lauf einen veralteten Digest festhält, ist eine Folge der Kombination, keine Absicht im Code.
+
+### 19.5 Entscheidungsstatus
+* Keine Änderung an Aggregator, Workflows, Worker, Digest-Skript, KV, Archiv oder `SUITE.md` vorgenommen oder freigegeben. Freeze und C1-Sperre unverändert; keine Empfehlung zu Startzeit, Skip-Regel, `FORCE_REGENERATE`, Watchdog oder A-2/C.
+* Offen für Axel: wie mit den Befunden 17 bis 19 umgegangen wird (nur zur Kenntnis, weitere Messung, gemeinsame Entscheidung mit A-2/C). Lesende Vorarbeiten auf Axels Go: Abhängigkeitsliste zur Laufzeit 22:00Z; `fetch_one` und `_lastRowIncomplete` bei offenen Märkten; Git-Historie zu `GOLD`; Einsicht in die Läufe #343 bis #345 und #348 und in den Digest zum 07.10. (nur falls ein Archiv des Digests existiert).
