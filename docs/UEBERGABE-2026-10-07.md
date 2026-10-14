@@ -384,3 +384,224 @@
 ### 12.4 Grenzen und Stand
 * [offen] Vollständigkeit der Montagszeilen nach dem US-Schluss (Dienstag-Teil). [offen] Verhalten des GitHub-Runners; Mac-Messung, 15 Ticker. [offen] Wann die Krypto-Tageszeile an Wochentagen erscheint (nicht gemessen).
 * Nächste Schritte (Entscheidung Axel): Dienstag-Auswertung; danach Entscheidung über die Wochentagsmessung (Nacht Di→Mi); `TIPS`-Identität; danach gemeinsame Entscheidung A-2/C. Freeze besteht.
+
+## 13. Ergebnis Dienstag 13.10.2026: Montagsbalken, Wochentags-Vergleich D27 und Produktions-Nachtlauf (nur angehängt; Abschnitte 1–12 unverändert)
+
+**Kennzeichnung:** [belegt] / [Hypothese] / [offen]. **Datenbasis:** (a) Serie `20261012T151911Z` (Mac, `yfinance` 1.5.2), 7 Messpunkte 06:00Z bis 09:00Z am 13.10. im 30-Minuten-Takt, 15 Ticker (13 Krypto, `TIPS`, `SPY`; Watchlist `watchlist_d27_spy_20261012.csv`), 105 Zeilen, 0 Abruffehler, Verspätung 0 s, Abrufdauer 534–841 ms Median je Ticker; (b) Produktions-Snapshot `2026-10-13_03` (`generated` 02:56:42Z, `uiq-archive`, rein lesend). Freeze, C1-Sperre, `SUITE.md`, `e005f52` unverändert; keine Änderung am Produktionscode; keine Entscheidung zu A-2/C.
+
+### 13.1 SPY und Label
+* [belegt] Die Montagszeile (12.10.) von `SPY` lag per `start`/`end` bereits im ersten Messpunkt (06:00Z) vor: 500 Zeilen, vollständig (Close 778,10), in allen 7 Messpunkten unverändert. Der Zeitpunkt, zu dem sie vollständig wurde, liegt vor 06:00Z und ist nicht gemessen.
+* [belegt] `SPY` mit `period="5d"`: Label 12.10. in allen 7 Messpunkten, `label_minus_spy_startend` = 0. Nachts/morgens stimmen Label und Datenstand überein; der Label-Vorsprung aus Abschnitt 12.1 tritt nur während der laufenden US-Sitzung auf.
+
+### 13.2 Krypto (13 Ticker): Wochentags-Wiederholung des Samstagsbefunds
+* [belegt] Letzte Zeile 11.10. (729 Zeilen) in den Messpunkten 06:00, 06:30, 07:00Z; **bei allen 13 Tickern im Messpunkt 07:30Z die Zeile 12.10. (730 Zeilen)**, danach bis 09:00Z unverändert (Close, Volume, Zeilenzahl), kein `NaN`, keine Rückfälle. Intervall 07:00–07:30Z, identisch mit dem Samstag (10.10.: 07:00–07:30Z).
+* Zwei Beobachtungen (Samstag, Dienstag) mit gleichem Intervall. [Hypothese] tägliche Verzögerung der Tageszeile bei Yahoo von ≈7,5 Stunden nach Tagesende (UTC). Keine Regel belegt (zwei Tage, 30-Minuten-Raster).
+
+### 13.3 TIPS
+* [belegt] Letzte Zeile 09.10. (499 Zeilen) in den Messpunkten 06:00–08:30Z; **im Messpunkt 09:00Z die Zeile 12.10. (500 Zeilen)**, vollständig: Open/High/Low 0,0006/0,0006/0,0005, Close 0,0005, Volume 41.358.499. Intervall 08:30–09:00Z, identisch mit dem Samstag (10.10.: Freitagszeile 08:30–09:00Z) und mit dem Intervall, in dem am Samstag die 31 nicht-US-Zeilen (D26) vollständig wurden.
+* [Hypothese] `TIPS` (OTC-Pennystock, 9.7) folgt demselben Ereignis wie die nicht-US-Börsenzeilen, nicht dem Kryptomuster. Nicht belegt: ob die nicht-US-Zeilen auch an Wochentagen im Intervall 08:30–09:00Z vollständig werden (diese Ticker waren in dieser Watchlist nicht enthalten). Keine Aussage zur Symbolfrage über 9.7 hinaus.
+
+### 13.4 Produktions-Nachtlauf `2026-10-13_03` (Dienstag)
+* [belegt] `meta.last_trading_day` = 2026-10-12; `data_integrity`: `lastRowIncomplete` US 4 von 712 (0,6 %), nicht-US 31 von 31 (100 %), `spy` false; `labelAheadOfTickerData` US 14 von 712 (2,0 %); `flags` leer (A-1 meldet nur das US-Verhältnis ab 50 %).
+* [belegt] `_lastRowIncomplete = True` bei 35 Tickern: die bisherigen 34 (DE 18, UK 7, FR 2, IT 2, SE 1 sowie `HUBB`, `SHEL`, `TEF.MC`, `UCB.BR` mit `homeMarket` US) **und neu `ORG.AX`** (AU). Beispiele: `VOD.L`, `SHEL`, `ORG.AX` mit `_dataAsOf` 2026-10-12 und `_lastCloseDate` 2026-10-09, Preis = Close vom 09.10. (118,35 / 100,18 / 11,37).
+* [belegt] `_dataAsOf`: 13 Krypto-Ticker 2026-10-11, `TIPS` 2026-10-09, übrige 2026-10-12. Die 14 Ticker mit `labelAheadOfTickerData` sind damit genau die D27-Gruppe (13 Krypto plus `TIPS`).
+* [belegt] Das D26-Muster (alle nicht-US-Montagszeilen unvollständig) und das D27-Muster (Krypto-Zeile fehlt, `TIPS`) treten damit auch in einem **Wochentags-Produktionslauf** auf; Erzeugungszeit 02:56Z, also vor den am Samstag/Dienstag gemessenen Ereignissen (OTC 03:00–04:00Z, Krypto 07:00–07:30Z, nicht-US/`TIPS` 08:30–09:00Z).
+* [offen] `HUBB`, `SHEL`, `TEF.MC` sind in der Produktion in jedem betrachteten Nachtlauf (09.10., 13.10.) unvollständig, waren auf dem Mac aber vollständig (`SHEL`/`HUBB` am 09.10. 04:06Z, alle drei am 10.10. 01:40Z). Ursache (Umgebung Mac gegenüber Runner, Zeit, Tag) nicht geklärt; die Hypothese „Mac sieht dasselbe wie der Runner“ ist für diese Ticker nicht gestützt.
+* [offen] `ORG.AX`: in `2026-10-09_01` und auf dem Mac am 10.10. vollständig, am 13.10. 02:56Z unvollständig. Ursache nicht geklärt (Tag, Zeit, Börse; `homeMarket` AU).
+
+### 13.5 Was damit gestützt ist, und was nicht
+* [belegt] Drei zeitlich getrennte Aktualisierungsereignisse der Vortageszeile wurden gemessen (Samstag; Krypto und `TIPS` zusätzlich am Dienstag): OTC (Close 03:00–03:30Z, Volume 03:30–04:00Z), Krypto (07:00–07:30Z), nicht-US-Börsen und `TIPS` (08:30–09:00Z, nicht-US nur am Samstag). Der Produktions-Nachtlauf läuft vor allen dreien (02:56Z am 13.10.; bisher 01:15–01:55Z).
+* [offen] Wochentagszeit der nicht-US-Börsenzeilen und der OTC-Aktualisierung; Verhalten des GitHub-Runners gegenüber dem Mac; Verteilung über alle 742 Ticker; Auswirkungen der unvollständigen Zeilen auf Scores (nicht untersucht). Keine Aussage zu A-2/C.
+
+### 13.6 Aussage Axel (12.10.) zu `TIPS` und `TIP`, nicht entschieden
+* [stated Axel] Sobald Klarheit besteht, solle `TIPS` im Aggregator-Lauf gegen den korrekten Ticker `TIP` getauscht werden. Das Protokoll hält dies als Absicht fest. Voraussetzungen vor einer Änderung: Freeze-Ausnahme, eine Produktionsänderung pro Nacht (Pflicht-Header Punkt 8), Klärung der Quelle von `TIPS` (`ticker_master.py`, KV `approved_extra_tickers` oder `data/ex_iwv_tickers.csv`; in `market_aggregator.py` kommt `TIPS` nicht vor; `TIP` ist im Universum nicht vorhanden), Vorgeschichte (bewusste Aufnahme oder Verwechslung), Umgang mit der Historie und mit ETF-spezifischem Scoring. Keine Änderung vorgenommen.
+
+### 13.7 Nächster Schritt (Entscheidung Axel)
+* Wochentagsmessung für die Gruppen, die am Dienstag nicht enthalten waren: die 31 nicht-US-Börsenzeilen und die OTC-Kontrollen (volle Watchlist `watchlist_20261010.csv`, 59 Ticker), z. B. Nacht Di 13.10. auf Mi 14.10., Messpunkte 03:00–10:00Z. Danach gemeinsame Entscheidung A-2/C. Nicht begonnen.
+
+## 14. Ergänzungen 13.10.2026 (Quelle `TIPS`, Repo-Prüfung, Bars-Befund, Abgleich Master/Snapshot)
+
+### 14.1 Quelle von `TIPS` im Code
+* [belegt] `ko-aggregator` @ `4aa0d15` (13.10.2026, read-only): `TIPS` steht in `ticker_master.py` Zeile 751 (`"TIPS": {"lists": {"SECTOR_ETFS_US": 95}, "sectors": {}}`, Block Bonds) und in `ticker_master.json` (Zeile 6070). Sonst kein Treffer als Symbol (ohne `backups/`). `TIP` kommt im Repo nirgends als Symbol vor; ein Tausch erzeugt keine Dublette.
+* [belegt] `ticker_master.json` ist ein Migrationsüberbleibsel (geschrieben von `migrate_ticker_master_phase_b.py --json`, anderes Schema). Der Aggregator importiert nur `ticker_master.py`; kein anderer Leser im Repo. Beim Tausch wäre die JSON für den Betrieb nicht zu ändern.
+* [belegt] Folge eines Tauschs für Snapshot und Archiv: Die Historie unter `TIPS` ist ein anderes Instrument (Tianrong Internet Products and Services, OTC); `TIP` begänne ohne Historie. [Hypothese] Effekt auf Scores/Ranglisten nicht geprüft.
+
+### 14.2 Konsumenten (`uiq-suite`, Klon Stand `89010c4`, 06.10.; Remote `bee8435`, 12.10., nicht gezogen)
+* [belegt] `scripts/vendor/ko-prompts.js` Zeilen 3113, 7043, 7071: `imTip` ist Doku bzw. Prompt-Text („TIPS ETF (Inflationserwartungen)“), gemeint der Bond-ETF. Keine Stelle in `uiq-suite` oder `ko-aggregator` setzt `imTip`.
+* [Hypothese] Befüllung im Frontend-Repo über einen eigenen Pfad, unabhängig vom Aggregator-Universum. [offen] Nicht gesehen.
+* [offen] `regime-test` (Branch `h5-saisonalitaet-entwurf`, `H6_tip_canary_ENTWURF.md`, geparkter Entwurf „TIP-Canary“): Abhängigkeit von der TIP-Zeitreihe nicht geprüft.
+* [offen] Vor einer Freeze-Ausnahme: Frontend-Repo und `regime-test` auf `imTip`, `'TIPS'`, `TIP` prüfen.
+
+### 14.3 `add_ticker.py`
+* [belegt] Existiert in `ko-aggregator` @ `4aa0d15` nicht (kein Dateiname `add_ticker*`, `*ticker*upload*`, `*ticker_add*`; keine Erwähnung außer im Docstring von `ticker_master.py`: „GOVERNANCE — NEUEN TICKER AUFNEHMEN (bis add_ticker.py existiert)“). `docs/TICKER-MASTER-MIGRATION-PHASE-AB.md` Zeile 104: erst nach stabiler Phase C geplant, „deutlich einfacher als ursprünglich gedacht“.
+* [belegt] Seit Phase C (24.09.2026) liegen statisches Universum, Sektor-Watchlists und Referenzlisten nur in `ticker_master.py`. Weitere Quellen zur Laufzeit: KV `approved_extra_tickers`, `data/ex_iwv_tickers.csv`, `BAD_SYMS`-Filter.
+* [Hypothese] Axels Erinnerung an ein Skript stammt aus der Vor-Phase-C-Zeit (mehrere Eintragsstellen) bzw. aus den Migrationsskripten `audit_ticker_sources.py` und `migrate_ticker_master_phase_b.py`.
+
+### 14.4 Bars-Befund `2026-10-13_03`
+* [belegt] `bars` je Nachtlauf (`AAPL`): 09.10._01 501; 10.10._01 501; 11.10._04 500; 12.10._04 499; **13.10._03 251**. `_dataAsOf` am 13.10. 2026-10-12.
+* [belegt] In `2026-10-13_03` haben nur `AAPL` (251) und `SLDE` (331; vorher 329–330) weniger als 400 Bars; in den vier Vorläufen nur `SLDE`.
+* [offen] Ursache der 251 Bars (Fallback `period="1y"` in `fetch_one`? [Hypothese], nicht belegt) und Wirkung auf den `AAPL`-Score. Keine Aussage.
+
+### 14.5 Abgleich Master gegen Snapshot `2026-10-13_03`
+* [belegt] 86 Ticker im Snapshot, nicht in `ticker_master.py`; 26 Ticker im Master, nicht im Snapshot (Datei `ticker_abgleich_master_snapshot_20261013.csv`, 112 Zeilen).
+* [offen] Ursachen nicht geklärt (Laufzeitquellen KV/ex-IWV für die 86 [Hypothese]; Fetch-Ausfall, `BAD_SYMS` oder Delisting für die 26). Die Datei bleibt lokal, nicht in Repos.
+
+### 14.6 Offene Entscheidungen Axel (unverändert)
+* Wochentagsmessung Nacht Di 13.10. → Mi 14.10. (59er-Watchlist). Nicht gestartet.
+* Read-only Identity-Audit-Skript für Symbolverwechslungen (Stub-Test zuerst). Nicht begonnen.
+* `TIPS`→`TIP`: Freeze-Ausnahme, eigene Nacht, vorher 14.2-Prüfung. Keine Änderung vorgenommen.
+
+## 15. Nachtrag 14.10.2026: AAPL-Bars, Wochentagsserie, Produktionslauf `2026-10-14_01`
+
+Quellenhinweis: Alle Zahlen dieses Abschnitts hat Claude am 14.10.2026 selbst aus den hochgeladenen Dateien der Serie `20261013T153143Z` (sha256-Anfang: `c2_serie` 7c8ca452…, `c2_d27` fb2c6e10…, `c2_serie_log` f1154328…) und aus dem Archivstand `origin/main` @ `b11d786` (Snapshot `2026-10-14_01.json.gz`, sha256-Anfang 44bd8340…) nachgerechnet. Sie sind Befunde dieser Dateien, keine Aussagen Dritter. Eine unabhängige zweite Prüfung durch Axel oder einen Reviewer steht aus.
+
+### 15.1 Nachtrag zu 14.4 (`AAPL`-Bars)
+* [belegt] `2026-10-14_01`: `AAPL` `bars` 500, `_bars_raw` 501. Die 251 Bars aus `2026-10-13_03` (14.4) blieben damit ein Einzelereignis in einem Lauf; sie werden hier nicht überschrieben, 14.4 bleibt gültig.
+* [belegt] Archivscan 22.07.–13.10. (190 Snapshots, 137.425 Ticker-Snapshots mit `bars`): Sprünge von mindestens 400 auf weniger als Vorwert minus 100 gab es 7-mal in 6 Läufen: `MSFT` 16.08._06 (251), `TIPS` und `MSFT` 01.09._09 (250, 251), `NVDA` 03.09._16 (253), `AAPL` 08.09._08 (252), `AXS` 25.09._00 (249), `AAPL` 13.10._03 (251). Jeweils ein bis zwei Ticker pro Lauf, im folgenden Lauf wieder etwa 500 (außer 13.10., dort 14.10._01 wieder 500). Kein Wert um 125.
+* [belegt] Wirkung in den Ereignisläufen: Preis gleich, `ema200`/`dist200` abweichend (`MSFT` 16.08.: ema200 428,38 gegenüber 440,55); `NVDA` 03.09._16: `confluenceScore` 58 gegenüber 48, Note A+ gegenüber A. `meta.errors` in den Ereignisläufen unverändert (Fallback wird nicht gemeldet).
+* [Hypothese] Fallback `period="1y"` in `fetch_one` (Zeilen 7261 ff. @ `4aa0d15`): vereinbar mit den Daten, nicht belegt (Snapshot hält nicht fest, welcher Versuch griff). Alternative (verkürzte Yahoo-Antwort auf den 2y-Aufruf) nicht ausgeschlossen. [offen] Warum der erste Aufruf bei diesen Tickern scheitert.
+* [belegt] Auf dem Mac in der Wochentagsserie: 885 Abrufe, alle `attempt_used = 2y_explicit`, alle `ok`; kein Fallback aufgetreten. (Mac, 30-Minuten-Raster, andere Abrufart als der 12-Thread-Lauf des Aggregators.)
+* [belegt] `SLDE` (273 Bars am 22.07., 331 am 13.10., wächst um etwa 1 je Handelstag) ist kein Fallback-Muster. [Hypothese] junges Listing; Erstnotiz nicht im Archiv.
+
+### 15.2 Wochentagsserie Mi 14.10.2026 (Run `20261013T153143Z`)
+* [belegt] Messpunkte 03:00 bis 10:00Z, 15 Slots, 59 Ticker (`watchlist_20261010.csv`), 885 Abrufe, 0 Abruffehler, Verspätung je Slot 0 s, Median Abrufdauer 550–670 ms. Python 3.13.1, yfinance 1.5.2, je Slot frischer Prozess.
+* [belegt] 31 nicht-US-Börsenzeilen (DE 18, UK 7, FR 2, IT 2, SE 1, `UCB.BR`): letzte Zeile 13.10. mit `Close=NaN` in den Slots 03:00–08:30Z (Log: 31), vollständig ab 09:00Z (Log: 0), kein Rückfall. Fenster 08:30–09:00Z, identisch mit dem Samstagsbefund (10.1).
+* [belegt] 13 Krypto-Ticker: letzte Zeile bis 07:00Z der 12.10., ab 07:30Z der 13.10., kein Rückfall. Fenster 07:00–07:30Z; dritte Beobachtung (Sa, Di, Mi).
+* [belegt] `TIPS`: letzte Zeile bis 08:30Z der 12.10., ab 09:00Z der 13.10. Fenster 08:30–09:00Z; dritte Beobachtung.
+* [belegt] `label_minus_spy_startend` 0 in allen 15 Slots; `spy5d_label_date` 2026-10-13. Die D27-Gruppe liegt (Minimum des letzten Indexdatums) bis 07:00Z einen Handelstag hinter SPY, danach nur noch `TIPS` bis 08:30Z.
+* [belegt] SPY, 6 US-Kontrollen (`AAPL`, `JPM`, `KO`, `MSFT`, `PG`, `XOM`), 3 OTC-ADRs (`BAYRY`, `DHLGY`, `SIEGY`), `ORG.AX`, `TEF.MC`, `HUBB`, `SHEL`: Zeile vom 13.10. schon im ersten Slot 03:00Z vollständig. Das ist eine obere Schranke. [offen] Der tatsächliche Zeitpunkt liegt vor 03:00Z und ist nicht beobachtet.
+* [belegt] Vergleichswerte: `AAPL` Close 13.10. auf dem Mac 341,27 (Vortag 340,97), `JPM` 331,43, `KO` 90,11, `MSFT` 543,45, `PG` 153,04, `XOM` 174,08.
+* [Hypothese] Die OTC-Aktualisierung liegt an Wochentagen früher als am Samstag (dort Close 03:00–03:30Z, Volume 03:30–04:00Z, 10.3). Belegt ist nur: Samstag zweistufig im Fenster, Mittwoch schon bei 03:00Z vollständig und im Produktionslauf 00:59Z noch fehlend (15.3).
+* Grenzen: ein Wochentag, 30-Minuten-Raster, 59 Ticker, Mac statt GitHub-Runner, Beginn erst 03:00Z.
+
+### 15.3 Produktionslauf `2026-10-14_01`
+* [belegt] Erzeugt 2026-10-14T00:59:44Z (`elapsed_s` 79,2), Version 5.48.0, `last_trading_day` 2026-10-13, `total` 744, `errors` 22. Das ist früher als alle seit A-1 betrachteten Nachtläufe (01:17Z bis 02:56Z).
+* [belegt] `data_integrity`: `lastRowIncomplete` US 655 von 712 (92,0 %), nicht-US 30 von 31 (96,8 %), `spy` true; `labelAheadOfTickerData` US 56 von 712 (7,9 %); **`flags` = `LAST_ROW_INCOMPLETE`**. Erstmalige Auslösung eines A-1-Flags in den betrachteten Läufen.
+* [belegt] Die 56 `labelAhead`-Ticker haben `_dataAsOf` 2026-10-12: 13 Krypto, `TIPS`, 42 weitere (OTC-ADRs und `AIVAF`). Auf dem Mac ist die OTC-Zeile des 13.10. um 03:00Z vorhanden, im Produktionslauf (00:59Z) fehlte sie.
+* [belegt] Von 686 Tickern mit `_lastRowIncomplete` haben 653 den gleichen `price` wie in `2026-10-13_03`, sind also einen Handelstag alt. `AAPL` 340,97 (Mac 13.10.: 341,27); gleiche Lage bei `JPM`, `KO`, `MSFT`, `PG`, `XOM`, SPY.
+* [belegt] Verlauf `lastRowIncomplete` US je Nachtlauf (jeweils anderer Tag): 07.10._01 (01:17Z) 188 von 710; 08.10._01 (01:39Z) 4; 09.10._01 (01:52Z) 4; 10.10._01 (01:36Z) 1; 13.10._03 (02:56Z) 4 von 712; 14.10._01 (00:59Z) 655 von 712.
+* [Hypothese] Die Vervollständigung der US-Vortageszeilen bei Yahoo geschieht in einer Welle zwischen etwa 01:00 und 01:40Z. Die Folge der Läufe passt dazu, ist aber kein Mechanismusbeleg: verschiedene Tage, ein Datenpunkt je Zeit, die Mac-Serie beginnt erst 03:00Z.
+* [offen] Warum der Lauf um 00:59Z entstand (Auslösung, Zeitplan, Verzögerung). Ob die öffentlichen Ausgaben (`generate_public_recommendations`, KV, Digest) auf diesen Snapshot gebaut wurden oder ein späterer Lauf ihn ersetzte (im Archiv bis `b11d786` nur `_01`). Wirkung auf Scores und Ranglisten. Ob A-1 die nachgelagerten Ausgaben geschützt hat: A-1 meldet nur (Diagnosefeld), schützt nicht.
+* [belegt, Verfeinerung zu 13.4] `HUBB` und `SHEL` sind US-Aktien; ihre Unvollständigkeit im Produktionslauf passt zum US-Muster aus diesem Abschnitt. `TEF.MC` war in `2026-10-14_01` vollständig (letzte Schlusszeile 13.10.), `ORG.AX` ebenfalls. [offen] Warum beide am 13.10. um 02:56Z unvollständig waren.
+
+### 15.4 `UNI-USD`
+* [belegt] `UNI-USD` stand 22.07.–10.09.2026 im Universum mit Preis 0,0002 (kein plausibler Uniswap-Kurs, [Hypothese] anderes Instrument) und `bars` von 270 auf 220 fallend (etwa 1 je Tag). Ab `2026-09-11_04` nicht mehr im Snapshot (Anzahl 735 auf 734). [offen] Ursache der abnehmenden Bars; Verbindung zu einer Universumsänderung nicht geprüft.
+
+### 15.5 Identity-Audit und ABR-Idee (Stand 14.10.2026, abends)
+* [belegt] `uiq_identity_audit.py` v1 (391 Zeilen) von Claude geschrieben, liegt bei Axel in `~/Downloads`. Stub-Test (10 Prüfungen) bestanden. Offline-Lauf auf `2026-10-13_03` (Claude, kein Netz): 744 Symbole, 4 mit Hinweis (`TIPS` `PRICE_SUBCENT`; `AIVAF` 675, `CNRG` 9.420, `SRT.DE` 4.131 `VOLUME_TINY`), 904 Nähe-Paare ohne Namen nicht auswertbar. Preise unter 1 nur bei `TIPS`, `ADA-USD`, `DOGE-USD`.
+* [offen] Online-Lauf (Yahoo-Stammdaten) nicht ausgeführt; Ergebnisse stehen aus. Hinweise sind Prüfhinweise, keine Urteile.
+* [stated Axel] ABR-Idee (Zacks-ABR als Außenprüfung der Kandidaten): erst nach dem Identity-Audit, rein lokal; Eingangsliste `masterShortlist` (20), `top40` als Vergleich; Quelle Yahoo-Konsens (`recommendationMean`, `numberOfAnalystOpinions`) ausdrücklich getrennt vom Zacks-ABR; keine Wirkungsbehauptungen ohne Point-in-Time-Daten; keine Änderung an Aggregator, Workflows, KV, Archiv. Nicht gestartet.
+
+### 15.6 Entscheidungsstatus
+* Freeze und C1-Sperre unverändert; keine Produktionsänderung freigegeben; A-2/C offen, keine Empfehlung.
+* `TIPS`→`TIP` weiter offen (Freeze-Ausnahme, eigene Nacht, Prüfung Frontend-Repo und `regime-test`).
+* Optional, nicht entschieden: Nachtserie 00:30–03:30Z (US-Aktien, OTC, `ORG.AX`, `TEF.MC`, `HUBB`, `SHEL`, SPY) für das bisher unbeobachtete Fenster.
+* Offen aus der Liste: Verwendung der öffentlichen Ausgaben aus `_01` (15.3), Ursache früher Laufzeit, KV `public/digest/latest` (`date`, `generated_at`) ungelesen.
+
+## 16. Identity-Audit 14.10.2026 (Instrumentidentität im Universum)
+
+### 16.1 Umfang und Reproduzierbarkeit
+* [belegt] Geprüft wurden 744 Symbole des Snapshots `2026-10-14_01.json.gz` (erzeugt 2026-10-14T00:59:44Z, Version 5.48.0; sha256-Anfang 44bd8340…, 1.053.417 Byte). Archivstand `uiq-archive` @ `b11d786`; Master `ko-aggregator/ticker_master.py` @ `7c1c510` (65.941 Byte; zwischen `4aa0d15` und `7c1c510` unverändert); Skript `uiq_identity_audit.py` v1 (391 Zeilen, sha256-Anfang 148f0cd0…).
+* [belegt] Ablauf auf dem Mac (Axel): Stub-Test bestanden (10 Prüfungen), Offline-Lauf, Online-Probelauf mit 5 Symbolen, voller Online-Lauf am 14.10. (Abruf gegen Yahoo gegen 20:14 deutscher Zeit); Laufzeit 11 Min. 21 Sek. (`real`), 744 Abfragen, Pause 0,3 s. Ergebnisdateien (sha256-Anfang): `identity_online_20261014T181449Z.csv` 8dc9f282…, `identity_naehe_…csv` 3649eac2…, `identity_zusammenfassung_…txt` 43264a1d… Sie bleiben lokal in `~/uiq-audit-lokal`, nicht in Repos.
+* [belegt] Der Offline-Lauf von Claude und der von Axel auf `_01` stimmen überein (744 Symbole, 4 Hinweise: `TIPS` `PRICE_SUBCENT`; `AIVAF`, `CNRG`, `SRT.DE` `VOLUME_TINY`; 904 Nähe-Paare).
+* Methode und Grenzen: Die Auswertung der Namen (alle 744) ist eine Sichtprüfung von Claude anhand der Yahoo-Angaben (`quoteType`, `shortName`/`longName`, Börse, Währung, Land) und seines Wissensstandes bis Mitte 2026. Keine ISIN-, FIGI- oder Registerprüfung (Yahoo liefert keine ISIN), keine unabhängige Zweitprüfung. Die Hinweise des Skripts sind Prüfhinweise, keine Urteile. Der Audit beantwortet „Welches Instrument meint das Symbol heute bei Yahoo?“, nicht „Was wollte UIQ?“.
+
+### 16.2 Ergebnis des Skripts (Online)
+* [belegt] 4 Symbole mit Hinweis. Je Art: `PRICE_DEVIATION` 1, `PRICE_SUBCENT` 1, `QUOTETYPE_MISMATCH` 1, `VOLUME_TINY` 3. Kein `INFO_FEHLER`, `NAME_FEHLT`, `CURRENCY_MISMATCH`, `MARKETCAP_TINY`.
+* [belegt] Typen: 585 `EQUITY`, 146 `ETF`, 13 `CRYPTOCURRENCY`. Alle ETF-Listen enthalten nur ETFs, `CRYPTO_TICKERS` nur Kryptowerte. Einziger Typkonflikt: `TIPS`.
+
+### 16.3 Instrumentidentität
+* [belegt] `TIPS`: Tianrong Internet Products and Services, Inc. (OTC `OID`), Marktkapitalisierung 2.137.205, Yahoo-Preis 0,0009 gegenüber 0,0005 im Snapshot; Master `SECTOR_ETFS_US` Position 95. Verwechslung mit dem gemeinten Bond-ETF `TIP` bestätigt (siehe 9.7, 13.6, 14.1). Der `PRICE_DEVIATION`-Hinweis ist bei einem Sub-Cent-Wert Rauschen.
+* [belegt] `CNRG`: State Street SPDR S&P Kensho Clean Power ETF, Volumen 9.176; Identität unauffällig, nur dünn gehandelt.
+* [belegt] `AIVAF`: Aviva plc, OTC-Stammaktie (`OQX`), Volumen 675; Identität unauffällig. [Hypothese] Liquider wäre das ADR `AVVIY` (Wissensstand Claude, nicht geprüft).
+* [belegt] `SRT.DE`: Sartorius Aktiengesellschaft, Stammaktie, Volumen 4.138; Identität unauffällig. [Hypothese] Die liquidere Gattung wären die Vorzugsaktien `SRT3.DE` (analog `VOW3.DE`; nicht geprüft).
+* [belegt] `GOLD`: Yahoo meldet Gold.com, Inc.; `B` meldet Barrick Mining Corporation. Im Master steht `GOLD` in `SP500_TICKERS` Position 217 zwischen `NEM` und `ALB`/`MP` ohne Kommentar; `B` ist nicht im Master, sondern kommt über eine Zusatzquelle ins Universum (86 Snapshot-Symbole ohne Master-Eintrag, 14.5). `avgVol20` von `GOLD` lag in den Stichproben 22.07.–13.10. bei 0,37–0,77 Mio., der von `B` bei 7,9–12,7 Mio.; die Zeile `GOLD` war damit im ganzen Archivzeitraum nicht Barrick.
+  [Hypothese] Der Master meinte Barrick, dessen früherer Ticker `GOLD` war (Wissensstand Claude). Belegt ist nur die heutige Identität, nicht die ursprüngliche Absicht. Dafür braucht es den historischen Kontext des Master-Eintrags oder die Bestätigung von Axel. [offen]
+* [belegt] `USD`: ProShares Ultra Semiconductors (ETF mit zweifacher Hebelwirkung), `SECTOR_ETFS_US` Position 8 neben `SOXX` (6) und `SOXQ` (7). [Hypothese] bewusste Aufnahme als Halbleiter-ETF. Der Ticker entspricht dem Währungskürzel; mögliche Verwechslungen in Code und Auswertungen nicht geprüft. Bewertung offen. [offen]
+* [belegt, Einzelfall] `MX` (INTL_TIER1 Position 60, Master-Kommentar „Suedkorea“ davor `SSNLF`): Yahoo meldet Magnachip Semiconductor. Passt zu einer koreabezogenen Aufnahme [Hypothese]; kein Hinweis auf Fehler.
+
+### 16.4 Universumsstruktur (keine automatischen Fehler)
+* [belegt] Zehn Paare mit gleichem Emittenten (normalisierter Name): `GOOG`/`GOOGL`, `BAYN.DE`/`BAYRY`, `DTE.DE`/`DTEGY`, `ENEL.MI`/`ENLAY`, `IFX.DE`/`IFNNY`, `MBG.DE`/`MBGAF`, `RHM.DE`/`RNMBY`, `RWE.DE`/`RWEOY`, `VOD`/`VOD.L`, `VOW3.DE`/`VWAGY`. Die Namensnormalisierung ist grob, weitere Paare sind möglich. [offen] Ob die Doppelung Ranglisten und Kandidatenlisten beeinflusst, hängt von der Bewertungs- und Deduplizierungslogik ab; der Audit beantwortet das nicht.
+* [belegt] Listenbezeichnung und Inhalt weichen ab (Land laut Yahoo): `EU_ADR_TICKERS` enthält 7 US-Emittenten (`FCX`, `MLM`, `NUE`, `RSG`, `URI`, `VMC`, `WM`); `INTL_TIER1` enthält 3 (`GTLB`, `KEYS`, `SCCO`); `SP500_TICKERS` (248 Symbole) enthält 33 Emittenten mit Yahoo-Land außerhalb der USA (u. a. `ACN`, `ARM`, `BABA`, `NIO`, `TM`, `STLA`). Der Master-Kommentar bei `FCX` („Materials — liquid Options“) zeigt, dass Listen auch für andere Zwecke als den Namen genutzt werden. Das ist keine Identitätsverwechslung und nicht automatisch ein Fehler.
+* [belegt] `homeMarket`: `TEF.MC` (Börse Madrid) und `UCB.BR` (Börse Brüssel) tragen `homeMarket` US; bekannte Lücke der Suffix-Tabelle (separat geführt).
+* [belegt] `LTC` (LTC Properties, REIT) und `LTC-USD` (Litecoin) sind beide im Universum; unterschiedliche Instrumente mit gleicher Basis ohne Suffix.
+* [belegt] Nähe-Liste: 904 Paare mit Edit-Abstand 1 auf Basis-Symbolen, überwiegend bedeutungslose Namensähnlichkeit (z. B. die `EW?`- und `IY?`-ETFs). Ein Fall nach dem Muster `TIP`/`TIPS` ist nicht enthalten, weil `TIP` im Universum fehlt.
+* Hinweis: Alle Befunde dieses Unterabschnitts sind Beschreibungen, keine Fehler und keine Änderungsempfehlungen.
+
+### 16.5 Grenzen und offene Prüfungen
+* [offen] 26 Master-Ticker fehlen im Snapshot und sind vom Audit nicht abgedeckt (er fragt nur Snapshot-Symbole ab): `MMC`, `CFLT`, `EXAS`, `MRUS`, `BMWYY`, `AZSEY`, `HBMRY`, `PDRDY`, `ABB`, `VOLVY`, `TAG.DE`, `1COV.DE`, `STLAM.MI`, `GLPG.BR`, `ARND.DE`, `WDP.BR`, `NTT`, `KYOCY`, `SSNLF`, `BRKM`, `CYBR`, `IRBO`, `EMSG`, `POL-USD`, `UNI-USD`, `MAG` (aus dem Abgleich 13.10., 14.5). Ein Yahoo-Lauf nur für diese 26 wäre ein separater, optionaler Read-only-Schritt, nicht gekoppelt an eine Änderung des Master-Universums. Ursachen des Fehlens (Fehlschlag, Delisting, Übernahme, Ticker-Änderung) nicht geklärt.
+* [offen] Zusatzquellen-Namen, die Claude nicht verifizieren konnte (neuere Namen jenseits seines Wissensstandes): u. a. `HAPN`, `PLGO`, `VISN`, `XRN`, `CIFR` (umbenannt). Keine Aussage zur Richtigkeit.
+* [offen] Die Namensprüfung ist eine einmalige Sichtprüfung; ein erneuter Lauf an einem anderen Tag wurde nicht gemacht.
+
+### 16.6 Entscheidungsstatus
+* Axel entscheidet: `TIPS` → `TIP` (Freeze-Ausnahme, eigene Nacht, vorher Prüfung des Frontend-Repos und von `regime-test`, 14.2); gegebenenfalls `GOLD` → `B`; Behandlung von `USD`. Keine Empfehlung von Claude. Keine Änderung am Master, am Aggregator oder an Workflows vorgenommen oder freigegeben.
+* Freeze und C1-Sperre unverändert; A-2/C offen. Der ABR-Test (15.5) folgt erst nach diesem Audit und bleibt rein lokal.
+
+## 17. Nachtrag 14.10.2026 abends: Startzeit des Produktionslaufs, Digest-Befund, Archivvergleich (nur angehängt; keine Empfehlung zu A-2/C)
+
+### 17.1 Läufe laut GitHub Actions (von Axel gemeldet)
+* [belegt, von Axel übernommen] `KO-Scanner Market Aggregator` Lauf #354: Auslöser *Scheduled*, `main`, „Oct 13, 04:54 GMT+2“ (= 02:54Z), Dauer 26 min 21 s. Lauf #355: *Scheduled*, `main`, „Today at 02:57“ (am 14.10. gemeldet; Zeitzone nicht ausdrücklich genannt, als MESZ gelesen, also 00:57Z), Dauer 24 min 36 s. Die Läufe sind fortlaufend nummeriert; dazwischen lag kein weiterer Lauf dieses Workflows, also auch keiner per `workflow_dispatch`.
+* [belegt] Workflow `market-aggregator.yml` (Stand `7c1c510`): einziger Zeitplan `cron '00 22 * * 1-5'` (22:00 UTC, Kommentar „Nachbörsen-Lauf“) plus `workflow_dispatch`. `ko-watchdog` (`workers/ko-watchdog/wrangler.toml`): `cron '45 22 * * 1-5'`.
+* [belegt, abgeleitet] Verspätung gegenüber 22:00Z: #354 (Soll Mo 12.10.) 4 h 54 min; #355 (Soll Di 13.10.) 2 h 57 min. In der Sitzung wurde zunächst irrtümlich „3 h 57 min“ genannt; maßgeblich ist 2 h 57 min.
+* [belegt] Zu den Snapshots: `13.10_03` `generated` 02:56:42Z, `elapsed_s` 105,3; `14.10_01` `generated` 00:59:44Z, `elapsed_s` 79,2. `generated` wird am Ende des Abrufs gesetzt (`market_aggregator.py:11361`). Das Abruffenster (`generated` minus `elapsed_s`) ist abgeleitet, nicht gemessen: #354 02:54:56–02:56:42Z, #355 00:58:24–00:59:44Z. Es passt zu den gemeldeten Startzeiten.
+* [offen] Ob GitHub die Verspätung regelmäßig oder nur zufällig erzeugt, ist mit zwei Läufen nicht entschieden. Die `generated`-Zeiten früherer Nächte (29.09.–10.10.: 01:01Z–02:09Z) legen Verspätungen von etwa 3 bis 4 Stunden nahe, belegen aber keine Startzeiten. Die Läufe vom 29.09. bis 12.10. wurden nicht abgefragt.
+
+### 17.2 Befund Tages-Digest (Abruf durch Axel am 14.10. gegen 20:00Z)
+* [belegt] Abruf `GET https://ko-sync.ahildebrand.workers.dev/public/digest` (liest KV `public/digest/latest`; Bearer-Token `OWNER_TOKEN` oder `STATIC_TOKEN`, `ko-sync-worker.js:187–192`, `321–330`). Datei `digest_20261014T200028Z.json`, 26.694 Byte, sha256-Anfang 1885766e8f59f510. Das Token steht nicht in der Datei.
+* [belegt] Inhalt: `digest_id` `DIGEST-20261013`, `date` 2026-10-13, `snapshot_id` `SNAP-20261014-010515Z`, `generated_at` 2026-10-14T01:22:06Z; `dce_public.generated` 2026-10-14T00:59:44Z, `as_of` 2026-10-13.
+* [belegt] Der Digest stammt aus dem Snapshot `2026-10-14_01`: `dce_public.generated` ist gleich `meta.generated`; die Signale stimmen mit dem Snapshot überein (Beispiel AAPL: Digest „RSI 51.3“, Snapshot `rsi` 51,3). `generated_at` 01:22:06Z liegt im Laufzeitfenster von #355 (Start 00:57Z + 24 min 36 s); der Digest wurde also in diesem Lauf neu erzeugt.
+* [belegt] Von den 33 Symbolen, die im Digest als Top-3 je Strategie vorkommen, haben im Snapshot 32 `_lastCloseDate` 2026-10-12 (27 davon mit `_lastRowIncomplete` True); nur `TEF.MC` hat 2026-10-13. Beispiel AAPL: `price` 340,97 (Schluss vom 12.10.), `_dataAsOf` 2026-10-13. Der Digest trägt also das Datum 13.10., seine Auswahl beruht für fast alle genannten Titel auf Kursen vom 12.10. Ein Kurs ist im Digest selbst nicht enthalten; was die öffentliche Seite anzeigt, wurde nicht geprüft.
+* [offen] `snapshot_id` nennt 01:05:15Z und passt nicht zu `generated` 00:59:44Z; welcher Schritt diese Zeit setzt, ist nicht gelesen.
+* [offen, Randbeobachtung] Im Digest steht in *meanrev* AVD auf Rang 1 mit „RSI 0.0“ (Score 90). Ob das ein echter Wert oder ein Datenartefakt ist, wurde nicht geprüft.
+* [offen] Ob auch der Digest vom 13.10. (Lauf #354, Abruf 02:54Z) vollständige Daten nutzte, ist nicht belegt; dazu liegt keine Digest-Datei vor. Der zugehörige Snapshot `13.10_03` hat 3 veraltete US-Aktien (17.3).
+
+### 17.3 Archivvergleich über Nächte (rein lesend, `uiq-archive` `origin/main` @ `b11d786`, 191 Snapshots)
+* Methode: Das Feld `_lastCloseDate` gibt es erst ab Version 5.48.0 (Snapshot `07.10_01`). „US-Aktien“ = `homeMarket` US, ohne Symbole auf `-USD` und ohne Börsensuffix aus mindestens zwei Großbuchstaben (696 bis 698 Symbole; schließt Krypto, `TEF.MC`, `UCB.BR` aus). „Veraltet“ = `_lastCloseDate` kleiner als `meta.last_trading_day`. Abruffenster wie in 17.1 abgeleitet. Ergebnisdatei lokal: `/tmp/claude-0/out/ar/stale_nights.csv`, sha256-Anfang eaf37b4bc200d06c.
+* [belegt] Ergebnis (US-Aktien):
+
+| Snapshot | Abruffenster (Z) | n | veraltet | `_lastRowIncomplete` |
+|---|---|---|---|---|
+| 07.10_01 | 01:16:11–01:17:53 | 696 | 186 (27 %) | 186 |
+| 08.10_01 | 01:37:41–01:39:05 | 696 | 2 (0 %) | 2 |
+| 09.10_01 | 01:50:31–01:52:43 | 696 | 3 (0 %) | 2 |
+| 10.10_01 | 01:34:52–01:36:29 | 696 | 1 (0 %) | 0 |
+| 13.10_03 | 02:54:56–02:56:42 | 698 | 3 (0 %) | 2 |
+| 14.10_01 | 00:58:24–00:59:44 | 698 | 698 (100 %) | 655 |
+
+  Wiederkehrende Reste: `HUBB`, `SHEL`, `TIPS` (aus früheren Abschnitten bekannt). Nicht vergleichbar und ausgeschlossen: `07.10_17` (Tageslauf mitten am Handelstag, 17:25Z) sowie die Wochenend- und Montagsläufe um 04:17Z (Handelstag liegt schon Tage zurück: 0 veraltet).
+* [belegt] Zusatzprüfung ohne das Feld, über Preisgleichheit (`price` im Frühlauf gegen den späteren Snapshot mit vollständigem Freitagsschluss): `03.10_01` (generated 01:01:35Z, Freitagssitzung) gegen `04.10_13` bzw. `05.10_04`: bei 692 US-Aktien nur 18 gleich (3 %). Kalibrierung: `10.10_01` (01:36Z) gegen `11.10_04`: 674 von 696 gleich (97 %). Kontrolle aufeinanderfolgende Handelstage `08.10_01` gegen `09.10_01`: 7 gleich (1 %). Der Lauf vom 03.10. um 01:01Z zeigte also ebenfalls fast durchgehend den Vortagesschluss. Annahme: Der Sonntags- und Montagsstand enthält den Freitagsschluss.
+* [belegt] Über die sechs Nächte mit Feld plus die Nacht 03.10. fällt der Anteil veralteter US-Zeilen mit späterem Abruf: etwa 100 % bei Abruf um 00:58–01:02Z, 27 % um 01:16–01:18Z, höchstens 0,5 % ab 01:35Z. In `07.10_01` ist der Anteil über die Listenposition nicht gleichmäßig verteilt und zeigt keinen Verlauf entlang der Liste.
+* [Hypothese] Yahoo ergänzt die Tageszeile der US-Aktien in einem Fenster etwa zwischen 01:00Z und 01:35Z. Die Grenze ist nicht bestimmt (keine Daten zwischen 01:18 und 01:35Z, keine zwischen 01:02 und 01:16Z). Auf dem Mac waren die US-Zeilen um 03:00Z vollständig (Wochentagsserie 15.2, obere Schranke).
+* [Hypothese] Ein Start pünktlich um 22:00Z läge vor allen beobachteten Abrufen und würde danach regelmäßig veraltete US-Zeilen liefern. Aktuell hängt die Datenvollständigkeit davon ab, wann GitHub den Zeitplanlauf tatsächlich startet. Zwei der sieben Nächte (03.10., 14.10.) liefen früh und waren fast vollständig veraltet. Das ist nicht gemessen, sondern aus den Zeitpunkten gefolgert.
+* Grenzen: sieben Nächte; vor dem 07.10. nur über die Preisgleichheit prüfbar, und dort nur dann, wenn ein späterer Snapshot mit Freitagsschluss existiert (nur `03.10_01`, `10.10_01`). Die Krypto- und Nicht-US-Zeilen sind nachts bekanntermaßen noch nicht vollständig (Messungen Abschnitt 10 und 15.2) und wurden hier nicht bewertet. Ursachen auf Yahoo-Seite sind nicht geprüft.
+
+### 17.4 Entscheidungsstatus
+* Keine Änderung an Aggregator, Workflows, KV, Archiv oder `SUITE.md` vorgenommen oder freigegeben. Freeze und C1-Sperre unverändert. Der Befund (17.3) ist kein Votum für A-2/C und keine Empfehlung zu Startzeit, Cron oder Verzögerungslogik.
+* Offen für Axel: wie mit dem Befund umgegangen wird (nur zur Kenntnis nehmen, weitere Messung, später gemeinsam mit A-2/C); Abfrage der Läufe 29.09.–12.10. in der Actions-Liste; `snapshot_id`-Quelle im Code lesen; Git-Historie zu `GOLD`; optionale Nachtserie 00:30–03:00Z für die genaue Fenstergrenze; optionaler Yahoo-Lauf für die 26 fehlenden Master-Ticker; ABR-Test.
+
+## 18. Nachtrag 14.10.2026 abends: `ko-watchdog` (Cloudflare), Dispatch-Läufe und Verzögerung (nur angehängt; keine Empfehlung zu A-2/C)
+
+### 18.1 Cloudflare: Cron-Ereignisse und Deployment (von Axel gemeldet, Screenshots 14.10.2026 gegen 22:25 und 22:32 deutscher Zeit)
+* [belegt, von Axel übernommen] Der Worker `ko-watchdog` hat in Cloudflare die Cron-Trigger `15 04 * * 1-6` (04:15 UTC) und `45 13 * * 1-5` (13:45 UTC). Der Ausdruck `45 22 * * 1-5` aus `workers/ko-watchdog/wrangler.toml` (Repo) ist dort **nicht** eingetragen. Verlauf der Cron-Ereignisse (UTC, alle Status „Erfolg“; „Erfolg“ heißt nur, dass der Worker ohne Fehler endete): Mi 14.10. 13:45:46 und 04:15:46; Di 13.10. 13:46:02 und 04:15:43; Mo 12.10. 13:45:45 und 04:15:43; So 11.10. 13:45:46 und 04:15:41; Fr 09.10. 04:15:42; Do 08.10. 13:45:44 (Anzeige „1 bis 10 von 11 Ereignisse“).
+* [belegt, abgeleitet] Wochentagszählung bei Cloudflare: `1-5` lief am Sonntag 11.10. und Donnerstag 08.10., nicht am Freitag; `1` ist dort der Sonntag. (GitHub zählt `1` = Montag.)
+* [belegt, von Axel übernommen] Deployments: aktive Version `2d985319`, 100 % Traffic, Fehlerrate 0 %, mittlere CPU-Zeit 17,78 ms; **letzte Bereitstellung 2026-09-12T15:31:00.468Z**, „Manuell bereitgestellt“ über das Dashboard von `ahildebrand`. Davor zwei weitere Dashboard-Bereitstellungen (`927cb6d4`, `c0338310`), drei Aktualisierungen des Secrets `GH_WATCHDOG_PAT` (vor ein bis zwei Monaten) und Wrangler-Bereitstellungen vor etwa drei Monaten.
+* [belegt] Der von Axel gezeigte Code der aktiven Version (207 Zeilen, sha256-Anfang 31ac5bead6de9676) ist inhaltlich identisch mit `ko-aggregator/workers/ko-watchdog/ko-watchdog.js` @ `7c1c510` (208 Zeilen, sha256-Anfang 348f29feb7e6c512; Unterschied nur das fehlende Zeilenende nach der letzten Klammer). `RUN_SCHEDULES` enthält nur `"45 22 * * 1-5"` (Schwelle 22:00 UTC). Das ist v1.2 vom 11.09.2026; die Bereitstellung im Dashboard folgte einen Tag danach.
+
+### 18.2 Wirkung des Deployments
+* [belegt] Die beiden in Cloudflare eingetragenen Crons sind in `RUN_SCHEDULES` nicht enthalten. Dann gilt der Rückfall „unbekannter Cron“ (`ko-watchdog.js:81–99`): Dispatch nur, wenn das UTC-Datum von `master_market_data.meta.generated` in KV nicht dem heutigen UTC-Datum entspricht (`checkFreshness(env, null)`). Das 22:45-Fenster mit der Schwelle 22:00Z ist in Cloudflare nicht im Einsatz.
+* [belegt, Actions-Liste, von Axel gemeldet] Lauf #352 „Oct 11, 06:15 GMT+2“ (= 04:15Z), Dauer 7 min 55 s, und Lauf #353 „Oct 12, 06:15 GMT+2“ (= 04:15Z), Dauer 7 min 56 s. Axels Meldung nennt die Auslöser-Bezeichnung (Scheduled oder Manually run) nicht; die Startzeit entspricht dem Cloudflare-Ereignis (04:15:41Z bzw. 04:15:43Z) und dem Archiv-Muster, es handelt sich daher mit hoher Wahrscheinlichkeit um Dispatch-Läufe des Watchdogs [Hypothese, eng]. Die Läufe #352 bis #355 sind fortlaufend nummeriert; am Di 13.10. und Mi 14.10. (04:15Z und 13:45Z) gab es keinen Dispatch-Lauf, KV war an diesen Tagen schon vom selben UTC-Tag.
+* [belegt] Die zugehörigen Snapshots `2026-10-11_04` (generated 04:17:59Z, `elapsed_s` 100,6) und `2026-10-12_04` (generated 04:17:56Z, `elapsed_s` 94,1) liegen 2 min 18 s bzw. 2 min 13 s nach dem Cloudflare-Ereignis. Für die geplanten Läufe lag der Abruf 2 h 57 min bis 4 h 54 min nach dem Soll (17.1).
+* [Hypothese] Die kurze Laufzeit der Dispatch-Läufe (rund 8 min gegenüber 24 bis 26 min der geplanten Nachtläufe) kommt von einem Trading-Day-Skip der Anthropic-Aufrufe, wenn sich der Handelstag nicht geändert hat (`generate_public_recommendations.js`). Nicht gelesen und nicht geprüft.
+* [belegt] Der PAT `GH_WATCHDOG_PAT` war am 11.10. und 12.10. gültig (der Dispatch kam durch). Ein Ablaufdatum ist nicht bekannt. [offen]
+* Zur Einordnung früherer Aussagen: In dieser Sitzung wurde zunächst angenommen, der Watchdog dispatche jede Nacht um 22:45Z und das könne die veralteten Daten erklären. Das trifft für den tatsächlich eingesetzten Stand nicht zu.
+* Der Watchdog wirkt im jetzigen Stand nur als Sicherheitsnetz gegen einen ganzen Tag ohne Lauf (um 04:15Z und 13:45Z). Er hebt die Verspätung des Zeitplanlaufs nicht auf und verhindert nicht, dass ein früher Lauf veraltete US-Zeilen liefert.
+
+### 18.3 Weitere Beobachtungen
+* [belegt] `docs/RUNBOOK.md:30` hält fest, dass der GitHub-Cron nur „best effort“ läuft; dokumentiert ist eine Verzögerung von 3 h 23 min am 02.07.2026. Die Runbook-Zeilen zu 04:15 + 13:45 stammen vom 13.07.2026 und beschreiben die frühere Ausgangslage mit zwei Läufen.
+* [belegt] Dateikopf und der HTTP-Pfad `/status?slot=1` von `ko-watchdog.js` beschreiben das 22:45-Fenster, das in Cloudflare nicht eingetragen ist.
+* [offen] Ob der Ausdruck `45 22 * * 1-5` bei Einsatz in Cloudflare (Zählung 1 = Sonntag) Sonntag bis Donnerstag statt Montag bis Freitag bedeuten würde, ist eine Folgerung aus 18.1, kein Test.
+* [offen] Startzeiten der geplanten Läufe 29.09.–10.10. (Actions-Liste, Filter `event:schedule`) wurden noch nicht übermittelt; Inhalte der Worker-Logs (`console.log`) wurden nicht eingesehen.
+
+### 18.4 Entscheidungsstatus
+* Keine Änderung an Aggregator, Workflow, Worker, Secrets, Cron-Triggern, KV, Archiv oder `SUITE.md` vorgenommen oder freigegeben. Freeze und C1-Sperre unverändert. Keine Empfehlung von Claude zu Startzeit, Cron, Watchdog-Logik oder Teilläufen.
+* Offen für Axel (jeweils Produktionsänderung, Punkt 8, und nicht Teil dieses Protokolls): wie mit der Abweichung zwischen Repo (`45 22`) und Cloudflare (`15 04`, `45 13`) umgegangen wird; ob und wann die Startzeit des Aggregators ein Thema für A-2/C wird; ob für Nicht-US-Titel und Krypto (Zeilen erst 07:00–09:00Z vollständig) eine eigene Behandlung gebraucht wird. Lesende Vorarbeiten, nur auf Axels Go: Abhängigkeitsliste zur Laufzeit 22:00Z (Watchdog, Digest-Skript, Konsumenten, Datumslogik); Lesen von `fetch_one` und `_lastRowIncomplete` für die Tageszeile offener Märkte; Git-Historie zu `GOLD`.
