@@ -682,3 +682,29 @@ Spalten: Fundstelle; Verhalten heute (Start nach 00:00Z UTC, real 00:57–02:54Z
 ### 20.4 Entscheidungsstatus
 * Keine Änderung an Aggregator, Workflows, Worker, Skripten, KV, Archiv oder `SUITE.md` vorgenommen oder freigegeben. Freeze und C1-Sperre unverändert. Keine Empfehlung zu Startzeit, Cron, Watchdog, Skip-Regel oder A-2/C.
 * Lesende Beobachtung zur Einordnung (keine Empfehlung): Alle Abhängigkeiten mit Wirkung gegenüber heute (A1, A4, A5, A7, A8, A9, A12) betreffen einen Start **vor** 00:00Z. Ein fester Start nach 00:00Z würde die UTC-Datums- und Wochentagslogik wie heute belassen; dann wäre vor allem die Wochentagsmenge des Zeitplans (Tue–Sat statt Mon–Fri) mitzudenken. Das ist eine Folgerung aus der Uhr, nicht getestet.
+
+## 21. Klärung A1: `end` bei `yf.download` schließt den Endtag aus (Mac-Test 14.10.2026 und Archivabgleich; keine Empfehlung zu A-2/C)
+
+### 21.1 Test auf dem Mac (von Axel ausgeführt, 14.10.2026 gegen 21:05Z, venv `~/uiq-c2-venv`, yfinance 1.5.2)
+* [belegt] Der Workflow pinnt `yfinance==1.5.2` (`market-aggregator.yml`, Schritt „Install dependencies“); Mac und Runner verwenden dieselbe Version.
+* [belegt] Aufruf wie im Aggregator (`yf.download("SPY", start="2026-10-01", end=…, interval="1d", auto_adjust=True, progress=False, threads=False)`), Ausgabe:
+  * `end = 2026-10-13` → letzte Zeile 2026-10-12, 8 Zeilen
+  * `end = 2026-10-14` → letzte Zeile 2026-10-13, 9 Zeilen
+  * `end = 2026-10-15` → letzte Zeile 2026-10-14, 10 Zeilen
+* [belegt] Damit ist `end` **exklusiv**: Die Zeile des Tages `end` ist nie enthalten. Das entspricht der Dokumentation im Quelltext (`yfinance/multi.py:76–79`, `scrapers/history.py:56–59`: „for end="2023-01-01", last data point = "2022-12-31"“). Der Test lief nur für SPY und nur mit drei Enddaten.
+
+### 21.2 Abgleich mit dem Archiv (rein lesend, `uiq-archive` `origin/main` @ `b11d786`)
+* Methode: je Snapshot US-Aktien (`homeMarket` US, ohne `-USD`, ohne Börsensuffix aus mindestens zwei Großbuchstaben) mit `_dataAsOf` ungleich `meta.last_trading_day` („Label voraus“, wie A-1 `labelAheadOfTickerData`). Berücksichtigt sind alle 51 Snapshots mit `last_trading_day` und `_dataAsOf`.
+* [belegt] Läufe mit `generated` ab 12:00Z (14 Läufe, keiner zwischen 20:00Z und 24:00Z): In **10 von 10** Läufen, in denen das UTC-Datum des Laufs gleich `last_trading_day` ist, liegt der Anteil bei **100 %**: `14.09_13`, `15.09_14`, `15.09_15`, `15.09_17`, `15.09_18`, `18.09_16`, `22.09_13`, `22.09_15`, `22.09_16`, `07.10_17`. In den vier übrigen (`13.09_13`, `20.09_19`, `04.10_13`: Sonntag; `15.09_12`: 12:50Z vor US-Eröffnung, `last_trading_day` = Vortag) liegt er bei 0 %.
+* [belegt] Bei `07.10_17` (generated 17:25Z) sind alle 696 US-Aktien auf dem Vortag (`_lastCloseDate` 06.10.) bei `last_trading_day` 07.10. und `_lastRowIncomplete` = 0 (17.3: 711 von 711 inklusive aller US-Symbole mit `homeMarket` US).
+* [belegt] Läufe vor 12:00Z: nur `18.09_00` und `19.09_00` (generated 00:03Z bzw. 00:02Z, `last_trading_day` 17.09. bzw. 18.09.) liegen bei 100 %; das ist die Yahoo-Verzögerung früher Läufe aus 17.3 und 19.3 (beide dort per Preisgleichheit als veraltet belegt). Alle übrigen Läufe vor 12:00Z liegen niedriger.
+
+### 21.3 Bedeutung für A1 (Abschnitt 20)
+* A1 ist damit [belegt]: Ein Lauf am Handelstag selbst (UTC-Datum = Handelstag) fragt mit `end` = Handelstag ab und erhält für alle US-Aktien als letzte Zeile den Vortag; `get_last_trading_day()` (A2) liefert dagegen über SPY (`period="5d"`) bereits den Handelstag. Folge: `last_trading_day` = Handelstag, `_dataAsOf` = Vortag, `_lastRowIncomplete` False (die letzte Zeile ist ein abgeschlossener Vortag).
+* [belegt] Das gilt unabhängig von Yahoos Verzögerung, aus der Kombination aus `end` und der Uhrzeit-Datum-Logik. Es erklärt auch die in `calc_data_integrity` kommentierten „Läufe mit Label voraus bei 100 %“ (Kommentar vor `DATA_INTEGRITY_FLAG_SHARE_PCT` in `market_aggregator.py`: „LABEL_AHEAD (seit 13.09.) 11 Läufe bei 100 %“; hier 10 same-day-Läufe plus die zwei frühen Nachtläufe vom 18./19.09., ähnliche Größenordnung, andere Zählgrundlage und anderer Stand).
+* [Hypothese] Ein pünktlicher Start um 22:00Z (UTC-Datum = Handelstag) würde sich wie diese 10 Läufe verhalten: Label voraus 100 %. Im Archiv gibt es keinen Lauf, der zwischen 20:00Z und 24:00Z erzeugt wurde; der Schluss ist eine Übertragung, kein beobachteter Fall.
+* [offen] Der Test zeigt nicht, ob der Fallback `period="1y"` (`fetch_one`) die Zeile des Tages enthalten würde; er greift nur, wenn der erste Versuch weniger als 20 Zeilen liefert.
+
+### 21.4 Entscheidungsstatus
+* Keine Änderung an Aggregator, Workflows, Worker, KV, Archiv oder `SUITE.md` vorgenommen oder freigegeben. Freeze und C1-Sperre unverändert. Keine Empfehlung zu Startzeit, `end`-Berechnung, Cron oder A-2/C.
+* Der Status von A1 in 20.2 („Hypothese“, Semantik nicht getestet) ist hiermit überholt: [belegt].
