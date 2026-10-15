@@ -708,3 +708,36 @@ Spalten: Fundstelle; Verhalten heute (Start nach 00:00Z UTC, real 00:57–02:54Z
 ### 21.4 Entscheidungsstatus
 * Keine Änderung an Aggregator, Workflows, Worker, KV, Archiv oder `SUITE.md` vorgenommen oder freigegeben. Freeze und C1-Sperre unverändert. Keine Empfehlung zu Startzeit, `end`-Berechnung, Cron oder A-2/C.
 * Der Status von A1 in 20.2 („Hypothese“, Semantik nicht getestet) ist hiermit überholt: [belegt].
+
+## 22. US-Zeitverlauf-Messung Nacht 14./15.10.2026 (Mac, nur Lesen; keine Empfehlung zu Startzeit, Gate oder A-2/C)
+
+### 22.1 Messaufbau
+* Werkzeug: `c2_zeitverlauf.py` v2 (sha256-Präfix `efa2174ed6caed25`, unverändert gegenüber den früheren Messungen), Watchlist `watchlist_us_20261015_v2.csv` (47 US-Ticker, sha256-Präfix `4ae78a056ea74362`): SPY, 10 Mega-, 14 Large-, 7 Mid-, 5 Small-Caps, 6 ADRs, 5 ETFs. Vor dem Lauf fixiert; `ZEUS` wurde nach dem Kurztest (21:24–21:26Z, in 3 von 3 Slots Abruf fehlgeschlagen) entfernt, nichts ersetzt.
+* Serie `20261014T213414Z`: 16 Slots, 00:30Z bis 03:00Z im Abstand von 10 Minuten, ein frischer Prozess je Slot, Abruf wie im Aggregator (`start` = heute−730 d, `end` = heutiges UTC-Datum, exklusiv; Fallbacks `1y`, `6mo`). Mac von Axel bedient, Ausführung am 15.10.2026.
+* Dateien (sha256-Präfix): `c2_serie_20261014T213414Z.csv` `dd398bcce0eeec46` (752 Zeilen), `c2_d27_*`, `c2_auswertung_*`, `c2_serie_log_*`; die Dateien des Kurztests (`…T212326Z`) gehören nicht zur Auswertung.
+
+### 22.2 Befunde
+* [belegt] Lauf vollständig: 16 von 16 Slots, 0 Abruffehler, Verspätung 0 s, Median Abrufdauer 544–559 ms (03:00Z: 997 ms).
+* [belegt] In allen 752 Zeilen ist `last_idx_date` = 14.10.2026 (Handelstag). Die Zeile des Handelstags war ab 00:30Z immer vorhanden; zu unterscheiden ist nur, ob sie befüllt war.
+* [belegt] Vollständigkeit der Tageszeile (Close gültig) je Slot, von 47: 00:30Z 0; 00:40Z bis 01:30Z 43; 01:40Z bis 02:30Z 46; 02:40Z bis 03:00Z 47.
+* [belegt] Slot 00:30Z: Bei allen 47 Tickern, auch SPY, waren Open, High, Low und Close leer, Volumen teils schon befüllt (D26-Muster „letzte Zeile unvollständig“). Ab 00:40Z SPY vollständig.
+* [belegt] Nachzügler: META, ETSY, FIVE vollständig ab 01:40Z; SHEL (NYSE-ADR, `homeMarket` US) ab 02:40Z.
+* [belegt] Keine Rückfälle (0). Bei den 43 bis 00:40Z vollständigen Tickern blieb bis 03:00Z Close und Volumen unverändert (Vergleich 00:40Z gegen 03:00Z: Unterschiede nur bei den vier Nachzüglern, deren Zeile in der Zwischenzeit erst befüllt wurde). Beim Eintritt der Vollständigkeit ändert sich auch das Volumen (SHEL 6 021 309 → 5 938 969; META 16 151 285 → 16 127 600).
+* [belegt] D27-Probe: `get_last_trading_day()`-Nachbildung lieferte in allen Slots das Label 14.10.; Differenz zwischen Label und SPY-Zeile (`start`/`end`) 0 (A1 wirkt nach Mitternacht UTC nicht, wie erwartet, 21.3). Im Slot 00:30Z war in der 5d-Abfrage die letzte Zeile leer (`spy5d_last_row_close_nan` True), `spy5d_last_valid_close_date` 13.10.
+
+### 22.3 Abgleich mit der Produktion
+* [belegt] Archiv `origin/main` @ `0b0e01d`: Snapshot `2026-10-15_00.json.gz` (Lauf 356), `generated` 00:22:34Z, `elapsed_s` 123,5 (Abrufbeginn ca. 00:20:30Z), `last_trading_day` 14.10. `data_integrity`: `lastRowIncomplete` US 656 von 712 (92,1 %), nonUs 30 von 31, SPY True; `labelAheadOfTickerData` US 14 von 712 (2,0 %); `flags` = `LAST_ROW_INCOMPLETE`. `_lastCloseDate`: 701 × 13.10., 43 × 14.10. (Zählung über alle 744 Ticker des Snapshots).
+* [belegt] Das passt zur Mac-Messung (00:30Z: 47 von 47 unvollständig, 00:40Z: 4 von 47). Die Messung bildet das Verhalten der Produktion in dieser Nacht ab; verglichen wurde eine Nacht und zwei Zeitpunkte (Produktion 00:21Z, Mac 00:30Z), nicht dieselben Ticker im selben Moment.
+* [belegt] Frühere Nächte (17.3): Abrufzeitpunkte 00:58 bis 01:02Z (14.10., 03.10.) waren zu ca. 100 % veraltet, 01:16–01:18Z (07.10.) 27 %. In dieser Nacht war dagegen um 00:40Z fast alles (91 %) vollständig. [belegt] Die Zeit bis zur Vollständigkeit unterscheidet sich also zwischen Nächten.
+* [offen] Der Digest zum 14.10. (Lauf 356 verwendete 92 % unvollständige US-Zeilen): Digest nicht eingesehen. Der Trading-Day-Skip (A6) hält ihn bei gleichem `last_trading_day` fest. Der Watchdog dispatcht laut A12 nur, wenn das UTC-Datum von `generated` ≠ heute ist; hier ist es heute (15.10.), daher keine Neuerzeugung zu erwarten [Hypothese].
+
+### 22.4 Grenzen
+* Eine Messnacht (Mi→Do, normaler Handelstag, kein Feiertag, keine Besonderheiten bekannt); Auflösung 10 Minuten; 47 Ticker (davon ein Wert, SHEL, mit zweiter Heimatbörse).
+* Die Ursache der Nachtunterschiede ist nicht bekannt [offen]: Yahoo-seitige Verarbeitung, Tagesvolumen, Wochentag oder Zufall.
+* Mac gegen GitHub-Runner: Die Übereinstimmung mit Lauf 356 spricht für Übertragbarkeit, ist aber keine Prüfung über mehrere Nächte [offen].
+* Nicht-US-Börsen und Krypto liegen außerhalb dieser Messung (frühere Messungen: 07:00 bis 09:00Z).
+
+### 22.5 Entscheidungsstatus
+* Keine Änderung an Aggregator, Workflows, Worker, Digest-Skript, KV, Archiv oder `SUITE.md` vorgenommen oder freigegeben. Freeze und C1-Sperre unverändert.
+* Von Axel am 15.10.2026 freigegeben: weitere Messnächte mit derselben Watchlist und demselben Werkzeug (nur Lesen, Dateien nur in `~/uiq-c2-lokal`); Entwurf eines datenbasierten Gates als reines Papier (nicht aktiviert, kein Workflow geändert). Eine Freeze-Ausnahme für den Workflow ist nicht beantragt.
+* Offen für Axel: wie viele Nächte genügen (Vorschlag mindestens drei weitere), Schwelle und Obergrenze eines Gates, Freeze-Ausnahme nach Auswertung.
