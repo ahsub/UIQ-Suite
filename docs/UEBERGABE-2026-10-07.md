@@ -741,3 +741,71 @@ Spalten: Fundstelle; Verhalten heute (Start nach 00:00Z UTC, real 00:57–02:54Z
 * Keine Änderung an Aggregator, Workflows, Worker, Digest-Skript, KV, Archiv oder `SUITE.md` vorgenommen oder freigegeben. Freeze und C1-Sperre unverändert.
 * Von Axel am 15.10.2026 freigegeben: weitere Messnächte mit derselben Watchlist und demselben Werkzeug (nur Lesen, Dateien nur in `~/uiq-c2-lokal`); Entwurf eines datenbasierten Gates als reines Papier (nicht aktiviert, kein Workflow geändert). Eine Freeze-Ausnahme für den Workflow ist nicht beantragt.
 * Offen für Axel: wie viele Nächte genügen (Vorschlag mindestens drei weitere), Schwelle und Obergrenze eines Gates, Freeze-Ausnahme nach Auswertung.
+
+## 23. US-Zeitverlauf-Messung Nacht 15./16.10.2026 (zweite Messnacht, Mac, nur Lesen; keine Empfehlung zu Startzeit, Gate oder A-2/C)
+
+### 23.1 Messaufbau
+* Wie 22.1, andere Zeitfenster: Serie `20261015T052628Z`, 18 Slots, 00:10Z bis 03:00Z im Abstand von 10 Minuten (Handelstag Do 15.10.2026), Werkzeug `c2_zeitverlauf.py` v2 (`efa2174ed6caed25`), Watchlist `watchlist_us_20261015_v2.csv` (`4ae78a056ea74362`), 47 Ticker. Ausführung durch Axel am 16.10.2026.
+* Dateien (sha256-Präfix): `c2_serie_20261015T052628Z.csv` `4a9eef2946ec862b` (846 Zeilen); `c2_d27_20261015T052628Z.csv` `1e86f6f050ef9ac5`; `c2_serie_log_20261015T052628Z.txt` `d66bfa5bf5b798e9`.
+
+### 23.2 Befunde
+* [belegt] 18 von 18 Slots, 0 Abruffehler, Verspätung 0 s. In allen 846 Zeilen ist `last_idx_date` = 15.10.2026 (Handelstag); die Zeile ist ab 00:10Z da.
+* [belegt] Vollständige Tageszeile (Close gültig) je Slot, von 47: 00:10Z, 00:20Z und 00:30Z je 1 (SHEL); 00:40Z bis 01:30Z 44; ab 01:40Z 47.
+* [belegt] Die drei Nachzügler sind dieselben wie in der Vornacht (22.2): META, ETSY, FIVE, vollständig ab 01:40Z (Slot 01:30Z noch unvollständig). SHEL war diesmal schon ab 00:10Z vollständig (Vornacht erst ab 02:40Z); das Volumen blieb von 00:30Z bis 03:00Z unverändert (6 668 613).
+* [belegt] Keine Rückfälle. Zwischen 00:40Z und 03:00Z änderte sich der Close nur bei META, ETSY, FIVE (Befüllung der Zeile).
+* [belegt] D27-Probe: Label in allen Slots 15.10.; Differenz Label gegen SPY-Zeile 0; in den Slots 00:10Z bis 00:30Z war die letzte SPY-Zeile in der 5d-Abfrage leer, ab 00:40Z befüllt.
+
+### 23.3 Abgleich mit der Produktion
+* [belegt] Archiv `origin/main` @ `d9b6d96`: Snapshot `2026-10-16_00.json.gz` (Lauf 357), `generated` 00:11:18Z, `elapsed_s` 102,9 (Abrufbeginn ca. 00:09:35Z), `last_trading_day` 15.10. `lastRowIncomplete` US 653 von 712 (91,7 %), nonUs 30 von 31, SPY True; `labelAheadOfTickerData` US 14 von 712; `flags` = `LAST_ROW_INCOMPLETE`. `_lastCloseDate`: 698 × 14.10., 46 × 15.10. Das passt zur Messung (00:10Z: 46 von 47 unvollständig).
+* [belegt] Der Start dieses Laufs lag 2 h 11 min nach dem geplanten Zeitpunkt 22:00Z.
+
+### 23.4 Vergleich der beiden Messnächte und früherer Nächte
+* [belegt] Gleiches Muster in beiden Messnächten: kein Ticker vor 00:30Z/00:40Z vollständig (Ausnahme SHEL), der Sprung fällt in das Fenster 00:30Z bis 00:40Z (Auflösung 10 min), drei Nachzügler (META, ETSY, FIVE) ab 01:40Z; danach nichts mehr.
+* [belegt] Frühere Nächte aus Produktionsläufen (17.3): bei Abruf um 00:58 bis 01:02Z (03.10., 14.10.) zu etwa 100 % veraltet, bei 01:16 bis 01:18Z (07.10.) 27 %, ab 01:35Z höchstens 0,4 % (vier Nächte). In den zwei Messnächten war dagegen um 00:40Z bis 01:30Z der Großteil (91 bis 94 %) vollständig. Eine Nacht (13./14.10.) weicht damit deutlich von den zwei Messnächten ab. [offen] Ursache unbekannt.
+* [Hypothese] Ab 01:40Z waren in allen sechs Nächten mit Daten für diesen Zeitbereich (vier Produktionsnächte ab 01:35Z, zwei Messnächte) nahezu alle US-Zeilen vollständig. Das ist ein Beobachtungsbefund bei kleiner Stichprobe, keine Zusicherung.
+* [Hypothese] Zeitumstellung: Die Messnächte liegen in der US-Sommerzeit (Handelsschluss 20:00Z). Die US-Umstellung ist am 01.11.2026 (Handelsschluss danach 21:00Z), die europäische am 25.10.2026. Ist Yahoos Verarbeitung an die US-Uhrzeit gebunden, verschöbe sich der Zeitpunkt in UTC um eine Stunde. Nicht gemessen [offen].
+
+### 23.5 Grenzen
+* Zwei Messnächte (Mi→Do, Do→Fr), 47 Ticker, Auflösung 10 Minuten, Mac statt Runner (Übereinstimmung mit Läufen 356 und 357 spricht für Übertragbarkeit).
+* Nachzügler: in beiden Nächten dieselben drei (META, ETSY, FIVE); ob es einen Grund gibt (Börsenplatz, Ticker-Eigenschaft, Datenanbieter-Charge), ist unbekannt [offen]. SHEL wechselte zwischen den Nächten.
+* Nicht-US und Krypto weiterhin außerhalb der Messung.
+
+### 23.6 Entscheidungsstatus
+* Keine Änderung an Aggregator, Workflows, Worker, Digest-Skript, KV, Archiv oder `SUITE.md` vorgenommen oder freigegeben. Freeze und C1-Sperre unverändert. Keine Freeze-Ausnahme beantragt.
+* Offen für Axel: weitere Messnächte (insbesondere eine Messnacht nach der Zeitumstellung), Gate-Schwelle und Obergrenze, Freeze-Ausnahme nach Auswertung.
+
+## 24. Gate-Entwurf „Datenreife vor Aggregatorlauf“ (Papiermodell, Stand 16.10.2026; nicht aktiviert, nicht implementiert)
+
+### 24.1 Status und Rahmen
+* Entwurf zur späteren Prüfung. Keine Implementierung, keine Freeze-Ausnahme beantragt, keine Änderung an Aggregator, Workflows, Worker, Digest-Skript, KV, Archiv oder `SUITE.md`. Freeze und C1-Sperre unverändert. Jede Workflow-Änderung bedarf einer gesonderten ausdrücklichen Freigabe durch Axel.
+* Grundlage: Abschnitte 17, 19, 21 bis 23. Zwei Messnächte (14./15.10., 15./16.10.) und vier Produktionsnächte; eine Nacht (13./14.10.) weicht ab und bleibt als abweichende Beobachtung bestehen (23.4). Eine feste Uhrzeit allein gilt deshalb nicht als hinreichender Nachweis der Datenreife.
+* Der Reviewer hat zu den Abschnitten 22 und 23 eine Stellungnahme mit einem Textentwurf zum Gate geliefert (Datei `29dc565b-attachment.txt`, Quelle laut Axel: Reviewer); seine Bedingungen 1 bis 4 und die offenen Punkte sind unten übernommen, soweit sie zu den Befunden passen. Aussagen darin zum Commit und zur Zeilenzahl des Protokolls beruhen auf dem Stand, der dem Reviewer vorlag (743 Zeilen), und betreffen diesen Entwurf nicht.
+
+### 24.2 Ziel
+* Ein geplanter Aggregatorlauf soll nicht überwiegend auf unvollständigen US-Tageszeilen beruhen (92,1 % in Lauf 356, 91,7 % in Lauf 357) und der Trading-Day-Skip (A6) soll den Digest nicht auf einem solchen Stand festhalten.
+
+### 24.3 Vorläufige Gate-Bedingungen (Arbeitsannahmen, nicht validiert)
+1. Das UTC-Datum des Prüfzeitpunkts liegt nach dem maßgeblichen US-Handelstag (vermeidet A1; 21.3).
+2. Die SPY-Tageszeile des Handelstags ist vollständig (Close gültig).
+3. Mindestens 95 % einer vorab festgelegten, stabilen US-Probemenge haben eine vollständige Tageszeile des Handelstags.
+4. Obergrenze, vorläufig 02:00Z: Ist das Gate bis dahin nicht erfüllt, läuft der Aggregator trotzdem; der Zustand (Anteil vollständiger Probeticker, Zeitpunkt) wird dokumentiert.
+* Die Werte 95 % und 02:00Z sind Entwurfswerte. Mit den bisherigen Messungen: 95 % von 47 = 45 Ticker; diese Zahl war in beiden Messnächten erst ab 01:40Z erreicht (44 von 47 von 00:40Z bis 01:30Z). Eine Schwelle von 90 % wäre in beiden Nächten ab 00:40Z erfüllt gewesen (43/47 bzw. 44/47 = 91,5 % bzw. 93,6 %). Ob 02:00Z als Obergrenze ausreicht, hängt von der Verteilung der Nachzügler ab (bisher stets bis 01:40Z, SHEL einmal bis 02:40Z). [Hypothese] Keine Schwelle ist damit begründet; das ist ein Abwägungsproblem zwischen Wartezeit und Vollständigkeit.
+
+### 24.4 Noch zu spezifizieren
+* „Vollständig“ technisch: Datum der letzten Zeile = Handelstag, Close, Open, High, Low nicht NaN; Verhalten bei Volumen. In der Messung: bei unvollständigen Zeilen Open/High/Low/Close leer und Volumen teils schon vorhanden; beim Eintritt der Vollständigkeit ändert sich das Volumen.
+* Probemenge: Größe, Zusammensetzung (Mega, Large, Mid, Small, ADR, ETF), Festlegung vor der Messung, Umgang mit nicht verfügbaren Tickern (`ZEUS` fiel im Test aus), Wiederverwendung der bekannten Nachzügler (META, ETSY, FIVE).
+* Handelstag: Ermittlung über `get_last_trading_day()` (SPY `period="5d"`) wie im Aggregator oder eigenständig; Feiertage; Verhalten, wenn SPY die Zeile erst später erhält.
+* Verhalten bei nicht bestandenem Gate: Kennzeichnung in `meta` oder `data_integrity`, Protokollierung, mögliche Einschränkung nachgelagerter Ausgaben (z. B. Digest), Verhältnis zum Trading-Day-Skip (A6) und `FORCE_REGENERATE`.
+* Zeitbezug: Die Verspätung geplanter Läufe (2 h 11 min bis 4 h 54 min; 19.2, 23.3) bedeutet, dass das Gate bei Start nach etwa 01:40Z in der Regel sofort besteht; wirksam wäre es vor allem bei frühen Starts (00:11Z, 00:22Z). Die Obergrenze ist daher relativ zum tatsächlichen Laufbeginn zu definieren.
+* Technik und Kosten [offen]: Wo geprüft wird (zusätzlicher Workflow-Schritt oder eigener Job), `timeout-minutes: 45` (A11), Wartezeit im Runner gegenüber Laufzeit (24 bis 28 min), mögliche Abrufbegrenzungen von Yahoo bei wiederholter Abfrage, Laufzeitkosten (öffentliches Repo laut früherer Annahme kostenlos, nicht geprüft).
+* Wechselwirkung mit den Abhängigkeiten aus Abschnitt 20 (A5 Snapshot-Name, A7, A8/A9 Wochentag, A12 Watchdog): bei einem Start nach 00:00Z unverändert; eine Verschiebung des Crons (z. B. nach 00:00Z) betrifft zusätzlich die Wochentagsmenge des Zeitplans.
+* Nicht-US und Krypto: Das Gate betrifft nur US-Zeilen; die späteren Zeiten (07:00 bis 09:00Z) bleiben eine getrennte Frage.
+
+### 24.5 Validierung vor einer Umsetzung
+* Mindestens zwei bis drei weitere Messnächte mit Watchlist `watchlist_us_20261015_v2.csv`, darunter mindestens eine nach der US-Zeitumstellung am 01.11.2026. Mac-Messungen und Produktionsläufe getrennt auswerten. Die Nacht 13./14.10. als abweichend festhalten (23.4). Messnacht Fr→Sa 16./17.10. ist als nächste vorgesehen.
+* Auswertungspunkte: Zeitpunkt der ersten vollständigen Zeile je Ticker, Vollständigkeit um 00:10Z, 00:40Z und 01:40Z, Rückfälle, Abruffehler, der zeitlich nächstliegende Produktionslauf.
+* Erfolgskriterien für eine spätere Einführung (Entwurf): US-Anteil unvollständiger Zeilen höchstens 1 % in der Folge von fünf Nächten, `data_integrity.flags` leer, Digest-Datum gleich Handelstag mit vollständigen Daten.
+
+### 24.6 Entscheidungsvorbehalt
+* Die Werte sind Arbeitsannahmen. Nach der Messreihe sind Nutzen, Fehlverhalten und Grenzfälle zu bewerten; erst danach kann über eine Freeze-Ausnahme und eine Implementierung entschieden werden (eine Produktionsänderung pro Nacht, nicht am Wochenende, Beobachtung über etwa fünf Nächte).
+* Keine Empfehlung zu Cron, Startzeit, Skip-Regel, Watchdog oder A-2/C.
