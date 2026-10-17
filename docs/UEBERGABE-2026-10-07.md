@@ -809,3 +809,79 @@ Spalten: Fundstelle; Verhalten heute (Start nach 00:00Z UTC, real 00:57–02:54Z
 ### 24.6 Entscheidungsvorbehalt
 * Die Werte sind Arbeitsannahmen. Nach der Messreihe sind Nutzen, Fehlverhalten und Grenzfälle zu bewerten; erst danach kann über eine Freeze-Ausnahme und eine Implementierung entschieden werden (eine Produktionsänderung pro Nacht, nicht am Wochenende, Beobachtung über etwa fünf Nächte).
 * Keine Empfehlung zu Cron, Startzeit, Skip-Regel, Watchdog oder A-2/C.
+
+## 25. US-Zeitverlauf-Messung Nacht 16./17.10.2026 (dritte Messnacht, Mac, nur Lesen; keine Empfehlung zu Startzeit, Gate oder A-2/C)
+
+### 25.1 Messaufbau
+* Wie 22.1 und 23.1: Serie `20261016T043305Z`, 18 Slots, 00:10Z bis 03:00Z im Abstand von 10 Minuten (Handelstag Fr 16.10.2026, Nacht auf Samstag), `c2_zeitverlauf.py` v2 (`efa2174ed6caed25`), Watchlist `watchlist_us_20261015_v2.csv` (`4ae78a056ea74362`), 47 Ticker.
+* Dateien (sha256-Präfix): `c2_serie_20261016T043305Z.csv` `f5a02fcd23d31a70` (846 Zeilen).
+
+### 25.2 Befunde
+* [belegt] 18 von 18 Slots, 0 Abruffehler, 0 s Verspätung; in allen 846 Zeilen `last_idx_date` = 16.10.2026 (Handelstag).
+* [belegt] Vollständige Tageszeile je Slot, von 47: 00:10Z bis 01:30Z **0**; 01:40Z bis 02:50Z 46; 03:00Z 47.
+* [belegt] Der Sprung von 0 auf 46 liegt zwischen 01:30Z und 01:40Z. Der schnelle Übergang um 00:30Z bis 00:40Z der beiden Vornächte (22.2, 23.2) trat in dieser Nacht **nicht** auf. SPY war bis 01:30Z leer (D27-Probe: `spy5d_last_row_close_nan` True bis 01:30Z, ab 01:40Z False).
+* [belegt] Einziger Nachzügler: SHEL, vollständig erst ab 03:00Z (Vornacht ab 00:10Z, davor ab 02:40Z); die anderen 46 sind ab 01:40Z unverändert bis 03:00Z (kein Rückfall, kein Wertwechsel; Vergleich 01:40Z gegen 03:00Z: nur SHEL).
+* [belegt] Produktionslauf 358 (Archiv `origin/main` @ `d3969fb`, Snapshot `2026-10-17_00`): `generated` 00:14:47Z, `elapsed_s` 110,6, `last_trading_day` 16.10.; `lastRowIncomplete` US 655 von 712 (92,0 %), nonUs 30 von 31, SPY True; `flags` = `LAST_ROW_INCOMPLETE`; `_lastCloseDate` 700 × 15.10., 44 × 16.10. Das passt zur Messung (00:10Z: 47 von 47 unvollständig).
+
+### 25.3 Vergleich der drei Messnächte
+| Nacht (Handelstag) | Anteil vollständig 00:40Z | 01:30Z | 01:40Z | letzter Nachzügler |
+|---|---|---|---|---|
+| 14./15.10. (Mi 14.10.) | 43 von 47 | 43 | 46 | SHEL ab 02:40Z |
+| 15./16.10. (Do 15.10.) | 44 von 47 | 44 | 47 | keiner |
+| 16./17.10. (Fr 16.10.) | 0 von 47 | 0 | 46 | SHEL ab 03:00Z |
+* [belegt] In allen drei Messnächten waren um 01:40Z mindestens 46 von 47 Tickern (97,9 %) vollständig; in keiner Nacht waren es um 01:30Z mehr als 44. Der Wechsel in den Nächten ohne frühen Übergang (16./17.10.) und der Nachzug der Spätzügler in den anderen beiden Nächten fällt jeweils in dasselbe Fenster 01:30Z bis 01:40Z.
+* [belegt] Ein früher Übergang (00:30Z bis 00:40Z) trat in zwei von drei Messnächten auf. Zusammen mit den Produktionsnächten (17.3, 23.4) ergibt sich: Nacht 13./14.10. (bei 00:59Z noch 100 % veraltet) und Nacht 16./17.10. (bei 01:30Z noch 0 % vollständig) zeigen keinen frühen Übergang; die Ursache des frühen Übergangs ist unbekannt [offen]. Die drei Nachzügler META, ETSY, FIVE der Vornächte waren in dieser Nacht nicht zurück; SHEL war es erneut.
+* [Hypothese] Ein fester Zeitpunkt der Fertigstellung der meisten US-Zeilen liegt bei etwa 01:30Z bis 01:40Z (in drei von drei Messnächten und in den vier früheren Produktionsnächten ab 01:35Z mit höchstens 0,4 % veraltet); ein früherer Übergang ab 00:30Z kommt vor, ist aber nicht verlässlich. Stichprobe klein.
+* [Hypothese] Wochentag oder Nachtkontext erklären den Unterschied nicht eindeutig (zwei Nächte ohne frühen Übergang: Di→Mi 13./14.10. und Fr→Sa 16./17.10.; zwei mit: Mi→Do, Do→Fr).
+
+### 25.4 Folgerungen für den Gate-Entwurf (24; keine Empfehlung, nur Abgleich mit den Entwurfswerten)
+* Mit der Entwurfsschwelle 95 % (45 von 47): in allen drei Nächten erst ab 01:40Z erreicht (am 00:40Z-Stand 43 und 44 von 47 in den Nächten mit frühem Übergang, also 91,5 % und 93,6 %; in der dritten Nacht 0). Mit einer Schwelle von 90 % wäre das Gate in diesen beiden Nächten ab 00:40Z bestanden gewesen. Die Obergrenze 02:00Z hätte in allen drei Messnächten genügt; der Nachzügler SHEL wäre ohne Einfluss auf die 95 % gewesen.
+* Produktionsläufe 356, 357 und 358 liefen jeweils um 00:11Z bis 00:22Z, also vor der bisher beobachteten Fertigstellung (92 % unvollständig); ein Gate hätte dort jeweils gewartet. Ob ein Gate bis 01:40Z auf dem Runner ohne Zeitüberschreitung auskäme, ist nicht geprüft (24.4).
+* Die Zeitumstellung (23.4) bleibt ungeprüft [offen].
+
+### 25.5 Grenzen
+* Drei Messnächte, 47 Ticker, Auflösung 10 Minuten, Mac statt Runner (Übereinstimmung mit Läufen 356 bis 358).
+* Die Ursache des frühen Übergangs, der Nachzügler und des Verhaltens von SHEL sind unbekannt [offen].
+
+### 25.6 Entscheidungsstatus
+* Keine Änderung an Aggregator, Workflows, Worker, Digest-Skript, KV, Archiv oder `SUITE.md` vorgenommen oder freigegeben. Freeze und C1-Sperre unverändert. Keine Freeze-Ausnahme beantragt.
+* Offen für Axel: weitere Messnächte (insbesondere eine Messnacht nach der Zeitumstellung am 01.11.), Gate-Schwelle und Obergrenze, Freeze-Ausnahme nach Auswertung.
+
+## 26. Aktualisierung des Gate-Entwurfs nach drei Messnächten (Stand 17.10.2026; Papiermodell, nicht aktiviert)
+
+### 26.1 Bewertung (Reviewer und Axel, 17.10.2026)
+* Die dritte Messnacht (25) zeigt, dass der frühe Übergang um 00:30Z bis 00:40Z nicht verlässlich ist; der Übergang zwischen 01:30Z und 01:40Z zeigte sich in allen drei Messnächten.
+* Die Schwelle von 95 % (45 von 47 Messtickern) bleibt als **vorläufige Arbeitsschwelle** im Entwurf (24.3), nicht 90 %: 90 % würde gerade den frühen Übergang begünstigen, dessen Verlässlichkeit nicht belegt ist (in der Nacht 16./17.10. um 00:40Z noch 0 von 47). Die Obergrenze 02:00Z bleibt Arbeitsannahme; sie hätte in allen drei Messnächten genügt.
+* Weder Schwelle noch Obergrenze noch eine technische Umsetzung sind damit validiert. Drei Nächte mit 47 Tickern sind keine ausreichende Validierung; 95 % ist ein Papierwert zur weiteren Prüfung, kein Freigabekriterium für die Produktion.
+
+### 26.2 Messplanung
+* Eine weitere Messnacht vor der Zeitumstellung ist optional. Den größeren Erkenntnisgewinn bringt eine Messung nach der US-Zeitumstellung (Sonntag 01.11.2026; Handelsschluss danach 21:00Z statt 20:00Z). Vorgesehen: die Nächte Mo→Di 02./03.11. und Di→Mi 03./04.11. (Handelstage 02. und 03.11.).
+* Fenster für diese Nächte: 00:10Z bis 04:30Z (statt 03:00Z), damit eine Verschiebung des Übergangs um eine Stunde und Nachzügler wie SHEL (zuletzt ab 03:00Z) erfasst werden. Dieselbe Watchlist (`4ae78a056ea74362`) und dasselbe Werkzeug; Befehl wird zu dem Zeitpunkt eigens vorgelegt. Die europäische Umstellung am 25.10.2026 ändert nur die Mac-Ortszeit, nicht die UTC-Slots.
+* Auswertung wie in 24.5, zusätzlich Vergleich der Übergangszeiten vor und nach der Umstellung.
+
+### 26.3 Entscheidungsstatus
+* Keine Änderung an Aggregator, Workflows, Worker, Digest-Skript, KV, Archiv oder `SUITE.md`. Gate bleibt inaktiv. Freeze und C1-Sperre unverändert. Keine Freeze-Ausnahme beantragt.
+
+## 27. Strang A „Quellenvergleich“: Paket c3 v1.1 und Kurztest 17.10.2026 (Krypto und Non-US; nur Lesen; Messserie nicht freigegeben)
+
+### 27.1 Auftrag und Stand der Freigaben
+* Freigegeben (Axel, mit Zustimmung des Reviewers): Vorbereitung des Pakets, ein Trockenlauf ohne Netz und danach ein kurzer Netzwerktest als eigener Schritt. **Nicht freigegeben:** die Messserie (Krypto Nacht Sa→So 17./18.10., Non-US Montag 19.10.). Sie startet erst nach ausdrücklichem Ja von Axel und Reviewer, mit vorher vorgelegtem Befehl, Nebenwirkungen und Startzeiten.
+* Zweck: Wie früh stehen Tagesschlusskurse für Non-US-Ticker (33 im Snapshot) und Krypto (13) bereit, und aus welcher Quelle? Bisheriger Befund (frühere Messungen, Hypothese bis zur Serie bestätigt): Yahoo vervollständigt Non-US-Tageszeilen ca. 08:30–09:00Z und Krypto-Vortageszeilen ca. 07:00–07:30Z.
+
+### 27.2 Paket (Mac `~/uiq-c2`, Hashes SHA-256-Präfix)
+* `c3_quellenvergleich.py`, c3 v1.1, 984 Zeilen: `d81a01dfdd176690`. Auf dem Mac bestätigt (Hash gleich, Trockenlauf 31 Prüfungen, kein Netz benutzt).
+* `watchlist_c3_krypto_20261017.csv` (13 Zeilen): `18df1bf9f19cec04`. `watchlist_c3_nonus_20261017.csv` (14 Zeilen; Handelszeiten Annahmen: DE/IT/FR/ES/BE/SE 09:00–17:30, UK 08:00–16:30, AU 10:00–16:00): `17f366b05532637a`. `ANLEITUNG-C3-Quellenvergleich.md`: `027e4e5cb3c926a1`.
+* Quellen: Binance (USDT), Kraken (USD), Coinbase (USD), Yahoo Tageswerte und Yahoo 15-Minuten-Balken (ohne Pre-/Post-Market). Je Messpunkt ein frischer Prozess; Langformat-CSV plus Meta-JSON ohne Pfade und Schlüssel; Ausgabeordner im Git-Worktree wird verweigert.
+* Änderung v1 → v1.1 (v1: `307dff7d97894b58`, 956 Zeilen): nur Auswertung Non-US; zusätzlich der letzte Balken nach der angenommenen Schlusszeit mit Erstsichtung, Schlusskurs und Abweichung zum Yahoo-Tagesschluss. Abrufcode programmatisch als identisch zu v1 geprüft; der Kurztest (mit v1 gelaufen) bleibt gültig.
+
+### 27.3 Kurztest (Axel, Mac, 17.10.2026 06:00:34Z Krypto, 06:00:40Z Non-US; Auswertung aus den hochgeladenen CSVs)
+* Dateien (SHA-256-Präfix): Krypto `c3_serie_kurztest_20261017T060034Z.csv` `db106331e784f3b1` (156 Zeilen, 52 Abrufe); Non-US `…T060040Z.csv` `1f790b0cde87adb7` (98 Zeilen, 28 Abrufe). Die Meta-JSONs liegen noch nicht vor.
+* **Krypto:** alle 52 Abrufe `ok` (je 13 Binance, Kraken, Coinbase, Yahoo). Für alle 13 Coins liefern alle drei Börsen die Tageskerze vom 16.10.2026 mit `is_closed=True` (39 von 39); die Kerze vom 17.10. ist offen. Yahoo hat um 06:00Z als letzte Zeile den 15.10.2026; die Zeile für den 16.10. fehlt noch.
+* **Korrektur:** Die frühere Aussage, BNB gebe es nur bei Binance, war falsch. Kraken (BNBUSD) und Coinbase (BNB-USD) liefern BNB-Daten (Tagesschluss 16.10.: Binance 721,58 in USDT; Kraken 720,66; Coinbase 720,69).
+* **Non-US:** alle 28 Abrufe `ok`. Yahoo-Tageszeile für den 16.10.2026 um 06:00Z: bei 13 von 14 Tickern OHLC leer (NaN); nur ORG.AX (Australien) komplett.
+* **Intraday:** bei den DE/UK/IT/FR/SE/ES-Tickern ist der letzte reguläre Balken der 15-Minuten-Balken mit Start 15:15 UTC. UCB.BR hat zusätzlich einen Balken 17:30 Ortszeit (Close 204,60, klassifiziert `nach_Schluss_nicht_eindeutig`) gegenüber 203,50 im letzten regulären Balken 17:15 (+0,54 %). ORG.AX hat einen Balken 16:00 Ortszeit mit Close 12,0600004, identisch mit dem Yahoo-Tagesschluss, gegenüber 12,11 im Balken 15:45. [Hypothese] Schlussauktionswerte; die Serie (v1.1) prüft dies; der letzte reguläre Balken kann um rund 0,5 % vom offiziellen Schluss abweichen.
+* [offen] Ob die Börsen-Schlusskerzen mit dem später eintreffenden Yahoo-Wert übereinstimmen und ab wann Yahoo vollständig ist: erst die Serie zeigt es. Die Währungs- und Handelsplatz-Unterschiede (USDT/USD, Börse gegen Yahoo-Aggregat) sind eine eigene Kennzahl, nicht Teil der Verfügbarkeit.
+
+### 27.4 Entscheidungsstatus
+* Keine Änderung an Aggregator, Workflows, Worker, Digest-Skript, KV, Archiv oder `SUITE.md`; der Aggregator nutzt weiterhin nur Yahoo. Freeze und C1-Sperre unverändert, keine Freeze-Ausnahme beantragt. Lizenz- und Nutzungsfragen alternativer Quellen (Yahoo kommerziell Go/No-Go, Börsen-APIs, EODHD/Twelve Data/Stooq) bleiben offen.
+* Messserie: **nicht freigegeben**.
