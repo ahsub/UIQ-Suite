@@ -133,3 +133,10 @@
 ## 7. Verweise
 
 * `docs/UEBERGABE-2026-10-07.md` (Sammelprotokoll, Abschnitte 8–27 zum Nachtlauf-Zeitpunkt, Gate und Quellenvergleich), `docs/DATENREIFE-UND-QUELLENVERGLEICH.md` (Themendokument), `docs/UEBERGABE-HEADER-TEMPLATE.md`
+
+## 8. Nachtrag 17.10.2026 vormittags: Freigabe und Start der Krypto-Messserie (nur angehängt; Abschnitte 1–7 unverändert)
+
+* **Freigabe:** Axel hat die Messserie am 17.10.2026 um 08:32 Uhr MESZ ausdrücklich freigegeben. Eine Zustimmung des Reviewers ist in diesem Gespräch nicht belegt [offen]; falls sie vorliegt, bitte hier nachtragen. Vorab vorgelegt waren Befehl, Nebenwirkungen und Startzeiten.
+* **Start (Axel, Mac, rein lesend):** Run-ID `20261017T063627Z`, Modus `krypto`, c3 v1.1 (`d81a01dfdd176690`), Watchlist `18df1bf9f19cec04`, Python 3.13.1, Startzeit 06:36:27Z. 13 Ticker, 40 Slots: Fenster 1 von 23:50Z bis 02:00Z alle 5 Minuten, Fenster 2 von 06:30Z bis 08:30Z alle 10 Minuten (17./18.10.2026). Ausgabe in `~/uiq-c2-lokal` (außerhalb eines Git-Repos); Befehl mit `caffeinate -i`, Terminal offen. Das Skript wartet bis zum ersten Slot.
+* **Noch ausstehend:** Fertigmeldung des Laufs (voraussichtlich gegen 08:35Z); danach Serie-CSV, Meta-JSON, Log und Konsolenausgabe zur Auswertung mit `auswerten`. Non-US-Läufe (Montag 19.10. 15:35Z bis 18:00Z, Dienstag 20.10. 08:00Z bis 10:00Z, je alle 15 Minuten) sind nicht gestartet.
+* Unverändert: Freeze, C1-Sperre, keine Änderung an Aggregator, Workflows, Worker, Digest, KV, Archiv, `SUITE.md`; Gate Papiermodell.

@@ -36,9 +36,9 @@ Zu welchem Zeitpunkt sind die Tagesschlusskurse bei der Datenquelle (Yahoo über
 * BNB gibt es auch bei Kraken und Coinbase (frühere Aussage „nur Binance“ war falsch).
 * Währungs- und Handelsplatzunterschiede (USDT/USD, Börse gegen Yahoo-Aggregat) sind eine eigene Kennzahl und nicht Teil der Verfügbarkeitsfrage.
 
-## 6. Geplant, nicht freigegeben
+## 6. Messserie: Stand
 
-* Serie Krypto (eine Nacht, erster Slot 23:50Z) und Serie Non-US (Montag 19.10., getrennter Lauf), jeweils nur lesende Abrufe öffentlicher Endpunkte. Start erst nach ausdrücklichem Ja von Axel und Reviewer, mit vorher vorgelegtem Befehl, Nebenwirkungen und Startzeiten.
+* Freigabe durch Axel am 17.10.2026 08:32 Uhr MESZ (Zustimmung des Reviewers im Gespräch nicht belegt, [offen]). **Krypto-Serie gestartet** (Run-ID `20261017T063627Z`, Start 06:36:27Z, 40 Slots 17.10. 23:50Z bis 18.10. 08:30Z). **Non-US-Serie** (Montag 19.10. 15:35Z bis 18:00Z und Dienstag 20.10. 08:00Z bis 10:00Z) noch nicht gestartet. Jeweils nur lesende Abrufe öffentlicher Endpunkte.
 * Auswertung danach mit `auswerten`; Ergebnisse werden hier und im nächsten Tagesprotokoll als eigener Nachtrag festgehalten.
 
 ## 7. Offen
