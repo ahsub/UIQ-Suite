@@ -38,7 +38,7 @@ Zu welchem Zeitpunkt sind die Tagesschlusskurse bei der Datenquelle (Yahoo über
 
 ## 6. Messserie: Stand
 
-* Freigabe durch Axel am 17.10.2026 08:32 Uhr MESZ (Zustimmung des Reviewers im Gespräch nicht belegt, [offen]). **Krypto-Serie gestartet** (Run-ID `20261017T063627Z`, Start 06:36:27Z, 40 Slots 17.10. 23:50Z bis 18.10. 08:30Z). **Non-US-Serie** (Montag 19.10. 15:35Z bis 18:00Z und Dienstag 20.10. 08:00Z bis 10:00Z) noch nicht gestartet. Jeweils nur lesende Abrufe öffentlicher Endpunkte.
+* Freigabe durch Axel am 17.10.2026 08:32 Uhr MESZ (Zustimmung des Reviewers im Gespräch nicht belegt, [offen]). **Krypto-Serie `20261017T063627Z` abgeschlossen** (40 Slots 17.10. 23:50Z bis 18.10. 08:30Z, alle 6 240 Abrufe `ok`): Börsen liefern die geschlossene UTC-Tageskerze ab 00:00Z (Coinbase-Schluss läuft bei 12 von 13 Coins im Slot 00:05Z noch um bis zu 0,10 % nach), Yahoo hat die Zeile erst ab 07:10Z (nicht vorhanden bis 07:00Z, danach stabil); eine Nacht, Wochenende, Details in `UEBERGABE-2026-10-17.md` Abschnitt 9. **Non-US-Serie** (Montag 19.10. 15:35Z bis 18:00Z und Dienstag 20.10. 08:00Z bis 10:00Z) noch nicht gestartet. Jeweils nur lesende Abrufe öffentlicher Endpunkte.
 * Auswertung danach mit `auswerten`; Ergebnisse werden hier und im nächsten Tagesprotokoll als eigener Nachtrag festgehalten.
 
 ## 7. Offen
