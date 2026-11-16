@@ -579,3 +579,28 @@ Archiv `ahsub/uiq-archive`, schreibgeschützter Klon, HEAD `74de96a` (14.11.2026
 
 ### 24.5 Status
 * Keine Messung läuft; nichts gestartet, nichts verändert. Offene Freigaben durch Axel: Nacht A (Messtag 17.11.), Nacht B (Messtag 18.11.), je nach Vorlage der Befehle und erfolgreicher Prüfung nach 24.3; Auswertungsskript zur Ansicht. Keine Änderung an Gate, Aggregator, Workflows, Worker, Digest, KV, Archiv, `SUITE.md`; Freeze und C1-Sperre unverändert; Gate Papiermodell.
+
+## 25. Stand der Ablage und Übergabe an eine neue Sitzung (Stand 14.11.2026, abends) (nur angehängt; Abschnitte 1–24 unverändert)
+
+### 25.1 Ablage (belegt, per Hash gegen den Remote-Stand geprüft)
+* **`UIQ-Suite`, Commit `c159d0b` (Axel, 14.11.2026 20:30 MEZ):** `docs/UEBERGABE-2026-10-17.md` mit Abschnitt 24 (581 Zeilen, Hash-Präfix `b815aa63a7f9fbe6`; Pflicht-Header, erste 78 Zeilen, unverändert `f9c951568fc52222`) und `docs/DATENREIFE-UND-QUELLENVERGLEICH.md` (49 Zeilen, `be8a1a83c7c591f9`). Der vorangehende Commit `b3695a7` enthielt noch die 545-Zeilen-Fassung ohne Abschnitt 24; die Messregeln liegen damit vor Beginn der Messungen im Repo.
+* **`uiq-devtools`, Commit `b205b38` (Axel, 14.11.2026 20:22 MEZ):** neue Datei `datenreife/nachzuegler.py` (207 Zeilen, `ab1af8e09189b550`), nur diese eine Datei im Commit. Die bis dahin lokal verwendete Fassung hatte den Hash-Präfix `4ff8751e938dcee6`; sie wurde nie im Repo geführt. Die neue Fassung (v1.1) ist bereinigt (Pfade als Parameter, Kopf-Docstring, keine Tickernamen ohne `--mit-ticker`, Schreibsperre für Git-Arbeitsverzeichnisse bei `--gruppen-dateien`); die Logik ist unverändert. Nachweis: Ausgabe auf den drei Snapshots 07.11., 11.11. und 14.11. mit `--mit-ticker` identisch (`diff`) mit der Ausgabe des Originals (Hash-Präfix der Originalausgabe `802301676afd34a8`). Die Originalausgabe und die Gruppendateien G und C enthalten Tickernamen und gehören nicht in ein öffentliches Repo.
+* Stand `datenreife/` in `uiq-devtools`: `c2_zeitverlauf.py`, `c3_quellenvergleich.py`, `nachzuegler.py`, `tag_auswertung.py`. Eine README gibt es nicht; sie ist nicht freigegeben.
+
+### 25.2 Maßgebliche Dateien und Hashes (Präfixe, SHA-256)
+* Protokoll `UEBERGABE-2026-10-17.md` `b815aa63a7f9fbe6` (vor diesem Abschnitt); Themendokument `be8a1a83c7c591f9`.
+* `c3_quellenvergleich.py` v1.1 `d81a01dfdd176690`; Watchlist `watchlist_c3_nonus_20261017.csv` `17f366b05532637a` (Mac `~/uiq-c2`); `c2_zeitverlauf.py` v2 `efa2174ed6caed25`; US-Watchlist `watchlist_us_20261015_v2.csv` `4ae78a056ea74362`; `tag_auswertung.py` `79fb975c307c2060`; `nachzuegler.py` `ab1af8e09189b550`.
+
+### 25.3 Stand der Freigaben (unverändert gegenüber 24.1)
+* Freigegeben: Messdesign und Regeln aus Abschnitt 24; Vorbereitung der Befehle; Ablage der Skripte und des Protokolls im Repo (durch Axel).
+* **Nicht freigegeben:** Start von Nacht A (Messtag Di 17.11., Fenster 00:10Z bis 10:00Z, Börsentag D = Mo 16.11.) und von Nacht B (Messtag Mi 18.11., D = Di 17.11.); jeder Start braucht Axels einzelnes ausdrückliches Go nach Vorlage der unmittelbar vor dem Start erfolgreich geprüften Befehle (Hashprüfung, yfinance `1.5.2`, Trockenlauf mit 31 Prüfungen, siehe 24.3). Ebenfalls nicht freigegeben: Änderung an c3-Skript oder Watchlist, README, Filter `versuch=2y_explicit` in `tag_auswertung.py`, Volatilitätsanalyse, Gate-Neubewertung, jede Änderung an Produktionskomponenten. Das Auswertungsskript für die Non-US-Nächte wird vor der Auswertung zur Ansicht vorgelegt.
+* Das Fenster von Nacht A beginnt am 17.11. um 00:10Z (= 01:10 MEZ). Wann genau der Start am Abend des 16.11. erfolgt, entscheidet Axel; der Mac muss vom Start bis 10:00Z des Messtags wach, am Netzteil und online sein (24.2).
+
+### 25.4 Weiterhin offen (nichts beauftragt)
+* Ursache der Nächte mit früher Vollständigkeit und der Nachzüglergruppe (Abschnitte 21 und 22; Volatilität nur [Hypothese]); Ursache der Startverzögerung der GitHub-Läufe (Run-Logs nicht gelesen); Wirkung unvollständiger Zeilen auf Scores und Ausgaben [offen]; Abdeckung der Non-US-Watchlist (14 von 33); Sommerzeit (März 2027) ungetestet; keine multivariate Analyse.
+* Ältere offene Punkte unverändert: TIPS→TIP, GOLD→B, USD, A-2/C, ABR-Test, Yahoo-Lizenz Go/No-Go, D21 bis D23, S6/№73, BaFin/Bundesbank, `SUITE.md`-Integration nach D26, TR-Backup-Logs, GOLD-Historie, Wochentagsmenge, Stränge B und C, undokumentierte Reviewer-Freigabe früherer Schritte.
+
+### 25.5 Einstieg für die nächste Sitzung
+* Lesen: dieses Protokoll (Abschnitte 20 bis 25, Header zuerst) und das Themendokument. Regeln unverändert: Freeze, C1-Sperre, Gate nur Papiermodell, nichts ohne Axels ausdrückliches Go, Befehl und Nebenwirkungen vorher, [belegt]/[Hypothese]/[offen] getrennt, ganze Dateien zum Ersetzen, Axel committet selbst, Prüfung per Hash gegen einen schreibgeschützten Klon.
+* Nächster Schritt: Vorbereitung der finalen Startbefehle für Nacht A (Mo 16.11. abends) mit den Prüfungen aus 24.3; danach, erst nach Go, Nacht B.
+* Keine Messung läuft; nichts gestartet. Keine Änderung an Gate, Aggregator, Workflows, Worker, Digest, KV, Archiv, `SUITE.md`; Freeze und C1-Sperre unverändert; Gate Papiermodell.
