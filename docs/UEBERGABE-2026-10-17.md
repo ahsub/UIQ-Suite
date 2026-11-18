@@ -675,3 +675,31 @@ Archiv `ahsub/uiq-archive`, schreibgeschützter Klon, HEAD `74de96a` (14.11.2026
 * **Von Axel zu committen:** `uiq-devtools/datenreife/c3_nacht_auswertung.py` (v1.1); `UIQ-Suite/docs/KOSTENANALYSE-API-2026-11-16.md`; diese Fassung von `UIQ-Suite/docs/UEBERGABE-2026-10-17.md`. Danach Prüfung per Hash gegen einen schreibgeschützten Klon.
 * **Offen (nichts beauftragt):** Ursache der Störung in Nacht A (Fritzbox-Protokoll, Mesh); Lücke des Selbsttests bei den Kenngrößen der separaten Gruppe; Produktionsabgleich; Abgleich der Kosten mit der Cost-Seite der Console; Entscheidung über die Präzisierungen zum Kostenplan; weiterhin die offenen Punkte aus 25.4.
 * Keine Messung läuft. Keine Änderung an Gate, Aggregator, Workflows, Worker, Digest, KV, Archiv, `SUITE.md`; Freeze und C1-Sperre unverändert; Gate Papiermodell.
+
+## 27. Nachtrag 18.11.2026: Auswertungsskript v1.2 und redaktionelle Korrekturen der Kostenanalyse (nur angehängt; Abschnitte 1–26 unverändert)
+
+### 27.1 Anlass
+* Prüfung der zum Commit vorgesehenen Dateien durch einen Reviewer (Text von Axel am 18.11.2026 übermittelt, Datei `88308406-attachment.txt`, `d815346d42c53776`): In v1.1 wird V vergeben, wenn das Datum vorhanden ist und das Flag `close_nan` fehlt; der Close-Wert selbst wird nicht geprüft. Ein leerer Close oder `"nan"` ohne Flag würde als V gezählt. Weitere Punkte: Stabilität als Zeichenkettenvergleich; Selbsttest ohne Prüfung der Kenngrößen der separaten Gruppe (bekannt aus 26.2); fehlende Prüfungen der Kommandozeile und Fehlerbehandlung.
+* **Prüfung an den Messdaten [belegt]:** In beiden Nächten haben alle Tageszeilen mit Status `ok` ohne `close_nan` einen numerischen, endlichen Close größer 0 (Nacht A 1 313, Nacht B 1 844), alle mit `close_nan` keinen numerischen Close (529 bzw. 676); 0 Widersprüche. Derselbe Zahlenwert erscheint nie in unterschiedlicher Schreibweise. c3 setzt `close_nan`, wenn der Wert fehlt oder NaN ist. **Die Ergebnisse in Abschnitt 26 sind von der Lücke nicht betroffen;** sie ist eine Robustheitsschwäche für künftige Daten.
+
+### 27.2 Skript v1.2 (Freigabe Axel 18.11.2026 11:25 MEZ, Umfang wie freigegeben) [belegt]
+* `c3_nacht_auswertung.py` v1.2, 347 Zeilen, SHA-256 `9a56fe211cb6827558f8a6012f486f0173d48e1fe3889ae79073138e83797c7a`. Änderungen gegenüber v1.1 (`60492d9a0757ef62`):
+  * V nur noch, wenn kein `close_nan` vorliegt **und** der Close numerisch, endlich und größer 0 ist.
+  * Ein ungültiger Close ohne Flag wird als L gewertet (Detail „Close ungueltig ohne Flag“); das entspricht der Definition von L in 24.4 („Close leer“), die Zustandsdefinitionen sind unverändert.
+  * Neue Berichtszeile je Nacht: `Flag-Verstöße: <Anzahl>`.
+  * Stabilität numerisch statt als Zeichenkette verglichen.
+  * Selbsttest von 10 auf 15 Prüfungen erweitert: leerer Close, `"nan"` und `"inf"` jeweils ohne Flag ergeben L und werden als Verstoß gezählt; derselbe Wert als `5` und `5.0` gilt als stabil; Kenngrößen der separaten Gruppe werden geprüft (schließt die Lücke aus 26.2).
+  * Nicht enthalten (später): Prüfungen der Kommandozeile und gezielte Fehlermeldungen bei fehlerhaften Eingaben.
+* **Selbsttest:** 15 von 15. **Mutationsprüfung** an Kopien, alle fünf eingebauten Fehler erkannt: vertauschte Zustände L/V (Abbruch des Tests mit Fehler), fehlende Kenngrößen der separaten Gruppe (14 von 15), fehlende Gruppentrennung (14 von 15), entfernte Close-Prüfung (Abbruch des Tests mit Fehler), Stabilität wieder als Zeichenkette (14 von 15). Die in 26.2 genannte unerkannte Mutation wird jetzt erkannt.
+* **Abnahme (Kriterium Axel):** Beide Nächte mit v1.2 neu ausgewertet. Zustandsmatrix identisch mit v1.0 (`02f8c7f46f7ba7a5…`). Bericht gegenüber v1.0 nur mit geänderter Versionszeile und je Nacht der zusätzlichen Zeile `Flag-Verstöße: 0` (Bericht v1.2 `74691f30d1432ade…`). Keine weiteren Abweichungen.
+* **Ablage:** Statt v1.1 (26.2, 26.11) wird v1.2 in `uiq-devtools/datenreife/c3_nacht_auswertung.py` abgelegt; v1.1 wurde nicht committet. Keine Tickernamen im Skript. Commit durch Axel nach seiner Prüfung, noch nicht erfolgt.
+
+### 27.3 Kostenanalyse: zwei redaktionelle Korrekturen (Freigabe Axel 18.11.2026 11:25 MEZ) [belegt]
+* Hebel-Tabelle, Zeile „Wechsel auf Sonnet 5.5“: „ca. −5 USD“ → „ca. −6 USD“ (einheitlich mit der Tabelle „Modellwahl“: 44,31 → ca. 38 USD).
+* Hinweis unter der Monatstabelle ergänzt, nachdem die Rohdaten es bestätigt haben: Die Summen sind aus ungerundeten Einzelwerten gebildet (September 79,3565 + 6,4267 = 85,7832 → 85,78; Oktober 44,3120 + 0,4946 = 44,8066 → 44,81); daher bis zu 0,01 USD Abweichung von der Summe der gerundeten Spaltenwerte.
+* Keine weiteren Änderungen; Beschluss, Plan und offene Punkte unverändert. Datei `KOSTENANALYSE-API-2026-11-16.md` jetzt 178 Zeilen, SHA-256 `2e6d3badce7a6c0f92d66b9e0f1bb760aff5bee2a1add20487dbed0add31207e` (vorher `d26e3fae5a89ea07…`, nie committet). Die Arbeitsfassung (Claude-Dokument) ist gleich geändert.
+
+### 27.4 Status
+* Zu committen durch Axel nach seiner Prüfung: `uiq-devtools/datenreife/c3_nacht_auswertung.py` (v1.2), `UIQ-Suite/docs/KOSTENANALYSE-API-2026-11-16.md` (neue Fassung), diese Fassung des Protokolls. Danach Prüfung per Hash gegen einen frischen Klon.
+* Unverändert nicht freigegeben: Commit oder Push durch Claude, Produktionsabgleich nach 24.4, 09:00Z-Guard oder Verschiebung von Läufen, jede Änderung an Produktion, c3 oder Watchlist, Schritte der Kostenstränge ohne einzelnes Go.
+* Keine Messung läuft. Keine Änderung an Gate, Aggregator, Workflows, Worker, Digest, KV, Archiv, `SUITE.md`; Freeze und C1-Sperre unverändert; Gate Papiermodell.
