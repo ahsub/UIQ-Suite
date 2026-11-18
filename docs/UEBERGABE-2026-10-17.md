@@ -751,3 +751,55 @@ Archiv `ahsub/uiq-archive`, schreibgeschützter Klon, HEAD `74de96a` (14.11.2026
 
 ### 28.7 Status
 * Keine Produktionsänderung, keine Änderung an `market_aggregator.py`, Workflows, Worker, Digest, KV, Archiv oder `SUITE.md`; keine neue Messung. `uiq-archive` nur gelesen. Freeze und C1-Sperre unverändert; Gate Papiermodell. Commit dieses Abschnitts durch Axel nach Prüfung.
+
+## 29. Prüfung der Börsenzuordnung `homeMarket` (Suffix-Prüfung, Stand 18.11.2026) (nur angehängt; Abschnitte 1–28 unverändert)
+
+### 29.1 Auftrag, Umfang und Quellen
+* Freigabe Axel 18.11.2026 12:02 MEZ, nur lesend; Gliederung dieses Abschnitts nach Vorschlag Axel/Reviewer (12:06 MEZ). Anlass: Nebenbefund 28.4.
+* Quellen (SHA-256-Präfixe): aktueller Snapshot `2026-11-18_03` aus `uiq-archive` (`88469319a62a4288`, 761 Titel, entspricht dem tatsächlich laufenden Bestand einschließlich dynamisch freigegebener Ticker); `ticker_master.json` (`f353cfc3b02a7ea0`, 818 Einträge) und `market_aggregator.py` (`3c31d1f44207caa6`, v5.48.0) aus `ko-aggregator` `main` Commit `330f07f`; `ko-prompts.js` (`c12bbd1ac26b73e7`, in `ko-modules` `e82508a` und als identische Kopie in `UIQ-Suite/scripts/vendor/`); `generate_public_recommendations.js` (`16ba91e3e05ea7d5`, `UIQ-Suite` `e8914cb`); `ko-kv-state.js` (`971e94a888361347`, `ko-modules`); `index.html` (`630e29c47531128a`, `axel-scanner` `d3391e6`). Für das Auftreten in Ausgaben: 50 Snapshots vom 01.10. bis 18.11.2026 aus `uiq-archive`.
+* Keine Tickernamen in diesem Abschnitt; betroffene Titel werden über ihren Suffix bezeichnet.
+
+### 29.2 Ergebnis der Suffix-Prüfung [belegt]
+* Zuordnung: `_derive_home_market()` prüft das Ende des Symbols gegen `_NON_US_EXCHANGE_SUFFIXES` (`.DE .PA .AS .MI .SW .L .CO .ST .AX`) und gibt für jedes andere Symbol `US` zurück.
+
+| Suffix | in der Tabelle | aktiv (im Snapshot) | nur in `ticker_master`, inaktiv | Zuordnung |
+|---|---|---|---|---|
+| `.DE .L .MI .PA .ST .AX` | ja | 18 / 7 / 2 / 2 / 1 / 1 | weitere | korrekt |
+| `.SW .CO .AS` | ja | 0 | 11 / 5 / 5 | wäre korrekt |
+| `.MC` (Madrid) | nein | 1 | – | **US, falsch** |
+| `.BR` (Brüssel) | nein | 1 | 2 (`in_universe: false`, in `BAD_SYMS`) | **US, falsch** |
+| `.HE` (Helsinki) | nein | 0 | 1 (`in_universe: false`) | wäre US, falsch (Vorsorgebefund) |
+| `.HK`, `.TW` | nein | 0 | 5 (alle in `BAD_SYMS`) | wäre US, falsch (Vorsorgebefund) |
+| `-USD` (Kryptowährungen) | – | 13 | – | **US, fachlich unzutreffend** (Handel rund um die Uhr, keine Börse mit Schlusszeit) |
+* Ohne Bedeutung für die Zuordnung: der Dollar-Index mit Suffix `.NYB` (nur Marktkontext), eine Schreibweise mit `.B` nur in einer Namenszuordnung, Aktiengattungen mit Bindestrich (korrekt zugeordnet).
+* **Ergebnis:** Im aktiven Bestand sind zwei Titel (je einer `.MC` und `.BR`) und 13 Kryptowährungen als `US` zugeordnet. Die Ursache ist nicht nur die fehlende Tabellenzeile, sondern der stille Rückfall auf `US` bei jedem unbekannten Symbol.
+
+### 29.3 Verwendung von `homeMarket` [belegt aus dem Code]
+| Stelle | Verwendung | Rückfallwert |
+|---|---|---|
+| `market_aggregator.py`, `_derive_home_market()` | Erzeugung des Felds je Titel | `US` |
+| `market_aggregator.py`, `calc_data_integrity` | Trennung US/Non-US der Diagnostik (`is_us = (homeMarket or "US") == "US"`) | `US` |
+| `market_aggregator.py`, Leaderboards, `topResults`, Shortlist-Pfade | Weitergabe des Felds | – |
+| `ko-prompts.js` (KO-Strategien und Fading Short) | KO-5 „Gap-/Overnight-Risiko“ und „Marktzugang“: bei `homeMarket=US` wird das Modell angewiesen, Handel an US-Börsen mit Zeitzonen-Versatz und eingeschränkte Hebelprodukte für Privatanleger seit 2017 zu benennen | – |
+| `generate_public_recommendations.js` (Public Digest) | `homeMarket: raw.homeMarket \|\| 'US'`, Kandidatenzeile „Markt:…“ | `US` |
+| `ko-kv-state.js`, `index.html` (Frontend, 4 Stellen) | Übernahme in den Scanner-Zustand | `US` |
+* Der Rückfall auf `US` ist damit in Aggregator, Digest und Frontend fest eingebaut; ein fehlender Eintrag fällt an keiner Stelle auf. Für die falsch zugeordneten Titel würden die KO-5-Hinweise (US-Börse, Zeitzonen-Versatz, Einschränkung bei Hebelprodukten) inhaltlich nicht zutreffen.
+
+### 29.4 Auftreten in den Snapshots [belegt für 50 Snapshots vom 01.10. bis 18.11.2026]
+* Titel `.MC`: in den Leaderboards `short_breakdown` (10 Snapshots), `options_csp`, `options_weekly`, `options_collar` (je 9), `options_atmna` (7), `long_mr` (2).
+* Titel `.BR`: in `short_breakdown` (5) und `short_fading` (2).
+* Kryptowährungen: in mehreren Leaderboards, u. a. `short_fading` (4), `long_mr`, `long_swing`, `short_breakdown` und den Options-Leaderboards; außerdem in `masterShortlist`.
+* **Offen:** Ob für einen dieser Titel ein KI-Text mit unzutreffendem Gap- oder Marktzugangshinweis erzeugt oder veröffentlicht wurde, ist nicht geprüft; die Ausgaben des Digests und der KI-Briefings liegen nicht im Archiv. Es wird nicht behauptet, dass solche Texte entstanden sind.
+
+### 29.5 Technische Einordnung und mögliche Maßnahmen [Vorschläge, nicht beschlossen, keine Architekturentscheidung]
+* Die Ergänzung von `.MC` und `.BR` würde die zwei aktuellen Fehlzuordnungen beheben, aber nicht verhindern, dass das nächste unbekannte Symbol wieder als `US` behandelt wird (fehlender Sicherheitsmechanismus statt nur fehlender Eintrag).
+* Mögliche Schritte, jeweils eigene Entscheidung, eigene Nacht und eigenes Go:
+  1. **Zuerst:** vollständige, ausdrückliche Zuordnung aller aktiven Titel prüfen und dokumentieren (rein lesend vorbereitbar), bevor die Rückfall-Logik geändert wird.
+  2. Länderzuordnung ergänzen (`.MC`, `.BR`, vorsorglich `.HE`).
+  3. Kryptowährungen **als eigene Marktklasse** führen, nicht als weiteres Börsenland; die KO-5- und Marktzugangsformulierungen in `ko-prompts.js` wären dafür gesondert zu prüfen.
+  4. Kein stiller Rückfall auf `US` für unbekannte Symbole, ergänzt um einen Test, der für jeden aktiven Titel eine ausdrückliche Zuordnung verlangt.
+* Jede dieser Maßnahmen wäre eine Produktionsänderung (Aggregator, Prompts, Digest oder Frontend) und fällt unter Freeze und die Regel einer Änderung pro Nacht.
+
+### 29.6 Freigabestatus
+* Nur lesend untersucht. Keine Änderung an Aggregator, Prompts, Digest, Frontend, Workflows, KV, Archiv oder `SUITE.md`; keine Freigabe für eine Umsetzung. Freeze und C1-Sperre unverändert; Gate Papiermodell.
+* Getrennt davon weiterhin offen (28.6): Prüfung der Übernahme des Dienstags-Close im Lauf vom 19.11.; Ursache des Fehlschlags von Lauf 390. Commit dieses Abschnitts durch Axel nach Prüfung.
