@@ -832,3 +832,48 @@ Archiv `ahsub/uiq-archive`, schreibgeschützter Klon, HEAD `74de96a` (14.11.2026
 * Neu: Verhalten zweier Läufe derselben Nacht trotz wirksamer Sperre (veralteter Ausgangsstand, Konflikt beim Archiv-Commit, mögliches Überschreiben von KV, Archiv ≠ Live-Stand) (30.1); Kennzeichnung des Kursdatums bei Non-US-Titeln (30.3).
 * Weiterhin offen: Übernahme des Dienstags-Close im Lauf vom 19.11.; Zuordnung `homeMarket` (Abschnitt 29); Kostenstränge A und B nach 26.9.
 * Keine Änderung an Workflow, Watchdog, Aggregator, Prompts, Digest, Frontend, KV, Archiv oder `SUITE.md`. Freeze und C1-Sperre unverändert; Gate Papiermodell. Commit dieses Abschnitts durch Axel nach Prüfung.
+
+## 31. Kostenstrang A: Offline-Batch-Test, Absicherung `generate_public_recommendations.js` v1.31, Wechsel des API-Keys (Stand 18.11.2026) (nur angehängt; Abschnitte 1–30 unverändert)
+
+### 31.1 Offline-Batch-Test (Plan 26.9, Strang A, Schritt 1)
+* **Aufbau:** Testskript `batch_offline_test.js` v1.0 (159 Zeilen, SHA-256 `d8bd4819e78c88b9…`), nur lokal, nicht im Repo. Es lädt den archivierten Snapshot `2026-11-18_03.json.gz` (`88469319a62a4288…`, `generated` 03:27:28Z, `last_trading_day` 2026-11-17), baut Snapshot, Prompts und Earnings-Lookup mit den Funktionen des Generators und ruft dessen eigenen Batch-Pfad `runAllStrategiesBatch()` auf, zusätzlich 2 Strategien synchron. `main()`, Skip-Prüfung und Digest-Upload laufen nicht. Cloudflare-Zugangsdaten fehlen, jeder Aufruf an `api.cloudflare.com` wird zusätzlich blockiert; Ausgabe nur in einen neuen Ordner außerhalb jedes Git-Verzeichnisses. Generator `UIQ-Suite` `8b9e5f5`, `scripts/generate_public_recommendations.js` v1.30 (`16ba91e3e05ea7d5…`), Prompt-Version 2.55.0, Modell `claude-sonnet-4-6`.
+* **Durchführung [belegt]:** Trockenlauf ohne Key bei Claude und auf Axels Mac (15-mal `no_api_key`, 0 Aufrufe an Cloudflare und Anthropic). Echter Lauf auf Axels Mac (Node v26.5.0) am 18.11. 11:50:21–11:55:21Z. Einschränkung: Der Marktkontext wird mit den QQQ-Daten des Testtags gebaut; die Prompts sind daher nicht identisch mit denen des Produktionslaufs vom 18.11.
+* **Ergebnis nach den vorab festgelegten Prüfpunkten [belegt aus `bericht.json`, `aufrufprotokoll.json`, `budget_log.json`]:**
+
+| Prüfpunkt | Ergebnis |
+|---|---|
+| P1 Strategien | 15 von 15 ok |
+| P2 abgeschnittene Antworten | 0; keine Reparatur, kein `generation_error` |
+| P3 Dauer | 185 s bis zum Abholen der Ergebnisse; Batch laut Aufrufprotokoll zwischen 11:52:26Z und 11:53:26Z beendet (Abfrageabstand 60 s) |
+| P4 Cloudflare | 0 Aufrufe |
+| P5 Caching | Cache-Lesen 147.616 Token = 37,5 % der Eingabe-Token (Eingabe 235.927, Cache-Schreiben 10.544) |
+| P6 Kosten | 0,7364 USD zu Batch-Listenpreisen (Ausgabe 45.418 Token); von Hand nachgerechnet |
+| P7 Struktur | 2 von 2 synchron ok, dieselben 13 Felder in `aiOutput` wie im Batch; dieselbe Eingabe-Tokenzahl je Strategie in beiden Wegen |
+
+* **Einordnung:** Dieselben Token hätten synchron zu Listenpreisen rund 1,47 USD gekostet (rund 50 % Ersparnis bei gleichen Token). Ob der synchrone Produktionslauf einen höheren Cache-Anteil erreicht, ist offen (Abgleich mit der Console-Kostenseite). Ein einzelner Lauf an einem Tag; keine Aussage über Dauer oder Ausfallrate im Dauerbetrieb.
+* **Nebenbefunde:** (a) Das Budgetlog des Generators (`AI_BUDGET_LOG`) rechnet Batch-Aufrufe zu synchronen Preisen und ohne Cache: 1,39 USD statt 0,74 USD [belegt]. (b) Zähler `polls` im Testskript bleibt 0 (Fehler im Testskript; maßgeblich ist das Aufrufprotokoll mit 6 Statusabfragen). (c) Für `long_dividend` und `long_value` fehlt im Snapshot die Rangliste; der Generator sortiert selbst (Warnung im Log). Vermutlich auch in der Produktion [Hypothese]. (d) Mehrere Strategiegruppen haben dieselben drei Top-Titel; die Auswahl liegt vor dem KI-Aufruf, ob die Produktion dasselbe zeigt, ist nicht geprüft [offen].
+
+### 31.2 Absicherung des Batch-Pfads, `generate_public_recommendations.js` v1.31 (Plan 26.9, Strang A, Schritt 2) — nicht committet
+* **Datei:** 4290 Zeilen, SHA-256 `c478405b7030e1944939728be9ec607cb7f56a84e185779f26a8da9e0800d68f`; Diff gegen v1.30 `8e655fc789c4e3e4…` (484 Zeilen). Aktiviert nichts: `USE_BATCH_API` bleibt Opt-in.
+* **Änderungen:** (1) Synchroner Nachlauf je Strategie, wenn der Batch kein verwertbares Ergebnis liefert (Erstellen, Abfragen, Abholen gescheitert oder Wartezeit überschritten; Ergebniszeile `errored`/`expired`/`canceled`, leer, abgeschnitten oder fehlend); kein Nachlauf, wenn Compliance oder Reparatur ablehnen; abschaltbar mit `BATCH_SYNC_FALLBACK=false`. (2) Wartezeit 10 statt 20 Minuten (`BATCH_MAX_WAIT_MIN`, 1–60), danach Abbruch des Batches über `POST …/cancel`. (3) Nur im Batch-Modus: bei 0 erfolgreichen Strategien kein Digest, keine `latest`-Zeiger, kein Digest-Archiv; Budgetlog wird geschrieben; `::error::`-Meldung, Exit-Code 0. (4) Kostenschätzung im Budgetlog mit Cache-Schreiben/-Lesen und Batch-Rabatt, neue Felder `token_cache_write`/`token_cache_read`; betrifft auch die Schätzung im synchronen Pfad (nur Protokollierung).
+* **Unverändert laut Diff:** `runStrategy()`, `callAnthropicWithRetry()`, die synchrone Schleife in `main()`, die Skip-Prüfung.
+* **Prüfung [belegt]:** Fehlerinjektionstest (`batch_fehlerinjektion_test.js`, `812bb56d5f45d676…`, nur lokal; Antworten gemockt mit den echten Batch-Antworten aus 31.1, Cloudflare blockiert, Zeit beschleunigt): 8 Szenarien (Normalfall, Erstellung scheitert, Wartezeit überschritten, Statusabfrage HTTP 500, gemischte Ergebniszeilen, alles scheitert, Nachlauf abgeschaltet, Compliance lehnt ab) und 3 Durchläufe von `main()` (Batch alles scheitert, Batch Normalfall, synchron alles scheitert). Alle Ergebnisse wie erwartet und bei Claude (Node v22.23.4) und auf Axels Mac (Node v26.5.0) zeichengleich. Budgetlog im Normalfall 0,7364 USD, gleich 31.1. Die Mock-Daten enthalten Tickernamen und bleiben lokal.
+* **Commit:** vorgesehen für den 19.11.2026 durch Axel, erst nach geprüftem Nachtlauf (31.4), damit in einer Nacht nur eine Änderung live geht. Danach Hash-Abgleich gegen einen frischen Klon.
+
+### 31.3 Befunde zum Workflow `market-aggregator.yml` (ko-aggregator `330f07f`, nur gelesen) [belegt]
+* UIQ-Suite wird im Lauf ohne festen Stand ausgecheckt (`actions/checkout`, nur `repository` und `path`). **Ein Commit auf `main` von UIQ-Suite ist damit ab dem nächsten Lauf live.**
+* `USE_BATCH_API` wird im Schritt „Generate Public Recommendations“ nicht gesetzt (nur `FORCE_REGENERATE`). Die Aktivierung braucht zusätzlich eine Workflow-Änderung in ko-aggregator (z. B. Eingabe `use_batch_api` für `workflow_dispatch`); eigener Schritt mit eigenem Go.
+* Job-Zeitgrenze 45 Minuten. Ungünstigster Fall mit v1.31: Aggregator rund 8 Minuten, Batch-Wartezeit 10 Minuten, synchroner Nachlauf rund 15 Minuten (je Strategie rund 57 s im Test 31.1).
+* **Lücke im synchronen Pfad (unverändert gelassen):** Scheitern alle Strategien, schreibt v1.30 wie v1.31 einen leeren Digest nach `public/digest/latest` (im Test 31.2 nachgestellt). Über die Skip-Prüfung blockiert er die Wiederholung desselben Tages, solange nicht `FORCE_REGENERATE` gesetzt wird. Gleiches gilt für Teilerfolge.
+
+### 31.4 Wechsel des Anthropic-API-Keys
+* **Anlass:** Beim echten Lauf in 31.1 wurde der aktive Produktions-Key versehentlich im Klartext auf der Kommandozeile eingegeben und so in den Terminalverlauf und in den Chat übertragen. Er war nicht in einem Repo.
+* **Maßnahmen (laut Axel, 18.11. bis 13:37 MEZ):** neuer Key in der Console angelegt (persönlicher, identitätsgebundener Key statt des bisherigen Workspace-Keys); Testaufruf mit `x-api-key` und mit `Authorization: Bearer` erfolgreich [belegt, 13:35 MEZ]; eingetragen als GitHub-Secret `ANTHROPIC_API_KEY` in ko-aggregator und als Secret im Cloudflare-Worker für KO-AI; alter Key deaktiviert (umkehrbar). Löschen des alten Keys erst nach erfolgreichem Nachtlauf.
+* **Fundstellen des Keys [belegt aus den lokalen Kopien]:** ko-aggregator `market-aggregator.yml` (Enrichment im Aggregator und Digest-Schritt), Worker `ko-ai-worker.js` bzw. `ko-ai.js` (`env.ANTHROPIC_API_KEY`). In UIQ-Suite, uiq-devtools und ko-modules nicht verwendet.
+* **Offen:** Wirkung des neuen GitHub-Secrets erst im Nachtlauf zum 19.11. prüfbar; Test des Workers in der App; Ablauffrist des neuen Keys festhalten; Bereinigung von `~/.bash_history`.
+
+### 31.5 Nächste Schritte und Status
+* 19.11.2026 ab ca. 07:00 MEZ, jeweils nach Go: Nachtlauf prüfen (neuer Key, Workflow grün, Enrichment vorhanden, kein Authentifizierungsfehler); Übernahme des Dienstags-Close der EU-Titel (bisher als „Abschnitt 31“ angekündigt, wird nun Abschnitt 32); Commit von v1.31.
+* Zu entscheiden: Kostenschätzung mit Cache auch im synchronen Pfad (ohne andere Ansage bleibt v1.31 wie getestet); Lücke im synchronen Pfad in den Backlog.
+* Danach im Strang A: Workflow-Eingabe `use_batch_api` vorbereiten, dann Aktivierung in eigener Nacht.
+* Keine Änderung an Workflow, Watchdog, Aggregator, Prompts, Digest, Frontend, KV, Archiv oder `SUITE.md`. Freeze und C1-Sperre unverändert; Gate Papiermodell. Commit dieses Abschnitts durch Axel nach Prüfung.
