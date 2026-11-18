@@ -703,3 +703,51 @@ Archiv `ahsub/uiq-archive`, schreibgeschützter Klon, HEAD `74de96a` (14.11.2026
 * Zu committen durch Axel nach seiner Prüfung: `uiq-devtools/datenreife/c3_nacht_auswertung.py` (v1.2), `UIQ-Suite/docs/KOSTENANALYSE-API-2026-11-16.md` (neue Fassung), diese Fassung des Protokolls. Danach Prüfung per Hash gegen einen frischen Klon.
 * Unverändert nicht freigegeben: Commit oder Push durch Claude, Produktionsabgleich nach 24.4, 09:00Z-Guard oder Verschiebung von Läufen, jede Änderung an Produktion, c3 oder Watchlist, Schritte der Kostenstränge ohne einzelnes Go.
 * Keine Messung läuft. Keine Änderung an Gate, Aggregator, Workflows, Worker, Digest, KV, Archiv, `SUITE.md`; Freeze und C1-Sperre unverändert; Gate Papiermodell.
+
+## 28. Abgleich der Non-US-Nachtmessung mit der Produktion, Läufe 389 bis 391, Nebenbefund Börsen-Suffixe (Stand 18.11.2026) (nur angehängt; Abschnitte 1–27 unverändert)
+
+### 28.1 Freigabe, Quellen, Grenzen
+* Freigabe Axel 18.11.2026 11:49 MEZ für den in 24.4 vorgesehenen Abgleich; Zugriff wie von Axel bevorzugt: `uiq-archive` nur lesend an diese Sitzung angehängt (Stand `ac57ef8`), Run-Liste von Axel ohne Token über die öffentliche Actions-API abgerufen (`runs_market_aggregator_1118.json`, Lauf 382 bis 391, SHA-256 Präfix `6aafb51c14fc5c66`). Ausgewertet: Snapshots `2026-11-17_04` (`40a824b6ae30a347`) und `2026-11-18_03` (`88469319a62a4288`) gegen die c3-Messungen aus Abschnitt 26; `market_aggregator.py` in `ko-aggregator` (`main`, v5.48.0) nur gelesen.
+* Reichweite: zwei Produktionsläufe, 13 europäische Titel und ein AU-Titel der c3-Watchlist. Keine Aussage über andere Nächte, Titel oder Märkte. Reviewer-Einschätzung vom 18.11. (Datei `198ced0b-attachment.txt`, `0c5c673edfc392e0`) in die Formulierungen übernommen.
+
+### 28.2 Läufe der beiden Nächte [belegt aus Run-Liste und Archiv-Commits]
+| Lauf | Auslöser | erstellt (UTC) | Ergebnis | Snapshot im Archiv |
+|---|---|---|---|---|
+| 389 | `workflow_dispatch` | Di 17.11. 04:15:29 | success, Ende ca. 04:42Z | `2026-11-17_04` (Archiv-Commit „run 389“) |
+| 390 | `schedule` (Plan Mo 22:00Z) | Di 17.11. 04:21:50 | failure, Ende ca. 04:51Z | keiner |
+| 391 | `schedule` (Plan Di 22:00Z) | Mi 18.11. 03:25:13 | success | `2026-11-18_03` („run 391“) |
+* **Korrektur einer Annahme:** Nacht A wurde nicht durch einen verspäteten planmäßigen Lauf abgedeckt, sondern durch den Dispatch-Lauf 389. Der planmäßige Lauf 390 wurde 6,36 h nach 22:00Z erzeugt (bisher größte Verspätung 5,98 h, Lauf 382) und schlug fehl. Lauf 391 (Nacht B): 5,42 h Verspätung, erfolgreich.
+* Die in dieser Sitzung zuvor aus `meta.generated` geschätzten Startzeiten (ca. 04:15Z und 03:25Z) stimmen mit der Run-Liste überein.
+* **Offen:** Wer den Dispatch 389 ausgelöst hat (`actor: ahsub` belegt nicht, dass es der Watchdog war; plausibel wegen der Uhrzeit 04:15Z wie bei den bekannten Sonntags-/Montagsläufen, nicht nachgewiesen). Die Ursache des Fehlschlags von 390: Der Workflow hat seit v1.5 eine `concurrency`-Sperre ohne Abbruch; ein Zusammenhang mit Lauf 389 ist denkbar, aber weder das Warten noch die Fehlerursache ist ohne Fehlerprotokoll belegt. Dass der 04:15Z-Dispatch auch an Werktagen einspringt, ist bisher **in dieser einen Nacht beobachtet**, kein belegtes Muster.
+
+### 28.3 Ergebnis des Abgleichs [belegt für die zwei untersuchten Läufe]
+| | Nacht A (D = Mo 16.11.), Lauf 389 | Nacht B (D = Di 17.11.), Lauf 391 |
+|---|---|---|
+| `meta.generated` | 04:18:14Z | 03:27:28Z |
+| `updated` der 14 Titel (Verarbeitungszeitpunkt, als Abrufzeit nur Näherung) | 04:16:58Z bis 04:17:01Z | 03:26:28Z bis 03:26:29Z |
+| c3-Zustand im Slot davor (04:10Z bzw. 03:20Z) | 13 europäische Titel L, AU-Titel V | 13 europäische Titel L, AU-Titel V |
+| Snapshot, 13 europäische Titel | `_lastRowIncomplete = true`, `_lastCloseDate` = 13.11. | `_lastRowIncomplete = true`, `_lastCloseDate` = 16.11. |
+| Kurs (`price`) gegen c3-Close desselben Datums | in allen 13 Fällen gleich (Abweichung 0,0 %) | in allen 13 Fällen gleich |
+| Snapshot, AU-Titel | vollständig, `_lastCloseDate` = D | vollständig, `_lastCloseDate` = D |
+* Beide untersuchten Snapshots entstanden 4,5 bis 5,5 h vor dem in Abschnitt 26 gemessenen Übergang von L nach V (Nacht B: 08:40Z bis 08:50Z).
+* **In den beiden untersuchten Produktionsläufen wurde bei keinem der 13 europäischen Titel ein leerer Close als Kurs übernommen;** verwendet wurde der letzte gültige Close, die Unvollständigkeit ist je Titel gekennzeichnet. Im gesamten Non-US-Bestand dieser Läufe zeigt `data_integrity` 30 von 31 Titeln unvollständig.
+* **In Nacht A ist die Übernahme des Montags-Close im Folgelauf vom 18.11. (Lauf 391) für alle 13 europäischen Titel nachgewiesen.** Für Nacht B wird die Übernahme des Dienstags-Close im Lauf vom 19.11. erwartet; sie ist **noch nicht geprüft**.
+* **Offen [nicht untersucht]:** Bei diesen Titeln zeigt `_dataAsOf` den Börsentag D, der Kurs stammt vom vorherigen Handelstag. Ob Frontend oder Prompts dadurch einen falschen Datenstand anzeigen, ist nicht geprüft.
+* Damit ist der Abgleich nach 24.4 für die zwei untersuchten Nächte abgeschlossen. Keine Produktionsänderung abgeleitet.
+
+### 28.4 Nebenbefund: fehlende Börsen-Suffixe `.MC` und `.BR` [belegt]
+* `_NON_US_EXCHANGE_SUFFIXES` in `market_aggregator.py` (`main`, v5.48.0) enthält `.DE .PA .AS .MI .SW .L .CO .ST .AX`, aber nicht `.MC` (Madrid) und `.BR` (Brüssel). `_derive_home_market()` gibt für unbekannte Suffixe `US` zurück. Je ein Titel mit diesen Suffixen erhält deshalb in allen geprüften Snapshots `homeMarket = 'US'`.
+* **Folgen [belegt]:** Der Rest „US unvollständig n = 2 (0,3 %)“ in den Werktagsläufen vom 07.11. bis 18.11. besteht genau aus diesen beiden Titeln; die Non-US-Diagnostik zählt 31 statt 33 Titel (erklärt den Unterschied zu „32 von 33“ in Abschnitt 20.4). **Möglich, nicht geprüft:** Die KO-5-Guardrail (Gap-Risiko bei US-Titeln) und die Prompts behandeln beide Titel als US-Titel.
+* Keine Änderung vorgenommen (Freeze; nicht freigegeben). Vor einer Korrektur ist das gesamte Ticker-Universum auf fehlende Börsen-Suffixe zu prüfen; eine Ergänzung wäre eine Produktionsänderung mit eigener Nacht und eigenem Go.
+
+### 28.5 Ursache der Störung in Nacht A (Nachtrag zu 26.6)
+* Nach Angabe von Axel (18.11.2026): Eine Umstellung eines Mesh-Routers führte zur Netzwerkstörung während Nacht A; die Konfiguration wurde inzwischen korrigiert. Nacht B verlief über die korrigierte Verbindung ohne weitere Störungen. Eine unabhängige technische Verifikation der Ursache liegt nicht vor.
+
+### 28.6 Neue offene Punkte (Backlog, nichts beauftragt)
+* Prüfung des Ticker-Universums auf fehlende Börsen-Suffixe, insbesondere `.MC` und `.BR`, und ihre Wirkung auf KO-5, Prompts und Diagnostik.
+* Verhalten bei einem Dispatch-Lauf und einem nachfolgenden planmäßigen Lauf in derselben Nacht (Lauf 389/390); Ursache des Fehlschlags von 390 bleibt offen, bis Axel bei Bedarf die Fehlerzeilen aus GitHub Actions bereitstellt (keine Voraussetzung für diesen Abschnitt).
+* Übernahme des Dienstags-Close (Nacht B) im Lauf vom 19.11. prüfen.
+* Anzeige des Datenstands bei Non-US-Titeln (`_dataAsOf` gegenüber `_lastCloseDate`).
+
+### 28.7 Status
+* Keine Produktionsänderung, keine Änderung an `market_aggregator.py`, Workflows, Worker, Digest, KV, Archiv oder `SUITE.md`; keine neue Messung. `uiq-archive` nur gelesen. Freeze und C1-Sperre unverändert; Gate Papiermodell. Commit dieses Abschnitts durch Axel nach Prüfung.
