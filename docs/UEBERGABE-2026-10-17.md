@@ -877,3 +877,29 @@ Archiv `ahsub/uiq-archive`, schreibgeschützter Klon, HEAD `74de96a` (14.11.2026
 * Zu entscheiden: Kostenschätzung mit Cache auch im synchronen Pfad (ohne andere Ansage bleibt v1.31 wie getestet); Lücke im synchronen Pfad in den Backlog.
 * Danach im Strang A: Workflow-Eingabe `use_batch_api` vorbereiten, dann Aktivierung in eigener Nacht.
 * Keine Änderung an Workflow, Watchdog, Aggregator, Prompts, Digest, Frontend, KV, Archiv oder `SUITE.md`. Freeze und C1-Sperre unverändert; Gate Papiermodell. Commit dieses Abschnitts durch Axel nach Prüfung.
+
+## 32. Nachtlauf 392 mit neuem API-Key, Übernahme der EU-Schlusskurse vom 17.11., Commit v1.31 (Stand 19.11.2026) (nur angehängt; Abschnitte 1–31 unverändert)
+
+### 32.1 Nachweis des neuen API-Keys (zu 31.4)
+* **Lauf 392 [belegt, öffentliche Run-Seite]:** planmäßig ausgelöst am 19.11.2026 um 02:58, Ergebnis Success, Dauer 25 min 42 s, ko-aggregator `369ca40`. Einzige Annotation: Warnung zur Node-20-Abkündigung bei `actions/checkout@v4`, `actions/setup-node@v4`, `actions/setup-python@v5` (keine Wirkung auf den Lauf, Backlog).
+* **Enrichment [belegt, Snapshot `2026-11-19_03`, `generated` 03:00:46Z, `last_trading_day` 2026-11-18]:** Shortlist `ki` 15 von 15, Options-Watchlist `ki` 15 von 15 und `ki_eic` 15 von 15, keine leeren Einträge, keine Fehlermeldung.
+* **Digest [belegt, Console-Kostenseite, Screenshots von Axel 19.11. 07:18 MEZ]:** neuer Key 1,77 USD im Monat, nahezu vollständig am 19.11.; das entspricht einem Handelstag mit Digest (Tage ohne Digest rund 0,30 USD). Am alten Key keine Kosten am 19.11. Der Digest-Schritt meldet auch bei Authentifizierungsfehlern Erfolg (31.3), deshalb ist die Kostenseite hier der Nachweis.
+* **Abschluss:** alter Key am 19.11. gegen 07:21 MEZ gelöscht. In der Schlüsselliste steht danach nur noch der neue Key (Scope Default, ohne Ablaufdatum). Auch ein älterer, nicht UIQ-bezogener Key ist nicht mehr gelistet; ob das beabsichtigt war, klärt Axel [offen].
+
+### 32.2 Übernahme der EU-Schlusskurse vom 17.11. (Nacht B) in der Produktion (zu 28.4 und 30.4) [belegt]
+* **Vergleich:** letzter gültiger Schlusskurs (Zustand V) je Titel aus Nacht B (Matrix v1.2, `02f8c7f46f7ba7a5`) gegen `price`, `_lastCloseDate`, `_lastRowIncomplete` in den Snapshots `2026-11-18_03` (Lauf 391) und `2026-11-19_03` (Lauf 392).
+* **Hauptgruppe, 13 Titel:** Bei 12 Titeln ist der Kurs in Lauf 392 gleich dem Schlusskurs vom 17.11. aus Nacht B, `_lastCloseDate` 2026-11-17, `_lastRowIncomplete` true, `_dataAsOf` 2026-11-18. In Lauf 391 standen dieselben Titel auf dem 16.11. Damit ist für Nacht B wie für Nacht A belegt: Der Schlusskurs eines EU-Handelstags erscheint in der Produktion mit dem Lauf der folgenden Nacht.
+* **Abweichung, ein Titel an der Börse Madrid (`.MC`):** Lauf 391 zeigt den 16.11. (`_dataAsOf` 17.11., letzte Zeile unvollständig), Lauf 392 den 18.11. (`_dataAsOf` 18.11., letzte Zeile vollständig). Der Schlusskurs vom 17.11. erscheint in keinem der beiden Läufe. In Lauf 391 wurde die unvollständige letzte Zeile genauso behandelt wie bei den übrigen EU-Titeln; die Einstufung als US (`homeMarket` US, Abschnitt 29) erklärt die Abweichung daher nicht. Wahrscheinlicher ist, dass Yahoo die Zeile vom 18.11. für diesen Titel vor 03:00Z bereits mit Schlusskurs lieferte [Hypothese]. Ob 3,386 der gültige Schlusskurs vom 18.11. ist, ist nicht geprüft [offen]. (Eine erste Vermutung von Claude am Morgen, die US-Einstufung verändere die Behandlung, ist damit nicht gestützt.)
+* **Separat geführter Titel in Australien (`.AX`):** Lauf 391 zeigt bereits den Schlusskurs vom 17.11. (gleich Nacht B), Lauf 392 den 18.11.; passend zum Handelsschluss in Sydney gegen 05:00Z.
+* **Einordnung:** zwei Nächte, keine Garantie; keine Produktionsänderung abgeleitet (Vorgabe aus 26).
+
+### 32.3 Commit von `generate_public_recommendations.js` v1.31 (zu 31.2)
+* Commit `fe7bedd` (19.11.2026 07:25:49 MEZ, durch Axel), nur `scripts/generate_public_recommendations.js` (261 Zeilen hinzu, 101 entfernt). Gegen frischen Klon geprüft [belegt]: SHA-256 `c478405b7030e194…`, Skript-Version v1.31, Syntaxprüfung ok.
+* Live ab dem nächsten Lauf (31.3). `USE_BATCH_API` ist im Workflow nicht gesetzt, der Digest läuft weiter synchron. Sichtbare Änderung im synchronen Pfad: Budgetlog mit `token_cache_write`/`token_cache_read` und Kostenschätzung einschließlich Cache.
+* **Prüfung nach dem nächsten Lauf:** Workflow grün; Digest erzeugt; Budgetlog-Einträge enthalten die neuen Felder; Summe der Schätzung plausibel zur Console-Kostenseite.
+* Entscheidung zu 31.5: Ohne andere Ansage bleibt die Kostenschätzung mit Cache auch im synchronen Pfad, wie getestet und committet.
+
+### 32.4 Backlog (nichts beauftragt) und Status
+* Neu: Verhalten des Madrider Titels (32.2); Node-20-Abkündigung der verwendeten Actions (32.1).
+* Weiterhin offen: Lücke im synchronen Pfad (leerer Digest blockiert die Wiederholung, 31.3); Zuordnung `homeMarket` (Abschnitt 29); zwei Läufe in einer Nacht (30.1); Kennzeichnung des Kursdatums bei Non-US-Titeln (30.3); Strang A: Workflow-Eingabe `use_batch_api`, danach Aktivierung in eigener Nacht; Strang B: Schattentest.
+* Keine Änderung an Workflow, Watchdog, Aggregator, Prompts, Frontend, KV, Archiv oder `SUITE.md`; einzige Produktionsänderung dieses Abschnitts ist v1.31 (32.3). Freeze und C1-Sperre unverändert; Gate Papiermodell. Commit dieses Abschnitts durch Axel nach Prüfung.
