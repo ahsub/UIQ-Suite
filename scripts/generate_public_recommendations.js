@@ -18,9 +18,34 @@
  * um den Diff auf den Trading-Day-Skip-Check zu beschränken.]
  * ====================================================================
  *
- * Skript-Version: v1.30
+ * Skript-Version: v1.31
  *
  * CHANGELOG (neueste zuerst):
+ * v1.31 (18.11.2026, Claude + Axel, Kostenstrang A Schritt 2 "Absicherung Batch-Pfad"):
+ *      Grundlage: Offline-Batch-Test 18.11.2026 (15/15 ok, 185 s, 0 abgeschnitten, Kosten
+ *      0,7364 USD zu Batch-Listenpreisen) und die dabei dokumentierten Luecken. AKTIVIERT
+ *      NICHTS: USE_BATCH_API bleibt Opt-in, Default bleibt der synchrone Pfad. Aenderungen:
+ *      (1) SYNC-FALLBACK im Batch-Modus: jede Strategie, fuer die der Batch kein verwertbares
+ *          Ergebnis liefert (Batch-Erstellung/Polling/Timeout/Ergebnisabruf gescheitert,
+ *          Ergebniszeile errored/expired/canceled/leer, abgeschnittene Antwort, fehlende
+ *          Zeile), laeuft EINMAL synchron nach (callAnthropicWithRetry + finalizeStrategy
+ *          Result, also exakt der Sync-Weg inkl. dessen Retry). KEIN Fallback, wenn
+ *          finalizeStrategyResult() selbst ablehnt (Compliance/Repair) — das waere synchron
+ *          identisch und kostete nur doppelt. Abschaltbar mit BATCH_SYNC_FALLBACK=false.
+ *      (2) WARTEZEIT: Default 10 min statt 20 min (BATCH_MAX_WAIT_MIN, 1..60). Grund: Job-
+ *          Timeout 45 min; Aggregator ~8 min + 10 min Batch + bis ~15-20 min Sync-Fallback
+ *          muss darunter bleiben. Bei Timeout wird der Batch per POST .../cancel abgebrochen
+ *          (best effort, Fehler nur geloggt).
+ *      (3) SCHUTZ GEGEN 0 ERFOLGREICHE STRATEGIEN (nur Batch-Modus): kein Digest, keine
+ *          latest-Pointer, kein Digest-Archiv; Budget-Log wird trotzdem geschrieben; GitHub-
+ *          ::error::-Annotation, Exit-Code bleibt 0 (Folgeschritte des Workflows laufen
+ *          weiter). Grund: ein leerer Digest mit Datum D unter public/digest/latest blockiert
+ *          ueber den Trading-Day-Skip-Check jede Wiederholung desselben Tages. Synchroner
+ *          Pfad bewusst UNVERAENDERT (dieselbe Luecke besteht dort, Backlog).
+ *      (4) BUDGET-LOG: estimated_cost_usd beruecksichtigt jetzt Cache-Schreiben/-Lesen und
+ *          den Batch-Rabatt (50 %). Neue optionale Felder token_cache_write/token_cache_read.
+ *          token_input bleibt usage.input_tokens (unveraenderte Bedeutung). Betrifft auch
+ *          die Kostenschaetzung des Sync-Pfads (nur Logging, kein Aufrufverhalten).
  * v1.30 (01.10.2026, Claude + Axel, SUITE №72 P1 #3 Schritt 1 "Earnings: UNKNOWN != NONE_IN_WINDOW"):
  *      Voraussetzung: Aggregator >= v5.47.0 (Feld earningsStatus je Ticker). Neu, rein ADDITIV:
  *      Feld `earnings_state` {state, dte, window_days, source_status} im Decision Snapshot und je
@@ -2613,15 +2638,26 @@ const ANTHROPIC_MAX_TOKENS = 8192; // ERHOEHT 25.09.2026 (v1.24) von 4096:
 // Claude Sonnet 4.6: $3/MTok Input, $15/MTok Output.
 const ANTHROPIC_PRICE_PER_INPUT_TOKEN_USD = 3 / 1e6;
 const ANTHROPIC_PRICE_PER_OUTPUT_TOKEN_USD = 15 / 1e6;
+// NEU (v1.31): Cache-Faktoren relativ zum Input-Preis (5-Minuten-Cache: Schreiben 1,25x,
+// Lesen 0,1x) und Batch-Rabatt (50 % auf alle Token-Arten). Vorher ignorierte die
+// Schaetzung Cache-Token und rechnete Batch-Aufrufe zu Sync-Preisen (Offline-Test
+// 18.11.2026: Log 1,39 USD statt 0,74 USD).
+const ANTHROPIC_CACHE_WRITE_FACTOR = 1.25;
+const ANTHROPIC_CACHE_READ_FACTOR = 0.1;
+const ANTHROPIC_BATCH_DISCOUNT_FACTOR = 0.5;
 
 const AI_BUDGET_LOG = [];
 
-function estimateCostUsd(inputTokens, outputTokens) {
+function estimateCostUsd(inputTokens, outputTokens, { cacheWriteTokens = 0, cacheReadTokens = 0, apiMode = 'sync' } = {}) {
   if (ANTHROPIC_PRICE_PER_INPUT_TOKEN_USD == null || ANTHROPIC_PRICE_PER_OUTPUT_TOKEN_USD == null) {
     return null;
   }
-  return +(inputTokens * ANTHROPIC_PRICE_PER_INPUT_TOKEN_USD
-    + outputTokens * ANTHROPIC_PRICE_PER_OUTPUT_TOKEN_USD).toFixed(6);
+  const modeFactor = apiMode === 'batch' ? ANTHROPIC_BATCH_DISCOUNT_FACTOR : 1;
+  return +(modeFactor * (
+    inputTokens * ANTHROPIC_PRICE_PER_INPUT_TOKEN_USD
+    + cacheWriteTokens * ANTHROPIC_PRICE_PER_INPUT_TOKEN_USD * ANTHROPIC_CACHE_WRITE_FACTOR
+    + cacheReadTokens * ANTHROPIC_PRICE_PER_INPUT_TOKEN_USD * ANTHROPIC_CACHE_READ_FACTOR
+    + outputTokens * ANTHROPIC_PRICE_PER_OUTPUT_TOKEN_USD)).toFixed(6);
 }
 
 // `caller` folgt der Spec-Vorgabe: "public_digest" | "morning_briefing" |
@@ -2641,6 +2677,8 @@ function recordBudgetEntry({
 }) {
   const inputTokens = usage?.input_tokens ?? null;
   const outputTokens = usage?.output_tokens ?? null;
+  const cacheWriteTokens = usage?.cache_creation_input_tokens ?? null;   // NEU v1.31
+  const cacheReadTokens = usage?.cache_read_input_tokens ?? null;        // NEU v1.31
   AI_BUDGET_LOG.push({
     date,
     caller,
@@ -2648,7 +2686,11 @@ function recordBudgetEntry({
     calls_used: 1,
     token_input: inputTokens,
     token_output: outputTokens,
-    estimated_cost_usd: estimateCostUsd(inputTokens ?? 0, outputTokens ?? 0),
+    token_cache_write: cacheWriteTokens,
+    token_cache_read: cacheReadTokens,
+    estimated_cost_usd: estimateCostUsd(inputTokens ?? 0, outputTokens ?? 0, {
+      cacheWriteTokens: cacheWriteTokens ?? 0, cacheReadTokens: cacheReadTokens ?? 0, apiMode,
+    }),
     truncated,
     retried,
     apiMode,
@@ -3268,7 +3310,41 @@ async function createMessageBatch(requests, { apiKey } = {}) {
 // (kurze Intervalle am Anfang, laengere spaeter) — vermeidet unnoetig
 // viele Requests bei laenger laufenden Batches, ohne bei schnell
 // abgeschlossenen Batches unnoetig lange zu warten.
-async function pollBatchUntilEnded(batchId, { apiKey, maxWaitMs = 20 * 60 * 1000 } = {}) {
+// NEU (v1.31): Default-Wartezeit 10 min (vorher 20 min), per BATCH_MAX_WAIT_MIN (1..60)
+// ueberschreibbar. Ungueltige Werte -> Default. Begruendung s. Changelog v1.31 (2).
+const BATCH_MAX_WAIT_DEFAULT_MIN = 10;
+function resolveBatchMaxWaitMs(envValue = process.env.BATCH_MAX_WAIT_MIN) {
+  const n = Number(envValue);
+  if (envValue == null || envValue === '' || !Number.isFinite(n) || n < 1 || n > 60) {
+    return BATCH_MAX_WAIT_DEFAULT_MIN * 60 * 1000;
+  }
+  return Math.round(n * 60 * 1000);
+}
+
+// NEU (v1.31): Batch abbrechen (POST /v1/messages/batches/{id}/cancel), best effort.
+// Wirft nie. Bereits fertige Einzelergebnisse werden laut Anthropic trotzdem berechnet;
+// noch nicht verarbeitete werden "canceled" und nicht berechnet.
+async function cancelMessageBatch(batchId, { apiKey } = {}) {
+  const key = apiKey || process.env.ANTHROPIC_API_KEY;
+  if (!key) {
+    return { ok: false, error: { status: null, type: 'no_api_key', message: 'cancelMessageBatch: kein API-Key' } };
+  }
+  try {
+    const resp = await fetch(`${ANTHROPIC_BATCHES_URL}/${batchId}/cancel`, {
+      method: 'POST',
+      headers: { 'x-api-key': key, 'anthropic-version': ANTHROPIC_API_VERSION },
+    });
+    const body = await resp.json().catch(() => null);
+    if (!resp.ok) {
+      return { ok: false, error: { status: resp.status, type: body?.error?.type ?? null, message: body?.error?.message ?? `HTTP ${resp.status}` } };
+    }
+    return { ok: true, processingStatus: body?.processing_status ?? null };
+  } catch (networkErr) {
+    return { ok: false, error: { status: null, type: 'network_error', message: networkErr.message } };
+  }
+}
+
+async function pollBatchUntilEnded(batchId, { apiKey, maxWaitMs = resolveBatchMaxWaitMs() } = {}) {
   const key = apiKey || process.env.ANTHROPIC_API_KEY;
   if (!key) {
     return { ok: false, error: { status: null, type: 'no_api_key', message: 'pollBatchUntilEnded: kein API-Key' } };
@@ -3686,11 +3762,37 @@ async function runStrategy(strategy, masterData, snapshot, promptVersion, earnin
 //
 // Rueckgabe: Array im selben Format wie die bisherigen runStrategy()-
 // Ergebnisse (main() kann results.push(...) unveraendert weiterverwenden).
+//
+// GEAENDERT (v1.31): Die Aussagen oben zu Truncation und "kein Fallback" gelten nicht
+// mehr — nicht verwertbare Batch-Ergebnisse laufen einmal synchron nach, s. Changelog
+// v1.31 und runStrategySyncFallback().
+// NEU (v1.31): synchroner Nachlauf fuer EINE Strategie mit bereits gebautem Request —
+// exakt der Sync-Weg aus runStrategy() ab dem Anthropic-Call (callAnthropicWithRetry inkl.
+// Retry, dann finalizeStrategyResult). Kandidatenpool-Archiv wurde im Batch-Pfad bereits
+// geschrieben und wird hier nicht erneut angefasst.
+async function runStrategySyncFallback(req, snapshot, promptVersion) {
+  const apiResult = await callAnthropicWithRetry(req.prompt, {
+    caller: 'public_digest', strategy: req.strategy, date: snapshot.date,
+  });
+  if (!apiResult.ok) {
+    return { ok: false, strategy: req.strategy, error: apiResult.error };
+  }
+  if (apiResult.truncated) {
+    return { ok: false, strategy: req.strategy, error: { status: null, type: 'truncated', message: 'Sync-Fallback: Antwort auch nach Retry abgeschnitten (max_tokens)' } };
+  }
+  return finalizeStrategyResult(req, apiResult, snapshot, promptVersion);
+}
+
 async function runAllStrategiesBatch(masterData, snapshot, promptVersion, earningsLookup) {
   const allStrategies = [...EQUITY_STRATEGIES, ...OPTIONS_STRATEGIES];
   const requestByStrategy = new Map();
   const batchRequests = [];
   const results = [];
+  // NEU (v1.31): Strategien, die synchron nachlaufen sollen, mit Grund.
+  const fallbackReasons = new Map();
+  const markAllForFallback = (reason) => {
+    for (const strategy of requestByStrategy.keys()) fallbackReasons.set(strategy, reason);
+  };
 
   for (const strategy of allStrategies) {
     const req = buildStrategyRequest(strategy, masterData, snapshot, promptVersion, earningsLookup);
@@ -3714,122 +3816,165 @@ async function runAllStrategiesBatch(masterData, snapshot, promptVersion, earnin
     return results;
   }
 
+  // Batch-Phase: liefert entweder verwertbare Zeilen oder markiert alles fuer den Fallback.
+  let batchLines = null;
+  let batchId = null;
   console.log(`\nErstelle Anthropic Message Batch mit ${batchRequests.length} Requests...`);
   const createResult = await createMessageBatch(batchRequests, {});
   if (!createResult.ok) {
     console.error('  ❌ Batch-Erstellung fehlgeschlagen:', createResult.error);
-    for (const req of requestByStrategy.values()) {
-      results.push({ ok: false, strategy: req.strategy, error: `Batch-Erstellung fehlgeschlagen: ${createResult.error.message}` });
-    }
-    return results;
-  }
-  console.log(`  Batch erstellt: ${createResult.batchId} (processing_status=${createResult.processingStatus})`);
-
-  const pollResult = await pollBatchUntilEnded(createResult.batchId, {});
-  if (!pollResult.ok) {
-    console.error(`  ❌ Batch ${createResult.batchId}: Polling fehlgeschlagen/Timeout:`, pollResult.error);
-    for (const req of requestByStrategy.values()) {
-      results.push({ ok: false, strategy: req.strategy, error: `Batch-Polling fehlgeschlagen: ${pollResult.error.message}` });
-    }
-    return results;
-  }
-
-  const resultsUrl = pollResult.batch.results_url;
-  if (!resultsUrl) {
-    console.error(`  ❌ Batch ${createResult.batchId}: processing_status="ended", aber kein results_url in der Antwort.`);
-    for (const req of requestByStrategy.values()) {
-      results.push({ ok: false, strategy: req.strategy, error: 'Batch "ended" ohne results_url' });
-    }
-    return results;
-  }
-
-  console.log(`  Batch ${createResult.batchId} abgeschlossen, hole Ergebnisse von ${resultsUrl}...`);
-  const fetchResult = await fetchBatchResults(resultsUrl, {});
-  if (!fetchResult.ok) {
-    console.error(`  ❌ Batch ${createResult.batchId}: Ergebnisabruf fehlgeschlagen:`, fetchResult.error);
-    for (const req of requestByStrategy.values()) {
-      results.push({ ok: false, strategy: req.strategy, error: `Batch-Ergebnisabruf fehlgeschlagen: ${fetchResult.error.message}` });
-    }
-    return results;
-  }
-
-  const seenStrategies = new Set();
-  for (const line of fetchResult.results) {
-    const strategy = (line.custom_id || '').replace(/^public_/, '');
-    const req = requestByStrategy.get(strategy);
-    if (!req) {
-      console.warn(`  ⚠ Batch-Ergebnis mit unbekannter custom_id "${line.custom_id}" — übersprungen.`);
-      continue;
-    }
-    seenStrategies.add(strategy);
-
-    let apiResult;
-    if (line.result?.type === 'succeeded') {
-      const msg = line.result.message;
-      const textBlock = (msg?.content || []).find((b) => b.type === 'text');
-      if (!textBlock || !textBlock.text) {
-        apiResult = { ok: false, error: { status: null, type: 'empty_response', message: 'Keine Text-Content im Batch-Ergebnis' } };
+    markAllForFallback(`Batch-Erstellung fehlgeschlagen: ${createResult.error.message}`);
+  } else {
+    batchId = createResult.batchId;
+    console.log(`  Batch erstellt: ${batchId} (processing_status=${createResult.processingStatus})`);
+    const pollResult = await pollBatchUntilEnded(batchId, {});
+    if (!pollResult.ok) {
+      console.error(`  ❌ Batch ${batchId}: Polling fehlgeschlagen/Timeout:`, pollResult.error);
+      if (pollResult.error?.type === 'poll_timeout') {
+        const cancelResult = await cancelMessageBatch(batchId, {});
+        if (cancelResult.ok) {
+          console.warn(`  ⚠ Batch ${batchId}: Abbruch angefordert (processing_status=${cancelResult.processingStatus}).`);
+        } else {
+          console.warn(`  ⚠ Batch ${batchId}: Abbruch fehlgeschlagen (wird ignoriert):`, cancelResult.error);
+        }
+      }
+      markAllForFallback(`Batch-Polling fehlgeschlagen: ${pollResult.error.message}`);
+    } else if (!pollResult.batch.results_url) {
+      console.error(`  ❌ Batch ${batchId}: processing_status="ended", aber kein results_url in der Antwort.`);
+      markAllForFallback('Batch "ended" ohne results_url');
+    } else {
+      const resultsUrl = pollResult.batch.results_url;
+      console.log(`  Batch ${batchId} abgeschlossen, hole Ergebnisse von ${resultsUrl}...`);
+      const fetchResult = await fetchBatchResults(resultsUrl, {});
+      if (!fetchResult.ok) {
+        console.error(`  ❌ Batch ${batchId}: Ergebnisabruf fehlgeschlagen:`, fetchResult.error);
+        markAllForFallback(`Batch-Ergebnisabruf fehlgeschlagen: ${fetchResult.error.message}`);
       } else {
+        batchLines = fetchResult.results;
+      }
+    }
+  }
+
+  if (batchLines) {
+    const seenStrategies = new Set();
+    for (const line of batchLines) {
+      const strategy = (line.custom_id || '').replace(/^public_/, '');
+      const req = requestByStrategy.get(strategy);
+      if (!req) {
+        console.warn(`  ⚠ Batch-Ergebnis mit unbekannter custom_id "${line.custom_id}" — übersprungen.`);
+        continue;
+      }
+      if (seenStrategies.has(strategy)) {
+        console.warn(`  ⚠ Batch-Ergebnis fuer ${strategy} doppelt — zweite Zeile übersprungen.`);
+        continue;
+      }
+      seenStrategies.add(strategy);
+
+      let apiResult;
+      if (line.result?.type === 'succeeded') {
+        const msg = line.result.message;
+        const textBlock = (msg?.content || []).find((b) => b.type === 'text');
+        if (!textBlock || !textBlock.text) {
+          apiResult = { ok: false, usage: msg?.usage, error: { status: null, type: 'empty_response', message: 'Keine Text-Content im Batch-Ergebnis' } };
+        } else {
+          apiResult = {
+            ok: true,
+            text: textBlock.text,
+            stop_reason: msg.stop_reason,
+            usage: msg.usage,
+            truncated: msg.stop_reason === 'max_tokens',
+          };
+        }
+      } else {
+        const resultType = line.result?.type || 'unbekannt';
         apiResult = {
-          ok: true,
-          text: textBlock.text,
-          stop_reason: msg.stop_reason,
-          usage: msg.usage,
-          truncated: msg.stop_reason === 'max_tokens',
+          ok: false,
+          error: {
+            status: null,
+            type: resultType,
+            message: line.result?.error?.message || `Batch-Result-Typ: ${resultType}`,
+          },
         };
       }
-    } else {
-      const resultType = line.result?.type || 'unbekannt';
-      apiResult = {
-        ok: false,
-        error: {
-          status: null,
-          type: resultType,
-          message: line.result?.error?.message || `Batch-Result-Typ: ${resultType}`,
-        },
-      };
+
+      recordBudgetEntry({
+        date: snapshot.date, caller: 'public_digest', strategy,
+        usage: apiResult.usage, truncated: apiResult.truncated === true,
+        apiMode: 'batch', batchId, customId: line.custom_id,
+      });
+
+      if (!apiResult.ok) {
+        console.error(`  ❌ ${strategy}: Batch-Ergebnis nicht erfolgreich:`, apiResult.error);
+        fallbackReasons.set(strategy, `Batch-Ergebnis ${apiResult.error.type}: ${apiResult.error.message}`);
+        continue;
+      }
+      if (apiResult.truncated) {
+        console.warn(`  ⚠ ${strategy}: Batch-Antwort abgeschnitten (max_tokens).`);
+        fallbackReasons.set(strategy, 'Batch-Antwort abgeschnitten (max_tokens)');
+        continue;
+      }
+
+      const finalized = await finalizeStrategyResult(req, apiResult, snapshot, promptVersion);
+      if (finalized.ok) {
+        console.log(`  ✅ ${strategy} (Batch): Top-3: ${finalized.top3Syms.join(', ')}`);
+      } else {
+        // Bewusst KEIN Fallback: finalizeStrategyResult() (Compliance/Repair) wuerde
+        // synchron identisch entscheiden, s. Changelog v1.31 (1).
+        console.error(`  ❌ ${strategy} (Batch) übersprungen: ${JSON.stringify(finalized.error)}`);
+      }
+      results.push(finalized);
     }
 
-    recordBudgetEntry({
-      date: snapshot.date, caller: 'public_digest', strategy,
-      usage: apiResult.usage, truncated: apiResult.truncated === true,
-      apiMode: 'batch', batchId: createResult.batchId, customId: line.custom_id,
-    });
-
-    if (!apiResult.ok) {
-      console.error(`  ❌ ${strategy}: Batch-Ergebnis nicht erfolgreich:`, apiResult.error);
-      results.push({ ok: false, strategy, error: apiResult.error });
-      continue;
-    }
-    if (apiResult.truncated) {
-      // s. Changelog v1.13: keine Batches-API-Entsprechung zum Sync-
-      // Truncation-Retry in dieser Ausbaustufe — abgeschnittene Antwort
-      // gilt als Fehlschlag fuer diese Strategie, Fehlerisolation greift.
-      console.warn(`  ⚠ ${strategy}: Batch-Antwort abgeschnitten (max_tokens) — kein Retry im Batch-Modus, Strategie wird übersprungen.`);
-      results.push({ ok: false, strategy, error: { status: null, type: 'truncated', message: 'Batch-Antwort abgeschnitten (max_tokens)' } });
-      continue;
-    }
-
-    const finalized = await finalizeStrategyResult(req, apiResult, snapshot, promptVersion);
-    if (finalized.ok) {
-      console.log(`  ✅ ${strategy} (Batch): Top-3: ${finalized.top3Syms.join(', ')}`);
-    } else {
-      console.error(`  ❌ ${strategy} (Batch) übersprungen: ${JSON.stringify(finalized.error)}`);
-    }
-    results.push(finalized);
-  }
-
-  // Strategien, fuer die der Batch KEIN Ergebnis lieferte (sollte laut
-  // Anthropic-Doku nicht vorkommen, wird aber nicht stillschweigend
-  // ignoriert — fehlerisoliert wie jeder andere Fall).
-  for (const strategy of requestByStrategy.keys()) {
-    if (!seenStrategies.has(strategy)) {
-      console.error(`  ❌ ${strategy}: kein Ergebnis im Batch gefunden.`);
-      results.push({ ok: false, strategy, error: 'Kein Ergebnis im Batch-Result für diese Strategie gefunden' });
+    for (const strategy of requestByStrategy.keys()) {
+      if (!seenStrategies.has(strategy)) {
+        console.error(`  ❌ ${strategy}: kein Ergebnis im Batch gefunden.`);
+        fallbackReasons.set(strategy, 'Kein Ergebnis im Batch-Result für diese Strategie gefunden');
+      }
     }
   }
 
+  // NEU (v1.31): synchroner Nachlauf, sequenziell in der Reihenfolge der Strategielisten.
+  if (fallbackReasons.size > 0) {
+    const fallbackEnabled = process.env.BATCH_SYNC_FALLBACK !== 'false';
+    if (!fallbackEnabled) {
+      console.warn(`  ⚠ BATCH_SYNC_FALLBACK=false — ${fallbackReasons.size} Strategie(n) ohne Nachlauf übersprungen.`);
+      for (const [strategy, reason] of fallbackReasons) {
+        results.push({ ok: false, strategy, error: reason });
+      }
+    } else {
+      console.log(`\nSync-Fallback für ${fallbackReasons.size} Strategie(n): ${[...fallbackReasons.keys()].join(', ')}`);
+      for (const strategy of allStrategies) {
+        if (!fallbackReasons.has(strategy)) continue;
+        const req = requestByStrategy.get(strategy);
+        console.log(`--- Sync-Fallback: ${strategy} (Grund: ${fallbackReasons.get(strategy)}) ---`);
+        let res;
+        try {
+          res = await runStrategySyncFallback(req, snapshot, promptVersion);
+        } catch (err) {
+          res = { ok: false, strategy, error: { status: null, type: 'exception', message: err.message } };
+        }
+        if (res.ok) {
+          console.log(`  ✅ ${strategy} (Sync-Fallback): Top-3: ${res.top3Syms.join(', ')}`);
+        } else {
+          console.error(`  ❌ ${strategy} (Sync-Fallback) übersprungen: ${JSON.stringify(res.error)}`);
+        }
+        results.push(res);
+      }
+    }
+  }
+
+  const okCount = results.filter((r) => r.ok).length;
+  console.log(`  Batch-Pfad Bilanz: ${okCount} ok, davon ${fallbackReasons.size} Strategie(n) im Sync-Fallback versucht.`);
   return results;
+}
+
+// NEU (v1.31): Entscheidung, ob Digest und latest-Pointer geschrieben werden.
+// Nur im Batch-Modus greift der Schutz; synchroner Pfad bleibt unveraendert.
+function digestPublishDecision(successfulCount, useBatchApi) {
+  if (useBatchApi && successfulCount === 0) {
+    return { publish: false, reason: '0 erfolgreiche Strategien im Batch-Modus (inkl. Sync-Fallback)' };
+  }
+  return { publish: true, reason: null };
 }
 
 // ─── Baustein 20: main() — Orchestrierung über alle zehn Strategien ──────
@@ -3964,6 +4109,14 @@ async function main() {
 
   const successful = results.filter((r) => r.ok);
 
+  // NEU (v1.31): Schutz gegen 0 erfolgreiche Strategien (nur Batch-Modus).
+  const publishDecision = digestPublishDecision(successful.length, useBatchApi);
+  let digest = null;
+  if (!publishDecision.publish) {
+    console.error(`\n::error title=Public Digest nicht veroeffentlicht::${publishDecision.reason} — `
+      + `kein Digest, keine latest-Pointer. Wiederholung desselben Tages bleibt moeglich.`);
+  } else {
+
   // Archiv-Dateien je erfolgreicher Strategie schreiben
   const manifestStrategies = {};
   for (const res of successful) {
@@ -3973,7 +4126,7 @@ async function main() {
   }
 
   // Public Digest bauen (nur aus erfolgreichen Strategien) + Archiv-Kopie
-  const digest = buildPublicDigest(snapshot, successful);
+  digest = buildPublicDigest(snapshot, successful);
   await writeArchiveIfAbsent(`archive/digest/${datePath}.json`, digest);
 
   // `latest`-Pointer und öffentliche Reads — TÄGLICH ERSETZT, kein
@@ -3995,6 +4148,7 @@ async function main() {
   for (const res of successful) {
     await pushToCloudflareKV(res.aiOutput, `public/ai_output/latest/${res.strategy}`);
   }
+  } // Ende publishDecision.publish (v1.31)
 
   // ── AI-Budget-Log schreiben (UIQ Spec v1.1 §1.1, Baustein 8b) ───────────
   // Owner-only, kein Public-Key. Deckt nur den public_digest-Pfad dieses
@@ -4010,6 +4164,7 @@ async function main() {
 
     const budgetSummary = {
       date: snapshot.date,
+      published: publishDecision.publish,   // NEU v1.31
       calls_used: AI_BUDGET_LOG.length,
       token_input_total: tokenInputTotal,
       token_output_total: tokenOutputTotal,
@@ -4111,6 +4266,11 @@ module.exports = {
   parseBatchResultsJsonl,
   runAllStrategiesBatch,
   ANTHROPIC_BATCHES_URL,
+  // NEU (v1.31) — Absicherung Batch-Pfad
+  cancelMessageBatch,
+  resolveBatchMaxWaitMs,
+  runStrategySyncFallback,
+  digestPublishDecision,
   // NEU (v1.14, Candidate-Selection-Integrity) — einzeln exportiert für
   // unabhängige Testbarkeit, analog zu den übrigen Bausteinen.
   ELIGIBILITY_CONFIG,
