@@ -903,3 +903,30 @@ Archiv `ahsub/uiq-archive`, schreibgeschützter Klon, HEAD `74de96a` (14.11.2026
 * Neu: Verhalten des Madrider Titels (32.2); Node-20-Abkündigung der verwendeten Actions (32.1).
 * Weiterhin offen: Lücke im synchronen Pfad (leerer Digest blockiert die Wiederholung, 31.3); Zuordnung `homeMarket` (Abschnitt 29); zwei Läufe in einer Nacht (30.1); Kennzeichnung des Kursdatums bei Non-US-Titeln (30.3); Strang A: Workflow-Eingabe `use_batch_api`, danach Aktivierung in eigener Nacht; Strang B: Schattentest.
 * Keine Änderung an Workflow, Watchdog, Aggregator, Prompts, Frontend, KV, Archiv oder `SUITE.md`; einzige Produktionsänderung dieses Abschnitts ist v1.31 (32.3). Freeze und C1-Sperre unverändert; Gate Papiermodell. Commit dieses Abschnitts durch Axel nach Prüfung.
+
+## 33. Erste Läufe mit v1.31, Workflow-Schalter `market-aggregator.yml` v1.7b, Nachtrag zu 32.1 (Stand 21.11.2026) (nur angehängt; Abschnitte 1–32 unverändert)
+
+### 33.1 Nachtrag zu 32.1
+* Der in 32.1 als „[offen]“ vermerkte ältere, nicht UIQ-bezogene Key wurde laut Axel (19.11.2026) absichtlich mitgelöscht. Der Punkt ist erledigt. (Die committete Fassung von 32 enthält noch die Formulierung „[offen]“; eine korrigierte Fassung kam wegen eines Übertragungsfehlers nicht zum Commit. Nach der Regel „nur anhängen“ wird hier nachgetragen statt geändert.)
+
+### 33.2 Erster Lauf mit v1.31 (Lauf 393, Handelstag 19.11.2026) [belegt]
+* Success, Dauer 24 min 45 s; Snapshot `2026-11-20_03` (`generated` 02:54:47Z), Enrichment vollständig (Shortlist `ki` 15/15, Optionen `ki` 15/15, `ki_eic` 15/15). v1.31 war aktiv (UIQ-Suite `fe7bedd` seit 19.11. 06:25Z auf `main`).
+* Digest synchron, 14 von 15 Strategien veröffentlicht. Die fehlende Strategie (Value) schied vor dem KI-Aufruf aus: alle Kandidaten durch das Eligibility-Gate ausgeschlossen. Diese Stelle ändert v1.31 nicht.
+* Budgetlog: 14 Calls, 219.744/41.523 Ein-/Ausgabe-Token, geschätzt 1,3627 USD. Ohne Cache ergäben dieselben Token 1,2821 USD; die Differenz (0,0807 USD) sind die seit v1.31 mitgezählten Cache-Token. Die neue Kostenschätzung ist damit wirksam.
+
+### 33.3 Workflow-Schalter `market-aggregator.yml` v1.7b (Strang A)
+* **Zweck:** `USE_BATCH_API` für den Digest-Schritt verdrahten (31.3), ohne den Batch zu aktivieren.
+* **Logik:** Nachtlauf (`schedule`) folgt der Repository-Variable `USE_BATCH_API`; manueller oder automatischer Start (`workflow_dispatch`) über die neue Eingabe `use_batch_api` mit `auto` (Default, folgt der Variable), `true` oder `false` (nur dieser Lauf, `false` auch gegen eine gesetzte Variable); alle anderen Ereignisse synchron. `auto` als Default, weil ko-cron-trigger und ko-watchdog ohne Eingaben starten und den Nachtlauf ersetzen. GitHub vergleicht ohne Beachtung der Groß-/Kleinschreibung; an den Generator geht immer genau `true` oder `false`. Die Protokollzeile „Digest-Modus: …“ wird per `printf` aus Umgebungsvariablen erzeugt.
+* **Review in drei Runden (externer Reviewer):** Runde 1 (reines ODER aus Eingabe und Variable) verworfen, weil eine gesetzte Variable ein manuelles `false` überstimmt hätte; Runde 2 mit ereignisabhängiger Drei-Wege-Logik, korrigiertem Modelltest und Übergabe der Protokollwerte über Umgebungsvariablen; Runde 3 mit `printf` und Exit-Code 1 bei Testfehlern. Runde 3 technisch abgenommen (20.11.2026): 13 von 13 Modellfällen wie erwartet, Negativtest erkannt (Exit-Code 1), `actionlint` ohne Befund. Modelltest und Zwischenfassungen bleiben lokal.
+* **Commit:** ko-aggregator `7c9200a` (20.11.2026 23:40 MEZ, durch Axel), nur `.github/workflows/market-aggregator.yml` (53 Zeilen hinzu, 1 entfernt), SHA-256 `ea01c67fd5da03919e90ee3ff92073427d00f5639c6c49d33d944c9961e3651f`; gegen frischen Klon geprüft, Ausgangsdatei identisch mit dem geprüften v1.6-Stand [belegt]. Einzige Produktionsänderung dieser Nacht.
+
+### 33.4 Erster Lauf mit v1.7b (Handelstag 20.11.2026, Digest-Schritt 03:09–03:26Z) [belegt aus dem Log, von Axel übermittelt]
+* Protokollzeile wie erwartet: `Digest-Modus: USE_BATCH_API=false (Ausloeser=schedule, Eingabe='', Variable='')`. Damit ist die Verdrahtung in GitHub selbst für den Fall „Nachtlauf ohne Variable“ nachgewiesen; die übrigen Fälle sind nur im Modell geprüft.
+* Digest synchron, 14 von 15 Strategien veröffentlicht. Die fehlende Strategie (Dividend) wurde von der bestehenden Strukturprüfung abgelehnt (Abschnitt 9 der Modellantwort fehlte); für Aktienstrategien gibt es keinen Reparaturaufruf. Diese Prüfung ändern weder v1.31 noch v1.7b. Ob solche Ausfälle früher ähnlich häufig waren, ist nicht geprüft [offen].
+* Budgetlog: 15 Calls, 236.601/44.785 Ein-/Ausgabe-Token, geschätzt 1,4654 USD (ohne Cache 1,3816 USD).
+* Abgleich der Schätzungen mit der Console-Kostenseite für 20. und 21.11. steht aus [offen].
+
+### 33.5 Nächste Schritte und Status
+* Aktivierung des Batch-Modus (Strang A, letzter Schritt): Repository-Variable `USE_BATCH_API` = `true` setzen, frühestens für einen Nachtlauf ab Montag, 23.11.2026, eigenes Go. Prüfung am Morgen danach: Protokollzeile `USE_BATCH_API=true`, Batch-Ergebnisse nach P1–P7 aus 31.1, Sync-Nachläufe, Dauer, Kosten in Budgetlog und Console. Rückschalten durch Löschen der Variable.
+* Backlog unverändert (32.4), dazu: Häufigkeit der Strukturablehnungen und Gate-Ausfälle je Strategie; Console-Abgleich.
+* Keine Änderung an Aggregator, Prompts, Frontend, KV, Archiv oder `SUITE.md`. Repository-Variable nicht gesetzt. Freeze und C1-Sperre unverändert; Gate Papiermodell. Commit dieses Abschnitts durch Axel nach Prüfung.
