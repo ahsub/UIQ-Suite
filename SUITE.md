@@ -1,8 +1,8 @@
 # Investment-Suite — Dachdokument
 
 
-**Version:** 4.44
-**Stand:** 03.10.2026
+**Version:** 4.45
+**Stand:** 25.11.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
 **Fortschreibung:** Claude, versioniert, analog den Modul-Strategiedokumenten.
@@ -2578,30 +2578,33 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
     *Verwandt mit: №72, №75, Befundregister (Nachträge 01.10. und 03.10.2026).*
 
-№77 — Track-Record-Audit 24.11.2026: Folgepunkte (Datenintegrität, Market State, Evidenz)
+77. **Track-Record-Audit 24.11.2026: Folgepunkte (Datenintegrität, Market State, Evidenz) (neu 25.11.2026)**
 
-Status: Backlog. Freeze unverändert; keine Umsetzung vor ausdrücklicher Freigabe. Quelle: docs/AUDIT-TRACKRECORD-STRESS-2026-11-24.md (v2, SHA-256-Präfix f9060d33cbb8cd98), externe Abnahme 24.11.2026. Priorisierung nach externem Review: zuerst, was die nächste belastbare Auswertung verhindert oder eine irreführende Aussage ermöglicht.
+    **Status:** Backlog. Freeze unverändert; keine Umsetzung vor ausdrücklicher Freigabe. Quelle: `docs/AUDIT-TRACKRECORD-STRESS-2026-11-24.md` (v2, SHA-256-Präfix `f9060d33cbb8cd98`), externe Abnahme 24.11.2026. Priorisierung nach externem Review: zuerst, was die nächste belastbare Auswertung verhindert oder eine irreführende Aussage ermöglicht.
 
-Prio	Punkt	Bereich	Inhalt	Art
-P0	B2	Datenintegrität	dataAsOf je Snapshot und je Ticker in tr:snap protokollieren; Umsetzungsverzug und Kontamination sonst nicht trennbar	Code (Schema-Version)
-P0	B1	Datenintegrität	tatsächlich angewandte Gates je Strategie × Tag in tr:snap protokollieren, einschließlich aller MCM-Faktoren (Herabstufungen) — nicht nur die berechnete Basis-Gate-Tabelle; Abnahmekriterium. Dringlich: Jeder Tag ohne Protokoll ist unwiederbringlich verloren, weil die Tages-Keys überschrieben werden	Code (Schema-Version)
-P0	B4	Evidenz	Options-Track-Record als „Basiswert-Referenz, keine Options-P&L“ kennzeichnen, bis Phase D der Track-Record-Spec umgesetzt ist (TRACK_RECORD_SPEC.md §8: Options-Track-Record mit Strike-Metrik; Termin offen)	nur Kennzeichnung, keine Logikänderung
-P1	B3a	Evidenz	identische Options-Ranglisten (alle drei Ranglisten Weekly, Collar und CSP an 44/44 gemeinsamen Tagen identisch): Ursache geklärt — options_weekly und options_collar sind Top 20 nach sCsp wie options_csp (Nachtrag №64, Messregel M5). Dokumentieren und bei jeder Performanceauswertung als eine Evidenzquelle behandeln	Dokumentation, Auswertungsregel
-P1	B3b	Evidenz	offene Fachfrage: Ist sCsp die geeignete Bewertungsfunktion für die Collar-Auswahl? Identische Kandidatenliste belegt weder Fehlimplementierung noch sinnvolle Bewertung	Fachfrage, lesend
-P1	B7	Evidenz	Mindestumfang nach unabhängigen Tagen bzw. Perioden statt nach Empfehlungen; Spec-Änderung mit Schema-Version und Changelog	Spec
-P1	B5	Market State	Semantik dokumentieren: POST_PANIC_REVERSION ist ein Verhältnisband (0,98–1,05), kein nachgewiesener Post-Panik-Zustand; PANIC-Zustand und MCM-HMM nicht aktiv (hmm_state leer in 233/233 Snapshots)	Dokumentation
-P2	B6	Market State	Mindestdauer/Hysterese als präregistrierte Hypothese in regime-test (9 Wechsel in 25 Handelstagen)	Forschung
-P2	B8	Evidenz	Gate-Tabelle BULL_QUIET (Sperre Mean Reversion/Fading Short) erst nach Runde 2 als Hypothese weiterverfolgen	Forschung
+    | Prio | Punkt | Bereich | Inhalt | Art |
+    |---|---|---|---|---|
+    | P0 | B2 | Datenintegrität | `dataAsOf` je Snapshot und je Ticker in `tr:snap` protokollieren; Umsetzungsverzug und Kontamination sonst nicht trennbar | Code (Schema-Version) |
+    | P0 | B1 | Datenintegrität | tatsächlich angewandte Gates je Strategie × Tag in `tr:snap` protokollieren, einschließlich aller MCM-Faktoren (Herabstufungen) — nicht nur die berechnete Basis-Gate-Tabelle; Abnahmekriterium. Dringlich: Jeder Tag ohne Protokoll ist unwiederbringlich verloren, weil die Tages-Keys überschrieben werden | Code (Schema-Version) |
+    | P0 | B4 | Evidenz | Options-Track-Record als „Basiswert-Referenz, keine Options-P&L“ kennzeichnen, bis Phase D der Track-Record-Spec umgesetzt ist (`TRACK_RECORD_SPEC.md` §8: Options-Track-Record mit Strike-Metrik; Termin offen) | nur Kennzeichnung, keine Logikänderung |
+    | P1 | B3a | Evidenz | identische Options-Ranglisten (alle drei Ranglisten Weekly, Collar und CSP an 44/44 gemeinsamen Tagen identisch): Ursache geklärt — `options_weekly` und `options_collar` sind Top 20 nach `sCsp` wie `options_csp` (Nachtrag №64, Messregel M5). Dokumentieren und bei jeder Performanceauswertung als **eine** Evidenzquelle behandeln | Dokumentation, Auswertungsregel |
+    | P1 | B3b | Evidenz | offene Fachfrage: Ist `sCsp` die geeignete Bewertungsfunktion für die Collar-Auswahl? Identische Kandidatenliste belegt weder Fehlimplementierung noch sinnvolle Bewertung | Fachfrage, lesend |
+    | P1 | B7 | Evidenz | Mindestumfang nach unabhängigen Tagen bzw. Perioden statt nach Empfehlungen; Spec-Änderung mit Schema-Version und Changelog | Spec |
+    | P1 | B5 | Market State | Semantik dokumentieren: POST_PANIC_REVERSION ist ein Verhältnisband (0,98–1,05), kein nachgewiesener Post-Panik-Zustand; PANIC-Zustand und MCM-HMM nicht aktiv (`hmm_state` leer in 233/233 Snapshots) | Dokumentation |
+    | P2 | B6 | Market State | Mindestdauer/Hysterese als präregistrierte Hypothese in `regime-test` (9 Wechsel in 25 Handelstagen) | Forschung |
+    | P2 | B8 | Evidenz | Gate-Tabelle BULL_QUIET (Sperre Mean Reversion/Fading Short) erst nach Runde 2 als Hypothese weiterverfolgen | Forschung |
 
-Reihenfolge in P0: B2 und B1 gemeinsam spezifizieren, getrennt implementieren, getrennte Felder (Datenbasis ≠ Freigabeentscheidung). B4 ist sofort möglich, sobald der Freeze Kennzeichnungen zulässt.
+    **Reihenfolge in P0:** B2 und B1 gemeinsam spezifizieren, getrennt implementieren, getrennte Felder (Datenbasis ≠ Freigabeentscheidung). B4 ist sofort möglich, sobald der Freeze Kennzeichnungen zulässt.
 
-Runde 2: präregistriert in PRAEREG-TR-RUNDE2-GATES-2026-11-24.md (dokumentierte Basis-Gate-Auswahl gegen Zufallsauswahl, geschichtet nach Tag und Richtung, Einheit Strategie × Tag). Eine spätere Umsetzung von B1 erweitert die konfirmatorische Auswertung nicht rückwirkend um tatsächliche MCM-Gates; diese sind allenfalls Gegenstand einer getrennt ausgewiesenen Auswertung ab vollständiger Protokollierung. B8 darf nicht zur Erklärung oder Veränderung der Runde-2-Ergebnisse herangezogen werden. Primäre Ergebnisse frühestens Februar 2027 — nicht verfügbar für den Go/No-Go-Termin Dezember 2026.
+    **Runde 2:** präregistriert in `PRAEREG-TR-RUNDE2-GATES-2026-11-24.md` (dokumentierte Basis-Gate-Auswahl gegen Zufallsauswahl, geschichtet nach Tag und Richtung, Einheit Strategie × Tag). Eine spätere Umsetzung von B1 erweitert die konfirmatorische Auswertung nicht rückwirkend um tatsächliche MCM-Gates; diese sind allenfalls Gegenstand einer getrennt ausgewiesenen Auswertung ab vollständiger Protokollierung. B8 darf nicht zur Erklärung oder Veränderung der Runde-2-Ergebnisse herangezogen werden. Primäre Ergebnisse frühestens Februar 2027 — nicht verfügbar für den Go/No-Go-Termin Dezember 2026.
 
+    *Verwandt mit: №64 (Nachtrag Optionsbewertung, Messregel M5), №72; Präregistrierung Runde 2 in `regime-test` (Commit `d9c382d`).*
 
 ## Fortschreibungshistorie
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.45 | 25.11.2026 | №77 Track-Record-Audit 24.11.2026: Folgepunkte als Backlog (nur Doku): P0 B2 `dataAsOf` je Snapshot/Ticker, B1 tatsächlich angewandte Gates inkl. MCM-Faktoren, B4 Kennzeichnung „Basiswert-Referenz“; P1 B3a/B3b, B7, B5; P2 B6, B8. Quelle `docs/AUDIT-TRACKRECORD-STRESS-2026-11-24.md` (v2) und Nachtrag vom 25.11.2026; Runde 2 präregistriert in `regime-test` (`d9c382d`). Externe Abnahme 25.11.2026. Freeze unverändert, keine Umsetzung. |
 | 4.44 | 03.10.2026 | №76 Externe Value-/DCF-Listen: Discovery-Universum und Value × Momentum-Crossover als Forschungs-Backlog (nur Doku, ENTWURF): Leitregel „externe Listen nur als Discovery-Universum“ (erbt №75); Vorprüfungsbefunde (kleine Schnittmenge, Spalte „Valuation“ ungeklärt, Earnings-Abdeckung); Verwendungsarten A Beobachten / B einmalige Auswertung / C Research-Run im separaten Repository `uiq-research` (nur Option, kein „Aggregator light“; Architekturentscheidung Axel + Review 03.10.2026: Einbahnstraße, maximale Isolation, keine Plattform auf Vorrat, Repo erst nach Vorstudie); Phasen A–D, Abbruchregel, Reihenfolge nach P1 #5; kein Bau. |
 | 4.43 | 30.09.2026 | №75 Alpha-Discovery-Framework als Forschungs-Backlog (nur Doku, ENTWURF): Leitregel „keine externe Zahl ohne eigene Präregistrierung und Validierung“; operationalisierte Leitregel (Geltungsbereich inkl. Feature-Auswahl und H6-Abgrenzung, Prüfstelle); Scope 1–6 (Bestandsaufnahme mit CITED/INHERITED/DECISION/UNVERIFIED, H6 als Vorbild, Multiple-Testing-Regel, Equity/Options getrennt, Alpha Map hypothetisch, kein Composite zuerst); kein Bau. |
 | 4.42 | 29.09.2026 | №74 Historische `strategy_score`-Semantik der Optionsstrategien (nur Doku, ENTWURF, Freeze aufgehoben): Altbestand 16.09.–Rollout als `LEGACY_COMPOSITE`, ATMNA-Sonderregel (Ranking bis Aggregator 5.42.3 über `sCsp`, ab 5.43.0 `sAtmna`), ab Rollout `RANKING_SCORE`/`UNAVAILABLE`; Manifest als historische Leseregel, keine Änderung an Archiven/Digests; `RECONSTRUCTED_RANKING` technisch möglich, nicht beschlossen; kein Options-Track-Record. Codefreeze aufgehoben (Banner angepasst); Nummer №74 bestätigt; №73 Entscheidung: Git-Historie bleibt unverändert. |
