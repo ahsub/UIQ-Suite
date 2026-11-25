@@ -2578,6 +2578,26 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
     *Verwandt mit: №72, №75, Befundregister (Nachträge 01.10. und 03.10.2026).*
 
+№77 — Track-Record-Audit 24.11.2026: Folgepunkte (Datenintegrität, Market State, Evidenz)
+
+Status: Backlog. Freeze unverändert; keine Umsetzung vor ausdrücklicher Freigabe. Quelle: docs/AUDIT-TRACKRECORD-STRESS-2026-11-24.md (v2, SHA-256-Präfix f9060d33cbb8cd98), externe Abnahme 24.11.2026. Priorisierung nach externem Review: zuerst, was die nächste belastbare Auswertung verhindert oder eine irreführende Aussage ermöglicht.
+
+Prio	Punkt	Bereich	Inhalt	Art
+P0	B2	Datenintegrität	dataAsOf je Snapshot und je Ticker in tr:snap protokollieren; Umsetzungsverzug und Kontamination sonst nicht trennbar	Code (Schema-Version)
+P0	B1	Datenintegrität	tatsächlich angewandte Gates je Strategie × Tag in tr:snap protokollieren, einschließlich aller MCM-Faktoren (Herabstufungen) — nicht nur die berechnete Basis-Gate-Tabelle; Abnahmekriterium. Dringlich: Jeder Tag ohne Protokoll ist unwiederbringlich verloren, weil die Tages-Keys überschrieben werden	Code (Schema-Version)
+P0	B4	Evidenz	Options-Track-Record als „Basiswert-Referenz, keine Options-P&L“ kennzeichnen, bis Phase D der Track-Record-Spec umgesetzt ist (TRACK_RECORD_SPEC.md §8: Options-Track-Record mit Strike-Metrik; Termin offen)	nur Kennzeichnung, keine Logikänderung
+P1	B3a	Evidenz	identische Options-Ranglisten (alle drei Ranglisten Weekly, Collar und CSP an 44/44 gemeinsamen Tagen identisch): Ursache geklärt — options_weekly und options_collar sind Top 20 nach sCsp wie options_csp (Nachtrag №64, Messregel M5). Dokumentieren und bei jeder Performanceauswertung als eine Evidenzquelle behandeln	Dokumentation, Auswertungsregel
+P1	B3b	Evidenz	offene Fachfrage: Ist sCsp die geeignete Bewertungsfunktion für die Collar-Auswahl? Identische Kandidatenliste belegt weder Fehlimplementierung noch sinnvolle Bewertung	Fachfrage, lesend
+P1	B7	Evidenz	Mindestumfang nach unabhängigen Tagen bzw. Perioden statt nach Empfehlungen; Spec-Änderung mit Schema-Version und Changelog	Spec
+P1	B5	Market State	Semantik dokumentieren: POST_PANIC_REVERSION ist ein Verhältnisband (0,98–1,05), kein nachgewiesener Post-Panik-Zustand; PANIC-Zustand und MCM-HMM nicht aktiv (hmm_state leer in 233/233 Snapshots)	Dokumentation
+P2	B6	Market State	Mindestdauer/Hysterese als präregistrierte Hypothese in regime-test (9 Wechsel in 25 Handelstagen)	Forschung
+P2	B8	Evidenz	Gate-Tabelle BULL_QUIET (Sperre Mean Reversion/Fading Short) erst nach Runde 2 als Hypothese weiterverfolgen	Forschung
+
+Reihenfolge in P0: B2 und B1 gemeinsam spezifizieren, getrennt implementieren, getrennte Felder (Datenbasis ≠ Freigabeentscheidung). B4 ist sofort möglich, sobald der Freeze Kennzeichnungen zulässt.
+
+Runde 2: präregistriert in PRAEREG-TR-RUNDE2-GATES-2026-11-24.md (dokumentierte Basis-Gate-Auswahl gegen Zufallsauswahl, geschichtet nach Tag und Richtung, Einheit Strategie × Tag). Eine spätere Umsetzung von B1 erweitert die konfirmatorische Auswertung nicht rückwirkend um tatsächliche MCM-Gates; diese sind allenfalls Gegenstand einer getrennt ausgewiesenen Auswertung ab vollständiger Protokollierung. B8 darf nicht zur Erklärung oder Veränderung der Runde-2-Ergebnisse herangezogen werden. Primäre Ergebnisse frühestens Februar 2027 — nicht verfügbar für den Go/No-Go-Termin Dezember 2026.
+
+
 ## Fortschreibungshistorie
 
 | Version | Datum | Änderung |
