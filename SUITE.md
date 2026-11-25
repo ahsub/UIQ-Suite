@@ -1,7 +1,7 @@
 # Investment-Suite — Dachdokument
 
 
-**Version:** 4.45
+**Version:** 4.46
 **Stand:** 25.11.2026
 **Ablage:** `ahsub/UIQ-Suite/SUITE.md` (Single Source; Kopie in ko-aggregator/docs ist Verweis-Stub)
 **Geltung:** Verbindlich für alle Suite-Module. Bei Widerspruch zwischen diesem Dokument und einer Modul-STRATEGIE gilt: Grundgesetze und Konsistenz-Standards aus SUITE.md schlagen Modul-Regeln; fachliche Modul-Spezifika bleiben Sache der Module.
@@ -1627,6 +1627,53 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
     — reine Vormerkung. Hängt inhaltlich mit №65 zusammen (beide betreffen
     die ATM/NA-Aufbereitung), aber unabhängig planbar.
 
+    **Nachtrag zu №64 (24.11.2026, Fassung 4 vom 25.11.2026; extern abgenommen 25.11.2026) — Status, Abgleich mit der Primärquelle, Messregeln für die Optionsbewertung**
+
+    **Status:** Dokumentation und Backlog. Freeze unverändert; keine Änderung an Score, Registry oder Gates. Quellen: Buch „Optionen unschlagbar handeln“ (Primärquelle der ATM/NA-Regeln, erneut gegengelesen 24.11.2026), Livestream des Autors (Dez. 2021), Optionsdienst desselben Autors (2024), `docs/AUDIT-TRACKRECORD-STRESS-2026-11-24.md`. Keine Tickernamen.
+
+    **1. Statuskorrektur**
+
+    Der Eintrag №64 („soll gebaut werden“) ist veraltet:
+    - `score_options_atmna()` ist seit 16.09.2026 implementiert (`ko-aggregator/market_aggregator.py`, Docstring „NEU (16.09.2026, Backlog #64)“; Leaderboard `options_atmna` = Top 20 nach `sAtmna`).
+    - Die Regeln aus der Primärquelle stehen seit 18.08.2026 in `ko-modules/ko-strategy-registry.js` (`atmna.rules`: ATM, 30 Tage, Monatsverfall bevorzugt, Prüfpunkt 5 Tage vor Verfall, Gewinnmitnahme 50/60/70 % nach Restlaufzeit, drei Rollstufen mit 30–60 Tagen und höchstens 90, asymmetrischer Covered Call nach Andienung, Basispreis-Abstand höchstens 2,5 %).
+
+    Vorschlag: №64 als umgesetzt kennzeichnen (Datum 16.09.2026) und auf diesen Nachtrag verweisen. „Umgesetzt“ bezeichnet nur die Implementierung. Drei Ebenen bleiben getrennt: (1) Implementierung der Regeln, (2) Übereinstimmung mit der Primärquelle (Abschnitt 2: teilweise), (3) empirischer Nutzen (nicht belegt; nur über die Hypothesen in Abschnitt 4).
+
+    **2. Abgleich Score gegen Primärquelle**
+
+    | Kriterium | Primärquelle | UIQ heute | Befund |
+    |---|---|---|---|
+    | Strike, Laufzeit, Prüfpunkt, Rollen | ATM, ~30 Tage, 5 Tage vor Verfall, drei Rollstufen (30–60 Tage, höchstens 90) | in der Registry abgebildet (`atmna.rules`) | übereinstimmend |
+    | Gewinnmitnahme | als Beispiel („eine Möglichkeit wäre“): schließen, wenn mindestens 70 % der Prämie in den ersten 50 % der Laufzeit verdient sind; zusätzlich z. B. Gewinnstopp bei 75 % | Registry: schließen bei 50 % (Restlaufzeit > 50 %), 60 % (30–50 %), 70 % (< 30 %) | teilweise Übereinstimmung; Abweichung der Schwellen (UIQ schließt in der ersten Laufzeithälfte schon bei 50 % statt 70 %) noch fachlich zu bewerten → H-FIN-7 |
+    | Endspiel nach Andienung | 1 Call am Geld, ~30 Tage, je 200 Aktien (asymmetrischer Covered Call); Erhöhung auf 2 Calls in Rollstufe 3 | Registry `postAssignmentEndgame`: 1 ATM-Call je 200 Aktien, 30 Tage | in der Registry abgebildet; von der Auswertung (Trade-Doktor) noch nicht geprüft |
+    | Einstiegssignal | RSI ≤ 70 und **steigend**; MACD-Histogramm ≥ 3 Tage steigend **oder** MACD-Kaufsignal ≤ 7 Tage | Bonus für RSI-**Niveau** 40–60 und Bollinger-Mitte; keine Richtung, kein MACD | Abweichung; Nutzen offen → H-FIN-9 |
+    | Qualität des Basiswerts | Umsatz, Gewinn je Aktie, operativer/freier Cashflow über ~10 Jahre steigend; Ausschüttungsquote ≤ 60 %; KGV < 20 (Tech höher) | nicht im ATM/NA-Score; `score_underlying_assignment_quality()` (UAQ) existiert separat, fließt nicht ins Ranking | Lücke; → H-FIN-10 (gemeinsam mit H-DIV-1) |
+    | Volatilität | hochvolatile Aktien meiden (Verweis auf das Kapitel zur impliziten Volatilität); ruhig verlaufende Aktien bevorzugen | HVP = Perzentil der aktuellen 30-Tage-**historischen** Volatilität innerhalb der eigenen letzten 252 Handelstage (`calc_hv_percentile`), also relativ zur eigenen Historie, weder absolute Höhe noch implizite Volatilität; Gate HVP ≥ 20, Bonus min(HVP/5, 15) Punkte, d. h. höheres HVP → höherer Score | mögliche inhaltliche Spannung; Metriken nicht unmittelbar vergleichbar (Quelle: absolute bzw. implizite Volatilität; UIQ: relatives Perzentil der historischen Volatilität) |
+    | Kursband | 15–80 $ (kapitalabhängig) | weder Gate noch Score | Lücke; bewusst offen lassen, da kontoabhängig |
+    | Optionsliquidität | Open Interest und Tagesvolumen dreistellig, enge Spanne, Basispreis-Abstand ≤ 5 %, Weeklies als Plus | ohne Optionsketten nicht abbildbar (CAQ bewusst nicht implementiert) | dokumentierte Datenlücke |
+    | Quartalszahlen | kein Ausschlussgrund; nur bei regelmäßigen Sprüngen > 10 % abwägen | gemeinsames Earnings-Gate `_options_base_candidate_gates` für CSP, ATM/NA, Weekly und Collar, **gilt also auch für `options_atmna`**: Sperre bei Zahlen in 1–7 Tagen, Malus −20 Punkte bei 8–14 Tagen; Zahlen in 15–30 Tagen (innerhalb einer 30-Tage-Laufzeit) ohne Einfluss | UIQ strenger als die Quelle; bewusste Abweichung, nicht stillschweigend vereinheitlichen |
+
+    **3. Messregeln für die Bewertung von Optionsstrategien**
+
+    Diese Regeln betreffen nur Auswertung und Darstellung, nicht die Scores.
+
+    | Nr. | Regel | Begründung |
+    |---|---|---|
+    | M1 | Eine Trefferquote wird nie ohne Höhe der Verluste bzw. Erwartungswert ausgewiesen | Bei Short Puts mit niedrigem Delta ist eine hohe Quote strukturell; bei ATM/NA entsteht sie vor allem durch Rollen |
+    | M2 | Gerollte Positionen zählen als **ein** Trade (Rollkette), Ergebnis erst bei Abschluss der Kette | sonst erscheint jeder Rollvorgang als eigener Gewinner |
+    | M3 | Bewertung zusätzlich zum Tageskurs inklusive offener Buchverluste; je Rollkette zusätzlich der größte zwischenzeitliche Buchverlust und die Dauer der Kette. **Offener Spezifikationspunkt** (vor jeder Auswertung festzulegen); Vorschlag: Buchverlust täglich zum Schlusskurs (Options-Mittelkurs und Aktie), ausgewiesen in Dollar und in Prozent des höchsten in der Kette gebundenen Kapitals (Basispreis × 100 × Kontrakte); Dauer in Handelstagen von der Eröffnung des ersten Puts bis zur Schließung der letzten Position einschließlich Endspiel. Ohne Optionskurse (vor Phase D) nicht berechenbar. Noch festzulegen: (1) ob realisierte Ergebnisse geschlossener Teilpositionen mit dem Buchergebnis der offenen Positionen zu einem kumulierten Kettenergebnis verrechnet werden; (2) wie Aktienbestand, Covered Calls und Dividenden nach Andienung in die Bewertung der Kette eingehen; (3) wie das höchste gebundene Kapital nach Andienung bestimmt wird. **M3 darf vor diesen Festlegungen nicht als vollständig spezifizierte Messregel in eine Auswertung übernommen werden.** | die Trefferquote einer Rollstrategie zeigt offene Verluste nicht; ohne diese Angaben kann wiederholtes Rollen wirtschaftlich problematische Positionen lange offenhalten, ohne in der Schlussbilanz sichtbar zu werden |
+    | M4 | Track-Record-Werte der Optionslisten heißen „Basiswert-Referenz, keine Options-P&L“ | entspricht Backlog-Punkt B4 |
+    | M5 | Ranglisten mit identischer Sortierung zählen als **eine** Evidenzquelle **für die Kandidatenauswahl**. Unterschiedliche Strategieausführungen und deren wirtschaftliche Ergebnisse werden dadurch nicht gleichgesetzt und nicht aus der Auswertung entfernt; verhindert wird nur, dass dieselbe Auswahlbasis mehrfach als unabhängige Bestätigung zählt | Dokumentierter Auditbefund: Die drei Ranglisten waren an den 44/44 gemeinsamen Tagen des Auditzeitraums identisch. `options_weekly` und `options_collar` sind Top 20 nach `sCsp`, also dieselbe Liste wie `options_csp` (`market_aggregator.py`, Leaderboard-Definitionen; Weekly bewusst, Collar als dokumentierte Wissenslücke) |
+    | M6 | Für ATM/NA ist „Quartalszahlen in der Laufzeit“ in der Auswertung kein Risikofaktor an sich, sondern nur bei historisch großen Kurssprüngen nach Zahlen. Geltungsbereich: Das betrifft die Auswertung, nicht die Auswahl; in der Auswahl gilt das gemeinsame Earnings-Gate auch für ATM/NA (Abschnitt 2, Zeile Quartalszahlen) | Primärquelle; die abweichende Regel des Optionsdienstes (Ausschluss) gilt für dessen Delta-<-0,20-Ansatz, nicht für ATM/NA |
+
+    **Folge für Backlog-Punkt B3 (Track-Record-Audit):** Die Ursache der identischen Options-Ranglisten ist damit geklärt: Sie sind beabsichtigt bzw. als Wissenslücke dokumentiert, kein Datenfehler. B3 wird aufgeteilt: **B3a** (abgeschlossen als Dokumentation und Auswertungsregel M5; das ist keine empirische oder fachliche Bestätigung, dass `sCsp` für die Collar-Auswahl geeignet ist) und **B3b** (offene Fachfrage: Ist `sCsp` die geeignete Bewertungsfunktion für die Collar-Auswahl?).
+
+    **4. Bezug zu den Quellenregeln**
+
+    Prüfung der Abweichungen nur über die vorab definierten Hypothesen: H-FIN-7 (Gewinnmitnahme), H-FIN-8 (Rollen zum Tageskurs), H-FIN-9 (Einstiegssignal), H-FIN-10 (Qualitätsfilter); s. `docs/SUITE-BACKLOG-QUELLENREGELN-LUDWIG.md`. Eine Änderung von `score_options_atmna()` erst nach bestandenem Abbruchkriterium und außerhalb des Freezes. Die abweichende Behandlung von Quartalszahlen bleibt eine bewusste Abweichung und wird nicht stillschweigend zwischen Strategien vereinheitlicht.
+
+    **Abgrenzung zu Runde 2:** Dieser Nachtrag ändert nichts an `PRAEREG-TR-RUNDE2-GATES-2026-11-24.md`. Die Messregeln M1–M6 dürfen Zusammensetzung und Bewertung der konfirmatorischen Stichprobe nicht verändern.
+
 65. **✅ VOLLSTÄNDIG ERLEDIGT (29.08.2026, Kernfund 28.08.2026): Clientseitig
     eingebetteter EIC-Instruktionsblock unabhängig vom serverseitigen
     isOwner-Gate** *(Legal-Briefing-Audit, wichtigster Folgefund zu №60/61)*
@@ -2604,6 +2651,7 @@ Eine gemeinsame Einstiegsseite als Klammer nach außen: die vier/fünf Module mi
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 4.46 | 25.11.2026 | Nachtrag zu №64 (Fassung 4, extern abgenommen 25.11.2026, nur Doku): Statuskorrektur (`score_options_atmna()` seit 16.09.2026 implementiert, Regeln seit 18.08.2026 in der Registry; Implementierung ≠ Quellentreue ≠ Nutzen), Abgleich mit der Primärquelle (Abweichungen Einstieg, Qualität, Volatilitätsmetrik, Gewinnmitnahme, Earnings-Gate auch für ATM/NA), Messregeln M1–M6 (M3 spezifikationspflichtig), B3a/B3b. Keine Score-, Registry- oder Gate-Änderung; Status von №64 unverändert. |
 | 4.45 | 25.11.2026 | №77 Track-Record-Audit 24.11.2026: Folgepunkte als Backlog (nur Doku): P0 B2 `dataAsOf` je Snapshot/Ticker, B1 tatsächlich angewandte Gates inkl. MCM-Faktoren, B4 Kennzeichnung „Basiswert-Referenz“; P1 B3a/B3b, B7, B5; P2 B6, B8. Quelle `docs/AUDIT-TRACKRECORD-STRESS-2026-11-24.md` (v2) und Nachtrag vom 25.11.2026; Runde 2 präregistriert in `regime-test` (`d9c382d`). Externe Abnahme 25.11.2026. Freeze unverändert, keine Umsetzung. |
 | 4.44 | 03.10.2026 | №76 Externe Value-/DCF-Listen: Discovery-Universum und Value × Momentum-Crossover als Forschungs-Backlog (nur Doku, ENTWURF): Leitregel „externe Listen nur als Discovery-Universum“ (erbt №75); Vorprüfungsbefunde (kleine Schnittmenge, Spalte „Valuation“ ungeklärt, Earnings-Abdeckung); Verwendungsarten A Beobachten / B einmalige Auswertung / C Research-Run im separaten Repository `uiq-research` (nur Option, kein „Aggregator light“; Architekturentscheidung Axel + Review 03.10.2026: Einbahnstraße, maximale Isolation, keine Plattform auf Vorrat, Repo erst nach Vorstudie); Phasen A–D, Abbruchregel, Reihenfolge nach P1 #5; kein Bau. |
 | 4.43 | 30.09.2026 | №75 Alpha-Discovery-Framework als Forschungs-Backlog (nur Doku, ENTWURF): Leitregel „keine externe Zahl ohne eigene Präregistrierung und Validierung“; operationalisierte Leitregel (Geltungsbereich inkl. Feature-Auswahl und H6-Abgrenzung, Prüfstelle); Scope 1–6 (Bestandsaufnahme mit CITED/INHERITED/DECISION/UNVERIFIED, H6 als Vorbild, Multiple-Testing-Regel, Equity/Options getrennt, Alpha Map hypothetisch, kein Composite zuerst); kein Bau. |
